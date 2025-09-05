@@ -1,43 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-
+import { NextRequest } from 'next/server';
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  try {
-    const origin = req.nextUrl.origin;
-    const search = req.nextUrl.search; // ex) ?lang=ja&date=2025-09-04&model=gpt-5
-    const url = `${origin}/api/eod-deep${search}`;
-
-    const r = await fetch(url, { cache: 'no-store' });
-    const j = await r.json();
-
-    if (!j?.ok) {
-      return new NextResponse(`Error: ${j?.error ?? r.statusText}`, {
-        status: 500,
-        headers: {
-          'content-type': 'text/plain; charset=utf-8',
-          'cache-control': 'no-store',
-        },
-      });
-    }
-
-    return new NextResponse(j.markdown || '', {
-      status: 200,
-      headers: {
-        'content-type': 'text/plain; charset=utf-8',
-        'cache-control': 'no-store',
-        'x-model-used': j.modelUsed || '',
-        'x-date-et': j.dateEt || '',
-      },
-    });
-  } catch (e: any) {
-    return new NextResponse(`Error: ${e?.message ?? String(e)}`, {
-      status: 500,
-      headers: {
-        'content-type': 'text/plain; charset=utf-8',
-        'cache-control': 'no-store',
-      },
-    });
+  const u = new URL(req.url);
+  const origin = u.origin;
+  const qs = u.search; // lang/date/model/...
+  const r = await fetch(`${origin}/api/eod-deep${qs}`, { cache: 'no-store' });
+  const j = await r.json().catch(() => ({ ok: false } as any));
+  if (!j?.ok) {
+    return new Response(j?.error ?? 'error', { status: 500 });
   }
+  return new Response(j.markdown, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
 }
