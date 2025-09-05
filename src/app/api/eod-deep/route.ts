@@ -1,9 +1,11 @@
 // src/app/api/eod-deep/route.ts
+// ✅ 기본 모델: gpt-5-mini (ENV: OPENAI_MODEL 로 오버라이드 가능)
 // ✅ 일본어 기본 출력(OUTPUT_LANG=ja), 표/섹션/테마 라벨까지 i18n
 // ✅ 휴장일(공휴일) 자동 폴백: 데이터가 있는 최근 영업일까지 후퇴
 // ✅ Top 표: 거래대금(달러) / 거래량(주식수)
 // ✅ 급등/급락 표: "종가 $PRICE_MIN_FOR_GAIN_LOSS 이상" 종목만 포함 (기본 10달러)
-// ✅ LLM 기사: 회사/뉴스/테마 기반 서술 + 링크 (Yahoo/Investing)
+// ✅ LLM 기사: 수치 남발/예측 억제(temperature 0.2 + 금지규칙 강화)
+// ✅ ETF/지수 라벨 보강(SPY/QQQ/IWM/섹터 ETF 등 → インデックス/ETF)
 // ✅ ?lang=ko|ja|en, ?date=YYYY-MM-DD 지원
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,11 +19,12 @@ export const runtime = 'nodejs'
 // ────────────────────────────────────────────────────────────
 const POLYGON_KEY = process.env.POLYGON_API_KEY || ''
 const OPENAI_KEY = process.env.OPENAI_API_KEY || ''
-const OUTPUT_LANG = (process.env.OUTPUT_LANG || 'ko') as Lang // 기본 ko → Vercel에서 ja로 고정 권장
+const OUTPUT_LANG = (process.env.OUTPUT_LANG || 'ja') as Lang // 기본 ja
 const SITE_TITLE_PREFIX_ENV = process.env.SITE_TITLE_PREFIX || ''
 const NEWS_PER_TICKER = Number(process.env.NEWS_PER_TICKER || 2)
 const MAX_UNION_TICKERS = Number(process.env.MAX_UNION_TICKERS || 12)
 const PRICE_MIN_FOR_GAIN_LOSS = Number(process.env.PRICE_MIN_FOR_GAIN_LOSS || 10)
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini'
 
 // ────────────────────────────────────────────────────────────
 // i18n 라벨/해시태그
@@ -36,6 +39,7 @@ const I18N = {
     gainers: (min: number) => `Top 10 — 급등주 ($${min}+ )`,
     losers: (min: number) => `Top 10 — 하락주 ($${min}+ )`,
     unknown: '기타/테마불명',
+    etf: '지수/ETF',
     hashtags: '#미국주식 #미국야간경비원 #장마감 #나스닥 #S&P500 #증시브리핑 #테마 #상승주 #하락주 #MostActive',
   },
   ja: {
@@ -47,6 +51,7 @@ const I18N = {
     gainers: (min: number) => `Top 10 — 上昇株（$${min}+）`,
     losers: (min: number) => `Top 10 — 下落株（$${min}+）`,
     unknown: 'その他/テーマ不明',
+    etf: 'インデックス/ETF',
     hashtags: '#米国株 #夜間警備員 #米株マーケット #ナスダック #S&P500 #テーマ #上昇株 #下落株 #出来高',
   },
   en: {
@@ -58,6 +63,7 @@ const I18N = {
     gainers: (min: number) => `Top 10 — Gainers ($${min}+ )`,
     losers: (min: number) => `Top 10 — Losers ($${min}+ )`,
     unknown: 'Other/Unclassified',
+    etf: 'Index/ETF',
     hashtags: '#USstocks #NightGuard #MarketWrap #NASDAQ #SP500 #Themes #Gainers #Losers #MostActive',
   },
 } as const
@@ -198,20 +204,29 @@ async function fetchNews(ticker: string, limit = NEWS_PER_TICKER) {
   }))
 }
 
-function inferThemes(name: string, sector: string, headlines: string[]): string[] {
-  const text = [name, sector, ...headlines].join(' ').toLowerCase()
+function inferThemes(ticker: string, name: string, sector: string, headlines: string[], lang: Lang): string[] {
+  const text = [ticker, name, sector, ...headlines].join(' ').toLowerCase()
   const has = (kws: string[]) => kws.some((k) => text.includes(k))
 
   const tags: string[] = []
-  if (has(['nvidia', 'gpu', 'semiconductor', 'chip', 'ai', 'compute', 'data center', 'h100'])) tags.push('AI/반도체')
-  if (has(['software', 'cloud', 'saas', 'subscription', 'platform'])) tags.push('소프트웨어/클라우드')
-  if (has(['retail', 'e-commerce', 'store', 'consumer', 'brand'])) tags.push('리테일/소비')
-  if (has(['oil', 'gas', 'energy', 'crude', 'refinery'])) tags.push('에너지/원자재')
-  if (has(['biotech', 'therapy', 'fda', 'clinical', 'drug', 'healthcare'])) tags.push('헬스케어/바이오')
-  if (has(['ev', 'electric vehicle', 'battery', 'charging', 'tesla'])) tags.push('EV/모빌리티')
-  if (has(['mining', 'uranium', 'gold', 'silver', 'copper'])) tags.push('광물/원자재')
-  if (has(['bank', 'fintech', 'credit', 'loan', 'broker', 'insurance'])) tags.push('금융')
-  if (has(['utility', 'grid', 'power', 'electricity'])) tags.push('유틸리티/전력')
+
+  // 지수/ETF 라벨 (대표 ETF 및 섹터 ETF 포함)
+  const ETF_SET = new Set([
+    'SPY','QQQ','DIA','IWM','IVV','VOO','VTI','VT',
+    'XLK','XLF','XLE','XLV','XLY','XLP','XLI','XLU','XLB','XLC',
+    'SOXX','SMH','EEM','EFA','TLT','HYG','LQD'
+  ])
+  if (ETF_SET.has(ticker.toUpperCase())) tags.push(I18N[lang].etf)
+
+  if (has(['nvidia','gpu','semiconductor','chip','ai','compute','data center','h100'])) tags.push('AI/반도체')
+  if (has(['software','cloud','saas','subscription','platform'])) tags.push('소프트웨어/클라우드')
+  if (has(['retail','e-commerce','store','consumer','brand'])) tags.push('리테일/소비')
+  if (has(['oil','gas','energy','crude','refinery'])) tags.push('에너지/원자재')
+  if (has(['biotech','therapy','fda','clinical','drug','healthcare'])) tags.push('헬스케어/바이오')
+  if (has(['ev','electric vehicle','battery','charging','tesla'])) tags.push('EV/모빌리티')
+  if (has(['mining','uranium','gold','silver','copper'])) tags.push('광물/원자재')
+  if (has(['bank','fintech','credit','loan','broker','insurance'])) tags.push('금융')
+  if (has(['utility','grid','power','electricity'])) tags.push('유틸리티/전력')
   if (tags.length === 0) tags.push('기타/테마불명')
   return Array.from(new Set(tags)).slice(0, 3)
 }
@@ -271,12 +286,12 @@ function buildLLMUserPrompt(dateEt: string, cards: any[], lists: { mostActive: R
 
   const langLine = lang === 'ja' ? '言語: 日本語で書く。' : lang === 'en' ? 'Language: English.' : '언어: 한국어.'
 
-  return `マーケット日誌を作成。${langLine}\n- 基準日(ET): ${dateEt}\n- 発行(KST): ${kst}\n\n[カード]\n${cardText}\n\n[表]\n${listDigest}\n\n要件:\n1) データ根拠中心。表/見出しにない指数・価格の数値は書かない。\n2) 各カード 1~2段落: 上下の要因をニュース/テーマで説明。ニュース無はテクニカル/需給と明記。\n3) テーマ/セクターで資金移動を物語化。\n4) 30分リプレイ: 事件ベースで4~6行。\n5) EOD総括 + 明日のチェックリスト(3~5)。\nキャラクター: 『米国 夜間警備員』(一人称)。信頼90%, ウィット10%.`
+  return `マーケット日誌を作成。${langLine}\n- 基準日(ET): ${dateEt}\n- 発行(KST): ${kst}\n\n[カード]\n${cardText}\n\n[表]\n${listDigest}\n\n要件:\n1) 数値は表にある o→c / Chg% / Vol のみ引用。目標値/予測/未出所の価格数値は禁止。\n2) 各カード 1~2段落: 上下の要因をニュース/テーマで説明。ニュース無はテクニカル/需給と明記。\n3) テーマ/セクターの資金移動を俯瞰して物語化。\n4) 30分リプレイ: 事実ベースで4~6行。\n5) EOD総括 + 明日のチェックリスト(3~5)。\nキャラクター: 『米国 夜間警備員』(一人称)。信頼90%, ウィット10%.`
 }
 
 function clusterThemes(cards: any[]) {
   const map = new Map<string, string[]>()
-  for (const c of cards) for (const t of c.themes || ['기타/테마불명']) {
+  for (const c of cards) for (const t of c.themes || [I18N.ja.unknown]) {
     if (!map.has(t)) map.set(t, [])
     map.get(t)!.push(c.ticker)
   }
@@ -303,7 +318,7 @@ async function composeDeepMarkdown(dateEt: string, lists: any, lang: Lang) {
         lists.mostDollar.find((x: Row) => x.ticker === t) ||
         lists.mostActive.find((x: Row) => x.ticker === t)
       const headlines = (news || []).map((n: any) => n.title || '')
-      let themes = inferThemes(details?.name || t, details?.sector || '', headlines)
+      let themes = inferThemes(t, details?.name || t, details?.sector || '', headlines, lang)
       themes = translateThemes(themes, lang)
 
       metaMap[t] = {
@@ -334,14 +349,14 @@ async function composeDeepMarkdown(dateEt: string, lists: any, lang: Lang) {
   if (client) {
     const prompt = buildLLMUserPrompt(dateEt, cards, lists, lang)
     const sys = lang === 'ja'
-      ? 'あなたは信頼性の高いマーケットライター。投資助言/利益保証/虚偽の数値は禁止。'
-      : '너는 신뢰도 높은 마켓 라이터다. 투자 권유/수익 보장/허위 수치 금지.'
+      ? 'あなたは信頼性の高いマーケットライター。投資助言/利益保証/虚偽数値/予測は禁止。'
+      : '너는 신뢰도 높은 마켓 라이터다. 투자 권유/수익 보장/허위 수치/예측 금지.'
     const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.6,
+      model: OPENAI_MODEL,
+      temperature: 0.2, // 수치/예측 억제
       messages: [
         { role: 'system', content: sys },
-        { role: 'user', content: prompt },
+        { role: 'user', content: prompt + '\n\n禁止: 目標価格/予測/未出所の数値。許可: 表中の o→c, Chg%, Vol のみ数値表記。' },
       ],
     })
     body = completion.choices?.[0]?.message?.content || ''
