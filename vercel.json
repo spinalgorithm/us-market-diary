@@ -1,8 +1,5 @@
 {
   "crons": [
-    {
-      "path": "/api/eod",
-      "schedule": "10 22 * * *"
-    }
+    { "path": "/api/eod-deep?lang=ja", "schedule": "10 22 * * *" }
   ]
 }
