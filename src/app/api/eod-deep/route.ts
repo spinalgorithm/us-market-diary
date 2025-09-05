@@ -351,14 +351,14 @@ async function composeDeepMarkdown(dateEt: string, lists: any, lang: Lang) {
     const sys = lang === 'ja'
       ? 'あなたは信頼性の高いマーケットライター。投資助言/利益保証/虚偽数値/予測は禁止。'
       : '너는 신뢰도 높은 마켓 라이터다. 투자 권유/수익 보장/허위 수치/예측 금지.'
-    const completion = await client.chat.completions.create({
-      model: OPENAI_MODEL,
-      temperature: 0.2, // 수치/예측 억제
-      messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: prompt + '\n\n禁止: 目標価格/予測/未出所の数値。許可: 表中の o→c, Chg%, Vol のみ数値表記。' },
-      ],
-    })
+const completion = await client.chat.completions.create({
+  model: OPENAI_MODEL,               // 기본 gpt-5-mini
+  max_output_tokens: 1800,           // 출력 길이 제한
+  messages: [
+    { role: 'system', content: sys + ' 数値は表の o→c / Chg% / Vol のみ。目標価格・将来予測・根拠のない数値は厳禁。' },
+    { role: 'user', content: prompt + '\n\n禁止: 目標価格/予測/未出所の数値。許可: 表中の o→c, Chg%, Vol のみ数値表記。' },
+  ],
+})
     body = completion.choices?.[0]?.message?.content || ''
   } else {
     body = lang === 'ja' ? '## 🎙️ オープニング\nLLMキーが未設定のため、簡易サマリーのみ表示します。' : '## 🎙️ 오프닝\nLLM 키가 없어 간단 요약만 제공합니다.'
