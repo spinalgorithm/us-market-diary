@@ -1,3 +1,4 @@
+// app/api/eod-deep-md/route.ts
 import { NextRequest } from 'next/server'
 export const dynamic = 'force-dynamic'
 
@@ -33,3 +34,4 @@ export async function GET(req: NextRequest) {
   // 5) 최종 에러
   const msg = j?.error || j2?.error || 'empty'
   return new Response(msg, { status: 500 })
+}
