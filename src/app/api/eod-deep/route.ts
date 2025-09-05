@@ -1,300 +1,301 @@
 import { NextRequest } from 'next/server'
-import OpenAI from 'openai'
 
-export const runtime = 'nodejs'
+// --- Config ----------------------------------------------------
 export const dynamic = 'force-dynamic'
 
-// ==== ENV ====
+// 읽을 환경변수(로컬은 .env, 배포는 Vercel 프로젝트 변수 사용)
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY!
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY || ''
-const OPENAI_API_KEY  = process.env.OPENAI_API_KEY || ''   // 없으면 본문은 폴백
-const OPENAI_MODEL    = process.env.OPENAI_MODEL || 'gpt-5' // ?model= 로 덮어쓰기 가능
+const OPENAI_MODEL_DEFAULT = process.env.OPENAI_MODEL || 'gpt-5' // gpt-5 / gpt-5-mini
 
-// ==== Utils ====
-type AnyRow = Record<string, any>
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-const num = (v: any): number | null => {
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN
-  return Number.isFinite(n) ? n : null
-}
-const pick = (r: AnyRow, keys: string[]) => { for (const k of keys) if (r[k] != null) return r[k] }
-const extractFields = (r: AnyRow) => {
-  const symbol = String(pick(r, ['symbol','ticker','T']) || '').trim()
-  const open   = num(pick(r, ['open','o','price_open']))
-  const close  = num(pick(r, ['close','c','price_close','price']))
-  const vwap   = num(pick(r, ['vwap','vw']))
-  const volume = num(pick(r, ['volume','v','share_volume']))
-  let chgPct   = num(pick(r, ['chgPct','changePercent','change_pct','changesPercentage']))
-  if (chgPct == null && open != null && close != null && open !== 0) chgPct = ((close - open) / open) * 100
-  return { symbol, open, close, vwap, volume, chgPct }
-}
-const normalizeRow = (r: AnyRow) => {
-  const f = extractFields(r)
-  const px = f.close ?? f.vwap ?? f.open ?? null
-  const dollar = (px && f.volume) ? px * f.volume : null
-  return { ...r, ...f, px, dollar }
-}
-function uniq<T>(arr: T[]) {
-  const s = new Set<string>(); const out: T[] = []
-  for (const x of arr) { const k = typeof x === 'string' ? x : JSON.stringify(x)
-    if (!s.has(k)) { s.add(k); out.push(x) } }
-  return out
+// --- Helpers ---------------------------------------------------
+async function jfetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, { ...init, cache: 'no-store' })
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`)
+  return r.json() as Promise<T>
 }
 
-// ==== ETF 라벨 ====
-const ETF_SET = new Set([
-  'SPY','QQQ','DIA','IWM','VTI','VOO','XLF','XLK','XLE','XLV','XLY','XLI','XLP','XLU',
-  'SOXL','SOXS','SQQQ','TQQQ','UVXY','TLT','TSLL','TSLS','BITO','SDS','SH','PSQ'
-])
-const ETF_INV_SET = new Set(['SQQQ','SOXS','UVXY','SDS','SH','PSQ','TSLS'])
-
-// ==== Polygon grouped ====
-function formatEtYmd(d: Date) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' }).format(d)
+function safeNum(n: any, d = 0): number {
+  const x = Number(n)
+  return Number.isFinite(x) ? x : d
 }
-async function fetchGrouped(dateEt: string) {
-  const url = `https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/${dateEt}?adjusted=true&apiKey=${POLYGON_API_KEY}`
-  const r = await fetch(url, { cache:'no-store' })
-  if (!r.ok) throw new Error(`Polygon grouped ${r.status}`)
-  return r.json()
-}
-async function resolveTradingDay(preferred?: string) {
-  if (!POLYGON_API_KEY) throw new Error('POLYGON_API_KEY missing')
-  if (preferred) {
-    try {
-      const j = await fetchGrouped(preferred)
-      if (Array.isArray(j?.results) && j.results.length > 200) return { dateEt: preferred, results: j.results }
-    } catch { /* fallback */ }
-  }
-  for (let back=0; back<7; back++) {
-    const cand = formatEtYmd(new Date(Date.now() - back*86400000))
-    try {
-      const j = await fetchGrouped(cand)
-      if (Array.isArray(j?.results) && j.results.length > 200) return { dateEt: cand, results: j.results }
-    } catch {}
-    await sleep(120)
-  }
-  throw new Error('No trading day found (last 7d)')
+function pct(a: number, b: number): number {
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return 0
+  return (a / b - 1) * 100
 }
 
-// ==== Reference: 섹터/산업 보강 ====
-// v1(company) -> v3(reference/tickers) 순으로 시도
-type RefInfo = { symbol:string, sector?:string, industry?:string, sic_description?:string, name?:string, type?:string }
-async function fetchCompanyV1(sym: string): Promise<Partial<RefInfo>|null> {
-  const u = `https://api.polygon.io/v1/meta/symbols/${encodeURIComponent(sym)}/company?apiKey=${POLYGON_API_KEY}`
-  const r = await fetch(u, { cache:'no-store' })
-  if (!r.ok) return null
-  const j = await r.json()
-  return {
-    symbol: sym,
-    sector: j?.sector,
-    industry: j?.industry,
-    name: j?.name || j?.logo || undefined,
-  }
+type Row = {
+  Ticker: string
+  o: number
+  c: number
+  chgPct: number
+  vol: number
+  dollarVolM: number
 }
-async function fetchTickerV3(sym: string): Promise<Partial<RefInfo>|null> {
-  const u = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(sym)}?apiKey=${POLYGON_API_KEY}`
-  const r = await fetch(u, { cache:'no-store' })
-  if (!r.ok) return null
-  const j = await r.json()
-  const res = j?.results || {}
-  return {
-    symbol: sym,
-    name: res.name,
-    type: res.type,
-    sic_description: res.sic_description,
-  }
-}
-function mapTheme(sym: string, info?: Partial<RefInfo>): string {
-  if (ETF_INV_SET.has(sym)) return 'インバース/レバレッジETF'
-  if (ETF_SET.has(sym))    return 'インデックス/ETF'
-  const S = (info?.sector||'').toLowerCase()
-  const I = (info?.industry||'').toLowerCase()
-  const D = (info?.sic_description||'').toLowerCase()
-  const N = (info?.name||'').toLowerCase()
-  const blob = `${S} ${I} ${D} ${N}`
 
-  if (/semiconductor|semi|chip|foundry|nvidia|broadcom/.test(blob)) return '半導体/AIインフラ'
-  if (/software|cloud|saas|ai|cyber|security|data/.test(blob))     return 'ソフトウェア/AI'
-  if (/pharma|biotech|biolog|therapeutic|medical|health/.test(blob))return 'バイオ/ヘルスケア'
-  if (/retail|e-?commerce|apparel|store|online shop|mall/.test(blob)) return '小売/EC'
-  if (/automobile|auto|vehicle|ev|mobility|battery|tesla/.test(blob)) return 'EV/モビリティ'
-  if (/energy|oil|gas|petroleum|refining|coal|uranium/.test(blob))    return 'エネルギー'
-  if (/bank|financial|insurance|broker|asset|credit|lending|capital/.test(blob)) return '金融'
-  if (/real estate|reit|property|mortgage/.test(blob))                return '不動産/REIT'
-  if (/telecom|communication|wireless|satellite/.test(blob))          return '通信'
-  if (/industrial|manufactur|aerospace|defense|machinery/.test(blob)) return '産業/防衛'
-  if ((info?.type === 'W') || /(\.W|[-\.]WS|W$)$/.test(sym))          return 'ワラント/権利'
+type EodShape = {
+  dateEt: string
+  mostActive: Row[]
+  topDollar: Row[]
+  topGainers10: Row[]
+  topLosers10: Row[]
+}
+
+// --- Theme tagging (light) ------------------------------------
+const ETF_INV = new Set(['SQQQ','SOXS','SPXS','TZA','FAZ','LABD','TBT','UVXY'])
+const ETF_IDX = new Set(['SPY','QQQ','DIA','IWM','VTI','VOO','XLK','XLF','XLE','XLY','XLI','XLV','XLP','XLU','XLC','SMH','SOXL','SOXS','TSLL'])
+
+const SEMIS = new Set(['NVDA','AVGO','AMD','TSM','ASML','AMAT','LRCX','MU','INTC','SOXL','SOXS','SMH'])
+const MEGA_SOFT_AI = new Set(['MSFT','GOOGL','AMZN','META','CRM','ADBE','ORCL','PLTR'])
+const EV_MOB = new Set(['TSLA','NIO','LI','RIVN','F','GM','TSLL'])
+const EC_RETAIL = new Set(['AMZN','SHOP','MELI','NEGG','AEO','DLTH','WMT','COST'])
+const BIO_HEALTH = new Set(['NVO','PFE','MRK','BMY','AZN','REGN','VRTX','NBY','IONS','RAPT','STSS'])
+
+function labelTheme(t: string): string {
+  if (ETF_INV.has(t)) return 'インバース/レバレッジETF'
+  if (ETF_IDX.has(t)) return 'インデックス/ETF'
+  if (SEMIS.has(t)) return '半導体/AIインフラ'
+  if (MEGA_SOFT_AI.has(t)) return 'ソフトウェア/AI'
+  if (EV_MOB.has(t)) return 'EV/モビリティ'
+  if (EC_RETAIL.has(t)) return 'EC/小売'
+  if (BIO_HEALTH.has(t)) return 'バイオ/ヘルスケア'
   return 'その他/テーマ不明'
 }
-async function annotateThemes(symbols: string[]) {
-  const out = new Map<string, { theme:string, info?:Partial<RefInfo> }>()
-  const uniqSyms = uniq(symbols).slice(0, 120)
-  for (const sym of uniqSyms) {
-    let info: Partial<RefInfo> | null = null
-    try { info = await fetchCompanyV1(sym) } catch {}
-    if (!info) { try { info = await fetchTickerV3(sym) } catch {} }
-    const theme = mapTheme(sym, info || undefined)
-    out.set(sym, { theme, info: info || undefined })
-    await sleep(40) // 우발적 레이트리밋 완화
+
+// --- Polygon News (optional; auto-skip on failure) -------------
+async function fetchPolygonNews(tickers: string[], dateEt: string) {
+  if (!POLYGON_API_KEY) return []
+  try {
+    // 2日前~当日 범위로 가볍게
+    const to = new Date(dateEt + 'T23:59:59Z')
+    const from = new Date(to); from.setUTCDate(from.getUTCDate() - 2)
+    const qs = new URLSearchParams({
+      apiKey: POLYGON_API_KEY,
+      order: 'desc',
+      limit: '40',
+      sort: 'published_utc',
+      'published_utc.gte': from.toISOString(),
+      'published_utc.lte': to.toISOString(),
+      // 일부만 붙여서 길이 제한 회피
+      ticker: tickers.slice(0, 10).join(',')
+    })
+    const url = `https://api.polygon.io/v2/reference/news?${qs.toString()}`
+    const j = await jfetch<any>(url)
+    const items = Array.isArray(j.results) ? j.results : []
+    return items.map((x: any) => ({
+      ticker: (x.tickers?.[0] || '').toUpperCase(),
+      title: String(x.title || '').slice(0, 140),
+      publisher: x.publisher?.name || '',
+    }))
+  } catch {
+    return []
   }
-  return out
 }
 
-// ==== 리스트 만들기/표 ====
-function buildTopN(rows: AnyRow[], key: 'dollar'|'volume', minLen=10) {
-  const arr = rows.map(normalizeRow)
-  let primary = arr.filter(r => key==='dollar' ? r.dollar : r.volume)
-                   .sort((a,b)=> key==='dollar' ? (b.dollar!-a.dollar!) : (b.volume!-a.volume!))
-  if (primary.length < minLen) {
-    const backup = arr.filter(r => !primary.includes(r) && (key==='dollar'? r.volume : r.dollar))
-                      .sort((a,b)=> key==='dollar' ? (b.volume!-a.volume!) : (b.dollar!-a.dollar!))
-    primary = [...primary, ...backup]
+// --- Signal extraction (for narrative) -------------------------
+function buildSignals(eod: EodShape) {
+  const inTopDollar = (t: string) => eod.topDollar.some(r => r.Ticker === t)
+  const get = (arr: Row[], t: string) => arr.find(r => r.Ticker === t)
+
+  const spy = get(eod.topDollar, 'SPY') || get(eod.mostActive, 'SPY')
+  const qqq = get(eod.topDollar, 'QQQ') || get(eod.mostActive, 'QQQ')
+  const soxs = get(eod.mostActive, 'SOXS') || get(eod.topDollar, 'SOXS')
+  const nvda = get(eod.topDollar, 'NVDA') || get(eod.mostActive, 'NVDA')
+
+  const riskOn =
+    (spy?.chgPct ?? 0) > 0 &&
+    (qqq?.chgPct ?? 0) > 0 &&
+    (soxs?.chgPct ?? 0) < 0
+
+  const semiStrong = (nvda?.chgPct ?? 0) >= 0 && (nvda?.vol ?? 0) > 5e7
+
+  // 상위 표 내에서 상승:하락 대략 비율
+  const advTopDollar = eod.topDollar.filter(r => r.chgPct > 0).length
+  const decTopDollar = eod.topDollar.length - advTopDollar
+
+  return {
+    riskOn,
+    semiStrong,
+    advTopDollar,
+    decTopDollar,
+    inTopDollar: (t: string) => inTopDollar(t),
   }
-  if (primary.length < minLen) {
-    const filler = arr.filter(r => r.px && !primary.includes(r))
-    primary = [...primary, ...filler]
-  }
-  const seen = new Set<string>(); const dedup: AnyRow[]=[]
-  for (const r of primary) { const k = r.symbol
-    if (k && !seen.has(k)) { seen.add(k); dedup.push(r) } }
-  return dedup.slice(0, minLen)
-}
-const fmt = {
-  int: (v:any)=> (num(v)==null? '—' : Math.trunc(Number(v)).toLocaleString()),
-  pct: (v:any)=> (num(v)==null? '—' : `${Number(v).toFixed(2)}`),
-  o2c: (o:any,c:any)=> { const oo=num(o), cc=num(c)
-    if (oo==null && cc==null) return '—'
-    const a = oo==null ? '—' : `${oo}`; const b = cc==null ? '—' : `${cc}`; return `${a}→${b}` },
-  moneyM: (d:any)=> (num(d)==null? '—' : `${(Number(d)/1_000_000).toFixed(1)}`),
-}
-function renderTable(rows: AnyRow[], themeMap: Map<string,{theme:string}>) {
-  const head = `| Rank | Ticker | o→c | Chg% | Vol | $Vol(M) | Themes |
-|---:|---|---|---:|---:|---:|---|`
-  const body = rows.map((r:AnyRow,i:number)=>{
-    const sym = r.symbol
-    const t   = themeMap.get(sym)?.theme ?? (ETF_SET.has(sym)? 'インデックス/ETF':'その他/テーマ不明')
-    return `| ${i+1} | ${sym} | ${fmt.o2c(r.open,r.close)} | ${fmt.pct(r.chgPct)} | ${fmt.int(r.volume)} | ${fmt.moneyM(r.dollar)} | ${t} |`
-  }).join('\n')
-  return `${head}\n${body}\n`
 }
 
-// ==== LLM 기사(일본어/노트 톤) ====
-async function writeStoryJa(model: string, cards: AnyRow[], themeMap: Map<string,{theme:string}>, tablesMd: string, dateEt: string) {
-  if (!OPENAI_API_KEY) {
-    return [
-      `# 米国 夜間警備員 日誌 | ${dateEt}`,
-      `LLMは未設定のため本文は簡略化。下の表をご確認ください。`,
-      tablesMd
-    ].join('\n\n')
-  }
-  const client = new OpenAI({ apiKey: OPENAI_API_KEY })
-  const sys = [
-    'あなたは米国市場を巡回する「夜間警備員」。日本語でNote向けEOD記事を書く専門編集者。',
-    '数値は提供されたカード/表の o→c, Chg%, Vol のみを使用。目標価格・将来予測・未出所の数値は禁止。',
-    '見出し→カード解説→30分リプレイ(事実)→EOD総括→明日のチェック(5)→テーマ・クラスター→表 の順。',
-    '文体は簡潔で余白多め、比喩は軽く。ETFは必ず「インデックス/ETF」や「インバース/レバレッジETF」と明記。'
-  ].join(' ')
-  const cardLines = cards.map(r=>{
-    const sym=r.symbol
-    const theme = themeMap.get(sym)?.theme || (ETF_SET.has(sym)? 'インデックス/ETF':'その他/テーマ不明')
-    return `- ${sym}（${theme}）: o→c ${fmt.o2c(r.open,r.close)}, Chg% ${fmt.pct(r.chgPct)}, Vol ${fmt.int(r.volume)}`
-  }).join('\n')
-  const prompt = [
-    `# 見出し`,
-    `夜間巡回報告：主役は静かに高く、インデックス/ETFとメガテックが足並みをそろえて引けた`,
-    ``,
-    `# カード（根拠データ）`,
-    cardLines,
-    ``,
-    `# テーブル（根拠データ/そのまま使ってOK）`,
-    tablesMd,
-    ``,
-    `# 指示`,
-    `- カードごとに2~3文で要点。テーマ名はカッコで入れる。`,
-    `- 「30分リプレイ」は事実描写のみ(上昇/下落/出来高の強弱)。`,
-    `- 「EOD総括」は1~2段落で市場のムードを要約。`,
-    `- 「明日のチェックリスト」は5項目、各1行。`,
-    `- 最後に「テーマ・クラスター」を箇条書きで。`,
-    `- その後に上の表(テキスト)をそのまま再掲。`
-  ].join('\n')
-
-  const completion = await client.chat.completions.create({
-    model,
-    messages: [
-      { role:'system', content: sys },
-      { role:'user',   content: prompt }
-    ]
+// --- Minimal OpenAI client (no SDK to keep file self-contained)-
+async function chatComplete(model: string, system: string, user: string) {
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      // gpt-5 계열은 temperature/max_output_tokens 지정 시 오류 발생 → 기본값 사용
+    }),
   })
-  return (completion.choices?.[0]?.message?.content || '').trim()
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`)
+  const j = await r.json()
+  return j.choices?.[0]?.message?.content?.trim() || ''
 }
 
-// ==== Main ====
+// --- Main ------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
-    const u = new URL(req.url)
-    const qDate  = u.searchParams.get('date') || undefined
-    const qModel = u.searchParams.get('model') || OPENAI_MODEL
+    const { searchParams, origin } = req.nextUrl
+    const lang = (searchParams.get('lang') || 'ja').toLowerCase() // ja only 권장
+    const date = searchParams.get('date') || '' // ''=latest in your /api/eod
+    const model = searchParams.get('model') || OPENAI_MODEL_DEFAULT
 
-    // 1) 거래일 판별 + 집계
-    const { dateEt, results } = await resolveTradingDay(qDate)
-    const universe = (Array.isArray(results)? results: []).map(normalizeRow)
-      .filter(r => r.symbol && r.symbol.length <= 8) // 잡음 축출
+    // 1) 베이스 표: 기존 /api/eod 우선 사용
+    const eodUrl = `${origin}/api/eod${date ? `?date=${date}` : ''}`
+    const base = await jfetch<any>(eodUrl).catch(() => null)
 
-    // 2) Top 리스트
-    const topDollar = buildTopN(universe, 'dollar', 10)
-    const topVolume = buildTopN(universe, 'volume', 10)
-    const is10p = (r:AnyRow)=> r.px && r.px >= 10
-    const gainers10 = universe.filter(r=> is10p(r) && r.chgPct!=null && r.chgPct>0).sort((a,b)=> b.chgPct!-a.chgPct!).slice(0,10)
-    const losers10  = universe.filter(r=> is10p(r) && r.chgPct!=null && r.chgPct<0).sort((a,b)=> a.chgPct!-b.chgPct!).slice(0,10)
+    if (!base || !base.ok || !base.data) {
+      return Response.json({
+        ok: false,
+        error: 'EOD base data not available. Check /api/eod.',
+      }, { status: 200 })
+    }
 
-    // 3) 테마 주석용 대상 수집
-    const cardWish = ['SPY','QQQ','NVDA','TSLA','AMZN','GOOGL','AAPL','AVGO']
-    const symSet = uniq([
-      ...cardWish,
-      ...topDollar.map(r=>r.symbol),
-      ...topVolume.map(r=>r.symbol),
-      ...gainers10.map(r=>r.symbol),
-      ...losers10.map(r=>r.symbol),
-    ])
-    const themeMap = await annotateThemes(symSet)
+    // 2) Row 정규화 + 테마 라벨
+    const norm = (rows: any[]): Row[] => (rows || []).map((r: any) => ({
+      Ticker: String(r.Ticker || r.ticker || '').toUpperCase(),
+      o: safeNum(r.o ?? r.open, 0),
+      c: safeNum(r.c ?? r.close, 0),
+      chgPct: safeNum(r.chgPct ?? r.ChgPct ?? r.chg ?? r.Chg, 0),
+      vol: safeNum(r.vol ?? r.volume, 0),
+      dollarVolM: safeNum(r.dollarVolM ?? r.dollarVol ?? r.$VolM, 0),
+    }))
 
-    // 4) 카드 채우기(원하는 심볼 우선, 부족시 보충)
-    const bySym = new Map(universe.map(r=>[r.symbol, r]))
-    const cards: AnyRow[] = []
-    for (const s of cardWish) if (bySym.has(s)) cards.push(bySym.get(s)!)
-    for (const r of gainers10.slice(0,2)) if (!cards.find(x=>x.symbol===r.symbol)) cards.push(r)
-    for (const r of topDollar.slice(0,2)) if (!cards.find(x=>x.symbol===r.symbol)) cards.push(r)
+    const eod: EodShape = {
+      dateEt: String(base.dateEt || base.data?.dateEt || ''),
+      mostActive: norm(base.data?.mostActive || base.mostActive),
+      topDollar: norm(base.data?.topDollar || base.topDollar),
+      topGainers10: norm(base.data?.topGainers10 || base.topGainers10),
+      topLosers10: norm(base.data?.topLosers10 || base.topLosers10),
+    }
 
-    // 5) 표 생성(테마 포함)
-    const tablesMd = [
-      '## 📊 データ(Top10)',
-      '### Top 10 — 取引代金（ドル）',
-      renderTable(topDollar, themeMap),
-      '### Top 10 — 出来高（株数）',
-      renderTable(topVolume, themeMap),
-      '### Top 10 — 上昇株（$10+）',
-      renderTable(gainers10, themeMap),
-      '### Top 10 — 下落株（$10+）',
-      renderTable(losers10, themeMap),
-      '\n#米国株 #夜間警備員 #米株マーケット #ナスダック #S&P500 #テーマ #上昇株 #下落株 #出来高'
-    ].join('\n\n')
+    // 3) Theme 붙이기
+    const withTheme = (rows: Row[]) =>
+      rows.map(r => ({ ...r, theme: labelTheme(r.Ticker) }))
 
-    // 6) 본문(LLM) or 폴백
-    const markdown = await writeStoryJa(qModel, cards, themeMap, tablesMd, dateEt)
+    const tableDollar = withTheme(eod.topDollar)
+    const tableVol = withTheme(eod.mostActive)
+    const tableGainers = withTheme(eod.topGainers10)
+    const tableLosers = withTheme(eod.topLosers10)
+
+    // 4) (옵션) Polygon 뉴스로 키워드 팩
+    const focusTickers = Array.from(
+      new Set([
+        ...tableDollar.slice(0, 8).map(x => x.Ticker),
+        ...tableGainers.slice(0, 5).map(x => x.Ticker),
+        ...tableLosers.slice(0, 5).map(x => x.Ticker),
+      ])
+    )
+    const news = await fetchPolygonNews(focusTickers, eod.dateEt)
+    const newsPack =
+      news.length > 0
+        ? news.slice(0, 12).map(n => `• ${n.ticker}: ${n.title}（${n.publisher}）`).join('\n')
+        : ''
+
+    // 5) 시그널 계산
+    const sig = buildSignals(eod)
+
+    // 6) LLM 프롬프트(일본어 기사; 예측 금지/수치 제한)
+    const sys = `
+あなたはnote.comで毎晩配信する「夜間警備員」筆者です。
+出力は必ず日本語。見出し→カード解説→30分リプレイ→EOD総括→明日のチェック→シナリオ3本→テーマ・クラスター→表(Top10×4)。
+価格予測・目標価格・確率や数値の断定は禁止。数値は表中の o→c / Chg% / Vol / $Vol(M) の引用に限定。ニュースは下の“参考見出し”に含まれる範囲だけを一般名詞で触れる(出典やURLは不要)。
+`.trim()
+
+    const toLines = (rows: (Row & { theme: string })[], tag: boolean) =>
+      rows.map(r =>
+        `| ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${tag ? r.theme : ''} |`
+      ).join('\n')
+
+    const header = (tag: boolean) =>
+      `| Rank | Ticker | o→c | Chg% | Vol | $Vol(M) | ${tag ? 'Themes' : ''} |
+|---:|---|---|---:|---:|---:|---|`
+
+    const mdTables = `
+### Top 10 — 取引代金（ドル）
+${header(true)}
+${tableDollar.map((r, i) => `| ${i+1} | ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${r.theme} |`).join('\n')}
+
+### Top 10 — 出来高（株数）
+${header(true)}
+${tableVol.map((r, i) => `| ${i+1} | ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${r.theme} |`).join('\n')}
+
+### Top 10 — 上昇株（$10+）
+${header(true)}
+${tableGainers.map((r, i) => `| ${i+1} | ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${r.theme} |`).join('\n')}
+
+### Top 10 — 下落株（$10+）
+${header(true)}
+${tableLosers.map((r, i) => `| ${i+1} | ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${r.theme} |`).join('\n')}
+`.trim()
+
+    const user = `
+# 米国 夜間警備員 日誌 | ${eod.dateEt}
+
+【基準日(ET): ${eod.dateEt}】
+
+■ 市場の手がかり(機械集計)
+- 取引代金上位: ${tableDollar.slice(0,5).map(x=>x.Ticker).join(', ')}
+- 出来高上位: ${tableVol.slice(0,5).map(x=>x.Ticker).join(', ')}
+- 上昇($10+): ${tableGainers.slice(0,5).map(x=>x.Ticker).join(', ')}
+- 下落($10+): ${tableLosers.slice(0,5).map(x=>x.Ticker).join(', ')}
+
+■ シグナル(自動判定)
+- リスクオン傾向: ${sig.riskOn ? 'あり' : '未確定'}
+- 半導体の下支え: ${sig.semiStrong ? '確認' : '弱めまたは中立'}
+- 取引代金上位の広がり: 上昇${sig.advTopDollar} / 下落${sig.decTopDollar}
+
+${newsPack ? `■ 参考見出し(モデルは一般名詞だけ触れる):
+${newsPack}
+` : ''}
+
+--- ここから記事を作成してください ---
+
+# ルール
+- トーン: 「夜間警備員」= 冷静・人間味のある巡回日誌。比喩OKだが短く。結論は控えめ、条件付き表現で。
+- 数字の新規創作や未来予測は禁止。表の数値だけ引用可。
+- ETF/テーマの流れ(インデックス/ETF・インバース・半導体/AIインフラ・ソフトウェア/AI・EV/モビリティ・EC/小売・バイオ/ヘルスケア・その他)を俯瞰し、カード解説とリプレイを“因果”でつなぐ。
+- 最後に「テーマ・クラスター(箇条書き)」と、下の表(そのまま貼る)を配置。
+
+# 構成
+- 見出し(一行)
+- カード解説(上位8〜12銘柄、各2行以内)
+- 30分リプレイ(寄り→中盤→引けの出来事を事実風に)
+- EOD総括(今日の絵姿)
+- 明日のチェック(5項目以内)
+- シナリオ: 反発継続 / もみ合い / 反落 の3本(各サインを2つ程度)
+- テーマ・クラスター
+- 表(以下をそのまま)
+${mdTables}
+`.trim()
+
+    const markdown = await chatComplete(model, sys, user)
 
     return Response.json({
       ok: true,
-      dateEt,
+      dateEt: eod.dateEt,
       markdown,
-      counts: {
-        universe: universe.length,
-        topDollar: topDollar.length,
-        topVolume: topVolume.length,
-        gainers10: gainers10.length,
-        losers10: losers10.length
-      }
-    }, { headers: { 'Cache-Control':'no-store' }})
-  } catch (e:any) {
-    return Response.json({ ok:false, error: String(e?.message||e) }, { status:500 })
+      analyzed: {
+        model,
+        riskOn: sig.riskOn,
+        semiStrong: sig.semiStrong,
+        advVsDecTopDollar: [sig.advTopDollar, sig.decTopDollar],
+        newsUsed: news.length,
+      },
+    })
+  } catch (err: any) {
+    return Response.json({ ok: false, error: String(err?.message || err) }, { status: 200 })
   }
 }
