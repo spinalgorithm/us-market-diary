@@ -20,40 +20,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install deps (generate package-lock.json)
+      # lockfile 없어도 됨. tsx만 dev로 설치
+      - name: Install minimal deps
         run: |
-          npm install --no-fund --no-audit
-          npm install -D ts-node
+          npm install -D tsx
 
-      - name: Ensure tsconfig for scripts exists
-        run: |
-          if [ ! -f tsconfig.scripts.json ]; then
-            cat > tsconfig.scripts.json <<'JSON'
-            {
-              "extends": "./tsconfig.json",
-              "compilerOptions": {
-                "target": "ES2020",
-                "module": "NodeNext",
-                "moduleResolution": "NodeNext",
-                "esModuleInterop": true,
-                "resolveJsonModule": true,
-                "skipLibCheck": true,
-                "strict": false,
-                "types": ["node"]
-              },
-              "include": ["scripts/**/*"]
-            }
-            JSON
-          fi
+      # public 폴더 보장
+      - name: Ensure public dir
+        run: mkdir -p public
 
+      # 스크립트 실행 (ts-node 대신 tsx로 간단히)
       - name: Generate CSV
         run: |
-          npx ts-node --project tsconfig.scripts.json scripts/fetch_jpx_full.ts --limit=5000
+          npx tsx scripts/fetch_jpx_full.ts --limit=5000
+          echo "Preview head:"
+          head -n 5 public/jpx_universe.csv || true
+          echo "Total lines:"
+          wc -l public/jpx_universe.csv || true
 
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/jpx_universe.csv package-lock.json
+          git add public/jpx_universe.csv
           git commit -m "chore: update JPX universe CSV" || echo "no changes to commit"
+          # 원격이 앞서 있을 때를 대비해 리베이스 후 푸시
+          git pull --rebase || true
           git push
