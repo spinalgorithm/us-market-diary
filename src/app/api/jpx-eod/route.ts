@@ -13,13 +13,14 @@ type TableRow = {
   jpyValueM?: number | string // 売買代金（百万円）
   theme?: string
   brief?: string
+  name?: string
 }
 
 type TablesPayload = {
   byValue?: TableRow[]   // 売買代金Top
   byVolume?: TableRow[]  // 出来高Top
-  gainers?: TableRow[]   // 上昇（¥1,000+ など任意）
-  losers?: TableRow[]    // 下落（¥1,000+ など任意）
+  gainers?: TableRow[]   // 上昇（任意条件）
+  losers?: TableRow[]    // 下落（任意条件）
 }
 
 // ====== Small utils ======
@@ -30,10 +31,6 @@ const toNumber = (v: any): number | undefined => {
 const pct = (o?: number, c?: number): string => {
   if (!Number.isFinite(o!) || !Number.isFinite(c!)) return ''
   return (((c! - o!) / o!) * 100).toFixed(2)
-}
-const jpyM = (v?: number): string => {
-  if (!Number.isFinite(v!)) return ''
-  return (v! / 1_000_000).toFixed(1)
 }
 
 // ====== Date (JST) ======
@@ -48,8 +45,9 @@ const getDateJst = (req: NextRequest): string => {
   return `${y}-${m}-${d}`
 }
 
-// ====== Theme/Brief dictionary (代表例だけ搭載。必要に応じて拡張してください) ======
-const JP_BRIEF: Record<string, { theme: string, brief: string, name?: string }> = {
+// ====== Theme/Brief dictionary ======
+type BriefInfo = { theme?: string; brief?: string; name?: string }
+const JP_BRIEF: Record<string, BriefInfo> = {
   '1321.T': { theme: 'インデックス/ETF', brief: '日経225連動ETF', name: 'iシェアーズ 日経225' },
   '1306.T': { theme: 'インデックス/ETF', brief: 'TOPIX連動ETF', name: 'NEXT FUNDS TOPIX' },
   '8035.T': { theme: '半導体/装置', brief: '半導体製造装置', name: '東京エレクトロン' },
@@ -58,8 +56,10 @@ const JP_BRIEF: Record<string, { theme: string, brief: string, name?: string }> 
   '6758.T': { theme: 'エレクトロニクス/ゲーム', brief: 'エレクトロニクス・エンタメ', name: 'ソニーG' },
   '7974.T': { theme: 'ゲーム', brief: '家庭用ゲーム', name: '任天堂' },
   '8306.T': { theme: '金融', brief: 'メガバンク', name: '三菱UFJ' },
-  '3436.T': { theme: '半導体材料', brief: 'フォトレジスト', name: 'SUMCO' }, // 例
 }
+
+// 안전하게 info를 가져오는 헬퍼
+const getInfo = (sym: string): BriefInfo | undefined => JP_BRIEF[sym as keyof typeof JP_BRIEF]
 
 // ====== Yahoo quotes (best-effort, may 401) ======
 const fetchYahooCards = async (tickers: string[]) => {
@@ -68,36 +68,36 @@ const fetchYahooCards = async (tickers: string[]) => {
   const res = await fetch(url, {
     cache: 'no-store',
     headers: {
-      // 일부 환경에서 UA 없으면 더 잘 막힘
       'User-Agent': 'Mozilla/5.0 (compatible; JPX-EOD/1.0; +https://vercel.app)',
       'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'
     }
   })
   if (!res.ok) throw new Error(`Yahoo quote error: ${res.status}`)
   const j = await res.json()
-  const out: any[] = []
   const results = j?.quoteResponse?.result ?? []
+  const out: TableRow[] = []
   for (const r of results) {
     const t: string = r.symbol
     const open = toNumber(r.regularMarketOpen ?? r.open)
     const close = toNumber(r.regularMarketPrice ?? r.price ?? r.regularMarketPreviousClose)
     const vol = toNumber(r.regularMarketVolume ?? r.volume)
-    const info = JP_BRIEF[t] ?? {}
+    const info = getInfo(t)
+
     out.push({
       ticker: t,
-      name: info.name ?? r.shortName ?? r.longName ?? '',
+      name: info?.name ?? r.shortName ?? r.longName ?? '',
       o: open,
       c: close,
       chgPct: (open && close) ? pct(open, close) : '',
       vol: vol ?? '',
-      theme: info.theme ?? '',
-      brief: info.brief ?? ''
+      theme: info?.theme ?? '',
+      brief: info?.brief ?? ''
     })
   }
   return out
 }
 
-// ====== Stooq fallback for cards (無料・キー不要) ======
+// ====== Stooq fallback for cards ======
 const toStooq = (yahoo: string) => yahoo.replace(/\.T$/i, '.jp')
 const fetchStooqCards = async (yahooTickers: string[]) => {
   if (!yahooTickers.length) return []
@@ -107,7 +107,8 @@ const fetchStooqCards = async (yahooTickers: string[]) => {
   if (!res.ok) throw new Error(`Stooq error: ${res.status}`)
   const csv = await res.text()
   const lines = csv.trim().split('\n')
-  const out: any[] = []
+  const out: TableRow[] = []
+  // header: Symbol,Date,Time,Open,High,Low,Close,Volume
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',')
     const sym = (cols[0] || '').trim()
@@ -115,27 +116,22 @@ const fetchStooqCards = async (yahooTickers: string[]) => {
     const c = toNumber(cols[6])
     const v = toNumber(cols[7])
     const ysym = sym.replace(/\.jp$/i, '.T')
-    const info = JP_BRIEF[ysym] ?? {}
+    const info = getInfo(ysym)
+
     out.push({
       ticker: ysym,
-      name: info.name ?? '',
+      name: info?.name ?? '',
       o, c,
       chgPct: (o && c) ? pct(o, c) : '',
       vol: v ?? '',
-      theme: info.theme ?? '',
-      brief: info.brief ?? ''
+      theme: info?.theme ?? '',
+      brief: info?.brief ?? ''
     })
   }
   return out
 }
 
 // ====== Tables builder (소스 없으면 안전한 빈표 반환) ======
-/**
- * 표 데이터 소스 우선순위
- * 1) process.env.JPX_SOURCE_URL 에서 사전 집계 JSON 가져오기 (권장)
- *   형태 예: { byValue: TableRow[], byVolume: TableRow[], gainers: TableRow[], losers: TableRow[] }
- * 2) 없으면 빈 배열 반환
- */
 const buildJpxTables = async (): Promise<TablesPayload> => {
   const src = process.env.JPX_SOURCE_URL
   if (!src) {
@@ -145,7 +141,6 @@ const buildJpxTables = async (): Promise<TablesPayload> => {
     const r = await fetch(src, { cache: 'no-store' })
     if (!r.ok) throw new Error(`JPX_SOURCE_URL fetch ${r.status}`)
     const j = await r.json()
-    // 최소 방어적 매핑
     const safe = (a: any): TableRow[] => Array.isArray(a) ? a : []
     return {
       byValue: safe(j.byValue),
@@ -169,11 +164,11 @@ export async function GET(req: NextRequest) {
       ?? '1321.T,1306.T,8035.T,9984.T,7203.T,6758.T,7974.T,8306.T'
     ).split(',').map(s => s.trim()).filter(Boolean)
 
-    // 1) 표 데이터 (항상 시도, 실패해도 빈표로)
+    // 1) 표 데이터
     const tables = await buildJpxTables()
 
-    // 2) 카드 (야후 → 실패 시 Stooq → 그래도 실패면 빈배열)
-    let cards: any[] = []
+    // 2) 카드 (야후 → Stooq → 빈배열)
+    let cards: TableRow[] = []
     if (!skipQuotes) {
       try {
         cards = await fetchYahooCards(topTickers)
@@ -188,7 +183,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3) 응답
     return Response.json({
       ok: true,
       dateJst,
