@@ -2,12 +2,15 @@ name: Fetch JPX Universe CSV (commit)
 
 on:
   workflow_dispatch: {}
+  # 원하면 스케줄도 추가 가능 (예: 평일 20:15 JST = 11:15 UTC)
+  # schedule:
+  #   - cron: "15 11 * * 1-5"
 
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # 커밋/푸시 권한
+      contents: write
 
     steps:
       - name: Checkout
@@ -28,11 +31,21 @@ jobs:
         env:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: |
-          npm run fetch:jpx || true
-          echo "== AFTER WRITE =="
-          ls -al public || true
-          echo "== ROW COUNT =="
-          wc -l public/jpx_universe.csv || true
+          npm run fetch:jpx
+
+      # (선택) 테마/브리프 보강 스텝 — 스크립트 파일이 있을 때만 동작
+      - name: Enrich CSV (theme/brief)
+        run: |
+          if [ -f scripts/enrich_universe.mjs ]; then
+            npm run enrich:jpx
+          else
+            echo "enrich_universe.mjs not found. Skip."
+          fi
+
+      - name: Show CSV stats
+        run: |
+          echo "== AFTER WRITE ==" && ls -al public || true
+          echo "== ROW COUNT ==" && wc -l public/jpx_universe.csv || true
 
       - name: Commit & Push if changed
         run: |
