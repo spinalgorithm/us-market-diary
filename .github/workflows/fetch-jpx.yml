@@ -1,13 +1,14 @@
-name: Fetch JPX Universe CSV
+name: Fetch JPX Universe CSV (PR)
 
 on:
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  fetch-and-commit:
+  fetch-and-pr:
     runs-on: ubuntu-latest
     env:
       TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
@@ -15,35 +16,73 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug repo state
+        run: |
+          set -euxo pipefail
+          echo "Current branch:"
+          git rev-parse --abbrev-ref HEAD || true
+          echo "Repo tree (top):"
+          ls -la
+          echo "Repo tree (scripts):"
+          ls -la scripts || true
+          echo "Repo tree (public):"
+          ls -la public || true
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # lockfile 없어도 됨. tsx만 dev로 설치
-      - name: Install minimal deps
+      - name: Install tsx (no lockfile needed)
         run: |
-          npm install -D tsx
+          set -euxo pipefail
+          npm i -D tsx
+          node -v
+          npm -v
+          npx tsx --version
 
-      # public 폴더 보장
       - name: Ensure public dir
         run: mkdir -p public
 
-      # 스크립트 실행 (ts-node 대신 tsx로 간단히)
-      - name: Generate CSV
+      - name: Run fetch script
+        id: runfetch
         run: |
-          npx tsx scripts/fetch_jpx_full.ts --limit=5000
-          echo "Preview head:"
+          set -euxo pipefail
+          if [ ! -f scripts/fetch_jpx_full.ts ]; then
+            echo "ERROR: scripts/fetch_jpx_full.ts not found" | tee fetch.log
+            exit 1
+          fi
+          # 실행 + 로그 저장
+          npx tsx scripts/fetch_jpx_full.ts --limit=5000 2>&1 | tee fetch.log
+          echo "---- HEAD of CSV ----"
           head -n 5 public/jpx_universe.csv || true
-          echo "Total lines:"
+          echo "---- LINE COUNT ----"
           wc -l public/jpx_universe.csv || true
 
-      - name: Commit & Push
+      - name: Upload fetch log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetch-log
+          path: fetch.log
+
+      - name: Commit on branch
         run: |
+          set -euxo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B update/jpx-universe
           git add public/jpx_universe.csv
           git commit -m "chore: update JPX universe CSV" || echo "no changes to commit"
-          # 원격이 앞서 있을 때를 대비해 리베이스 후 푸시
-          git pull --rebase || true
-          git push
+          git push -u origin update/jpx-universe || true
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: update/jpx-universe
+          title: "chore: update JPX universe CSV"
+          body: |
+            Automated update of JPX universe.
+            See attached fetch log artifact for details.
+          commit-message: "chore: update JPX universe CSV"
+          labels: data
