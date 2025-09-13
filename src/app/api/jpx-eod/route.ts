@@ -157,7 +157,7 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク" },
   { code: "9984", name: "ソフトバンクグループ", theme: "投資/テック", brief: "投資持株/通信" },
   { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ" },
-  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "게임機/ソフト" },
+  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
   { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
   { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
   { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
@@ -174,41 +174,23 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
 ];
 
 async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
-  // 우선순위: ENV > fallbackUrl > DEFAULT
   const url = process.env.JPX_UNIVERSE_URL ?? fallbackUrl;
-
   if (!url) {
-    return DEFAULT_UNIVERSE.map(u => ({
-      ...u,
-      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
-    }));
+    return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
-
-  // CSV 지원
   if (url.endsWith(".csv")) {
     const text = await safeText(url);
     const parsed = text ? csvToUniverse(text) : [];
     if (parsed.length > 0) {
       return parsed.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
     }
-    // CSV 파싱 실패 → DEFAULT
-    return DEFAULT_UNIVERSE.map(u => ({
-      ...u,
-      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
-    }));
+    return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
-
-  // JSON (기존 포맷)
   const data = await safeJson<UniverseItem[]>(url);
   if (Array.isArray(data) && data.length > 0) {
     return data.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
-
-  // 실패 시 기본값
-  return DEFAULT_UNIVERSE.map(u => ({
-    ...u,
-    yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
-  }));
+  return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
 }
 
 async function loadJpxHolidays(): Promise<Set<string>> {
@@ -226,26 +208,19 @@ async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quo
   const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
   const r = await safeJson<any>(url);
   if (!r) return null;
-  if (r.status === "error" || r.code || r.message) return null;
+  if ((r as any).status === "error" || (r as any).code || (r as any).message) return null;
 
-  const open = num(r.open);
-  const close = num(r.close);
-  const prev = num(r.previous_close ?? r.previousClose);
-  const volume = num(r.volume);
-  const currency = r.currency ?? "JPY";
-  const name = r.name;
+  const open = num((r as any).open);
+  const close = num((r as any).close);
+  const prev = num((r as any).previous_close ?? (r as any).previousClose);
+  const volume = num((r as any).volume);
+  const currency = (r as any).currency ?? "JPY";
+  const name = (r as any).name;
 
   if (close == null && prev == null && volume == null) return null;
 
-  return {
-    symbol,
-    open: open ?? undefined,
-    close: close ?? undefined,
-    previousClose: prev ?? undefined,
-    volume: volume ?? undefined,
-    currency,
-    name,
-  };
+  return { symbol, open: open ?? undefined, close: close ?? undefined, previousClose: prev ?? undefined,
+           volume: volume ?? undefined, currency, name };
 }
 
 // ---------- Yahoo Chart (fallback) ----------
@@ -271,15 +246,8 @@ async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
       ? num(meta.regularMarketPreviousClose)
       : (n >= 2 ? num(closes[n - 2]) : undefined);
 
-    return {
-      symbol,
-      open: open ?? undefined,
-      close: close ?? undefined,
-      previousClose: prev ?? undefined,
-      volume: volume ?? undefined,
-      currency: meta.currency ?? "JPY",
-      name: meta.symbol ?? symbol,
-    };
+    return { symbol, open: open ?? undefined, close: close ?? undefined, previousClose: prev ?? undefined,
+             volume: volume ?? undefined, currency: meta.currency ?? "JPY", name: meta.symbol ?? symbol };
   } catch {
     return null;
   }
@@ -306,7 +274,7 @@ async function fetchAllQuotes(symbols: string[], apiKey?: string): Promise<Map<s
   for (const s of symbols) {
     const q = await fetchQuoteFor(s, apiKey);
     if (q) out.set(s, q);
-    await delay(60);
+    await delay(60); // 무료 소스 배려 딜레이
   }
   return out;
 }
@@ -371,6 +339,10 @@ export async function GET(req: NextRequest) {
     const apikey = process.env.TWELVEDATA_API_KEY || "";
     const holidays = await loadJpxHolidays();
 
+    // 페이징 파라미터 (여기! 핸들러 내부)
+    const start = Math.max(0, Number(searchParams.get("start") ?? "0"));
+    const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "120")), 300);
+
     // 기준 날짜
     const jstNow = toJstDate();
     let baseDate: Date;
@@ -395,14 +367,15 @@ export async function GET(req: NextRequest) {
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
     const urlFromReq = `${origin}/jpx_universe.csv`;
 
-    // 유니버스 로딩
-    const universe = await loadUniverse(urlFromReq);
+    // 유니버스 로딩 + 슬라이스
+    const universeAll = await loadUniverse(urlFromReq);
+    const universe = universeAll.slice(start, start + count);
     const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
 
     // 시세 취득
     const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
-    // 행/랭킹 구성
+    // 행/랭킹 구성(슬라이스 범위 내)
     const rows = buildRows(universe, quoteMap);
     const rankings = buildRankings(rows);
 
@@ -410,7 +383,8 @@ export async function GET(req: NextRequest) {
       ok: true,
       date: baseYmd,
       source: apikey ? "TwelveData(primary)->YahooChart(fallback)" : "YahooChart(only)",
-      universeCount: universe.length,
+      universeCount: universeAll.length,     // 전체 개수
+      page: { start, count, returned: rows.length },
       quotes: rows,
       rankings,
       note: "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
