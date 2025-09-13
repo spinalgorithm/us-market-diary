@@ -1,481 +1,481 @@
 // src/app/api/jpx-eod-md/route.ts
 import { NextRequest } from "next/server";
 
-/** ========== Config ==========- */
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
-const YJ_RANK_BASE = "https://finance.yahoo.co.jp/ranking/?tm=d&mk=1";
-// kd=1 値上がり率 / kd=2 値下がり率 / kd=3 出来高 / kd=4 売買代金
-const RANK_PATHS = {
-  gainers: `${YJ_RANK_BASE}&kd=1`,
-  losers: `${YJ_RANK_BASE}&kd=2`,
-  volume: `${YJ_RANK_BASE}&kd=3`,
-  value: `${YJ_RANK_BASE}&kd=4`,
+export const dynamic = "force-dynamic";
+
+/** ===== Types ===== */
+type Theme =
+  | "インデックス/ETF"
+  | "自動車"
+  | "エレクトロニクス"
+  | "半導体製造装置"
+  | "計測/FA"
+  | "総合電機"
+  | "素材/化学"
+  | "通信"
+  | "FA/ロボット"
+  | "金融"
+  | "アパレル/SPA"
+  | "ゲーム"
+  | "電子部品"
+  | "電機/モーター"
+  | "空調"
+  | "商社"
+  | "自動車部品";
+
+interface UniverseItem {
+  code: string;           // 4-digit JP code (e.g., "8035")
+  name: string;           // label
+  theme: Theme;
+  brief: string;          // short description
+  yahooSymbol: string;    // e.g., "8035.T"
+}
+
+interface QuoteRow {
+  code: string;
+  name: string;
+  theme: Theme;
+  brief: string;
+
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  prevClose: number | null;
+  changePct: number | null;   // (close - open) / open * 100
+  volume: number | null;      // shares
+  valueJPY: number | null;    // close * volume
+}
+
+interface YahooQuoteV7 {
+  symbol?: string;
+  longName?: string;
+  shortName?: string;
+  regularMarketOpen?: number;
+  regularMarketPreviousClose?: number;
+  regularMarketPrice?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+  currency?: string;
+}
+
+interface YahooChartV8 {
+  chart: {
+    result?: Array<{
+      indicators?: {
+        quote?: Array<{
+          open?: Array<number | null>;
+          close?: Array<number | null>;
+          high?: Array<number | null>;
+          low?: Array<number | null>;
+          volume?: Array<number | null>;
+        }>;
+        adjclose?: Array<{
+          adjclose?: Array<number | null>;
+        }>;
+      };
+    }>;
+    error?: any;
+  };
+}
+
+/** ===== Utilities ===== */
+const JPY = (n: number, digits = 0) =>
+  n.toLocaleString("ja-JP", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+const num = (v: unknown): number | null => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 };
 
-const JPX_CLOSE_HOUR = 15; // 15:30 종가
-const JPX_CLOSE_MIN = 30;
-const EOD_READY_BUFFER_MIN = 10; // 15:40까지 버퍼
-const JST_TZ = "Asia/Tokyo";
+// YYYY-MM-DD (JST)
+const ymdJST = (d: Date) => {
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
-/** 카드용 대표 유니버스(폴백에서도 사용) */
-const MAJORS = [
-  { code: "1321.T", theme: "インデックス/ETF", brief: "日経225連動ETF" },
-  { code: "1306.T", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
-  { code: "7203.T", theme: "自動車", brief: "トヨタ自動車" },
-  { code: "6758.T", theme: "エレクトロニクス", brief: "ソニーグループ" },
-  { code: "8035.T", theme: "半導体製造装置", brief: "東京エレクトロン" },
-  { code: "6861.T", theme: "計測/FA", brief: "キーエンス" },
-  { code: "6501.T", theme: "総合電機", brief: "日立製作所" },
-  { code: "4063.T", theme: "素材/化学", brief: "信越化学工業" },
-  { code: "9432.T", theme: "通信", brief: "日本電信電話(NTT)" },
-  { code: "6954.T", theme: "FA/ロボット", brief: "ファナック" },
-  { code: "8306.T", theme: "金融", brief: "三菱UFJFG" },
-  { code: "8316.T", theme: "金融", brief: "三井住友FG" },
-  { code: "9984.T", theme: "投資/テック", brief: "ソフトバンクG" },
-  { code: "9983.T", theme: "アパレル/SPA", brief: "ファーストリテイリング" },
-  { code: "7974.T", theme: "ゲーム", brief: "任天堂" },
+// JST date with offset days
+const addDaysJST = (d: Date, diff: number) => {
+  const nd = new Date(d.getTime());
+  nd.setDate(nd.getDate() + diff);
+  return nd;
+};
+
+// simple weekend roll-back for JP markets
+const prevBizDayJST = (d: Date): Date => {
+  // roll back Sat/Sun
+  let nd = new Date(d.getTime());
+  while (true) {
+    const wd = nd.getDay(); // 0 Sun, 6 Sat
+    if (wd === 0) {
+      nd = addDaysJST(nd, -2); // Sun -> Fri
+    } else if (wd === 6) {
+      nd = addDaysJST(nd, -1); // Sat -> Fri
+    } else {
+      break;
+    }
+  }
+  return nd;
+};
+
+// After close buffer: JP market close is 15:30 JST. Give upstream ~5 minutes to settle.
+const shouldUsePrevSession = (jstNow: Date) => {
+  const hour = jstNow.getHours();
+  const min = jstNow.getMinutes();
+  // before 15:35 JST ⇒ use previous business day
+  return hour < 15 || (hour === 15 && min < 35);
+};
+
+// chunk array
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
+
+/** ===== Universe (large caps + ETFs) ===== */
+const JPX_UNIVERSE: UniverseItem[] = [
+  // ETFs
+  { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF", yahooSymbol: "1321.T" },
+  { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF", yahooSymbol: "1306.T" },
+
+  // Banks
+  { code: "8306", name: "三菱UFJフィナンシャルG", theme: "金融", brief: "メガバンク", yahooSymbol: "8306.T" },
+  { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク", yahooSymbol: "8316.T" },
+
+  // Telcos
+  { code: "9432", name: "日本電信電話(NTT)", theme: "通信", brief: "国内通信大手", yahooSymbol: "9432.T" },
+  { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信", yahooSymbol: "9433.T" },
+  { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信", yahooSymbol: "9434.T" },
+
+  // Auto & parts
+  { code: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー", yahooSymbol: "7203.T" },
+  { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体", yahooSymbol: "6902.T" },
+
+  // Electronics / components
+  { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽", yahooSymbol: "6758.T" },
+  { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット", yahooSymbol: "6954.T" },
+  { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器", yahooSymbol: "6861.T" },
+  { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT", yahooSymbol: "6501.T" },
+  { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン", yahooSymbol: "4063.T" },
+  { code: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池", yahooSymbol: "6762.T" },
+  { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等", yahooSymbol: "6981.T" },
+  { code: "6594", name: "日本電産(Nidec)", theme: "電機/モーター", brief: "小型モーター/EV", yahooSymbol: "6594.T" },
+
+  // Semi equipment
+  { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手", yahooSymbol: "8035.T" },
+  { code: "6857", name: "アドバンテスト", theme: "半導体製造装置", brief: "テスタ大手", yahooSymbol: "6857.T" },
+  { code: "6920", name: "レーザーテック", theme: "半導体製造装置", brief: "EUV検査", yahooSymbol: "6920.T" },
+  { code: "7735", name: "SCREENホールディングス", theme: "半導体製造装置", brief: "洗浄/成膜等", yahooSymbol: "7735.T" },
+
+  // Conglomerate / retail / others
+  { code: "9984", name: "ソフトバンクグループ", theme: "通信", brief: "投資持株/通信", yahooSymbol: "9984.T" },
+  { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ", yahooSymbol: "9983.T" },
+  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト", yahooSymbol: "7974.T" },
+
+  // Transport / trading houses / energy
+  { code: "9020", name: "JR東日本", theme: "空調", brief: "※鉄道(関東/東北のJR)", yahooSymbol: "9020.T" }, // briefに鉄道説明
+  { code: "8058", name: "三菱商事", theme: "商社", brief: "総合商社", yahooSymbol: "8058.T" },
+  { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社", yahooSymbol: "8001.T" },
+  { code: "5020", name: "ENEOSホールディングス", theme: "素材/化学", brief: "石油・エネルギー", yahooSymbol: "5020.T" },
+
+  // extra few
+  { code: "7752", name: "リコー", theme: "半導体製造装置", brief: "※実体はOA機器(ここでは簡略)", yahooSymbol: "7752.T" },
 ];
 
-/** ========== Utils ==========- */
-function toJST(d = new Date()) {
-  return new Date(d.toLocaleString("en-US", { timeZone: JST_TZ }));
-}
-function yyyy_mm_dd(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-function previousBusinessDay(dateJST: Date) {
-  const d = new Date(dateJST);
-  do {
-    d.setDate(d.getDate() - 1);
-  } while (d.getDay() === 0 || d.getDay() === 6); // Sun:0, Sat:6
-  return d;
-}
-function number(v: any) {
-  if (v === null || v === undefined) return 0;
-  if (typeof v === "number") return v;
-  const s = String(v).replace(/[,¥\s]/g, "");
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
-function fmt(n: number, digits = 2) {
-  if (n === null || n === undefined || isNaN(n)) return "-";
-  return n.toLocaleString("ja-JP", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-function fmtInt(n: number) {
-  if (n === null || isNaN(n)) return "-";
-  return Math.round(n).toLocaleString("ja-JP");
-}
-function pick<T>(arr: T[], n = 10) {
-  return arr.slice(0, Math.max(0, n));
-}
-function ensureSuffix(code: string) {
-  if (code.endsWith(".T")) return code;
-  // Yahoo Japan은 .T(東証), .TWO 등 있으나 일반적으로 .T로 처리
-  return `${code}.T`;
-}
+/** ===== Yahoo fetchers ===== */
 
-/** 야후재팬 랭킹 페이지 HTML 스크랩 → 공통 파서
- *  반환: { code, name, price, changePercent, volume, valueYen }[]
- *  - price: 종가(일반적으로 현재가=종가 기준)
- *  - changePercent: 등락률(%)
- *  - volume: 거래량(주)
- *  - valueYen: 거래대금(엔) (페이지에 표기 없는 경우 price*volume로 보정)
- */
-async function fetchYahooRanking(kind: "gainers" | "losers" | "volume" | "value") {
-  const url = RANK_PATHS[kind];
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) throw new Error(`Yahoo ranking fetch failed: ${res.status}`);
-  const html = await res.text();
-
-  // 랭킹 테이블은 <table> 안에 코드, 이름, 현재가, 前日比(%) 등이 들어있음.
-  // 간단 파서(정규식 기반): <a href="/quote/8035.T">東京エレクトロン</a> 등에서 코드·이름 추출
-  const rows: {
-    code: string;
-    name: string;
-    price: number;
-    changePercent: number;
-    volume: number;
-    valueYen: number;
-  }[] = [];
-
-  // 각 행 블럭 단위로 쪼갠 후 파싱(야후 HTML 구조 변경 시 업데이트 필요)
-  const rowChunks = html.split(/<tr[^>]*>/g).slice(1);
-  for (const chunk of rowChunks) {
-    const mCode = chunk.match(/\/quote\/([0-9A-Z.\-]+)"/i);
-    const mName = chunk.match(/<a[^>]+\/quote\/[0-9A-Z.\-]+"[^>]*>([^<]+)<\/a>/i);
-    if (!mCode || !mName) continue;
-    const code = mCode[1];
-    const name = mName[1].trim();
-
-    // 가격
-    const mPrice = chunk.match(/([\d,]+(?:\.\d+)?)[\s]*<\/td>/); // 첫 숫자셀
-    const price = mPrice ? number(mPrice[1]) : 0;
-
-    // 등락률 % (예: +2.56%)
-    const mPct = chunk.match(/([-+]?[\d,]+(?:\.\d+)?)\s*%/);
-    const changePercent = mPct ? number(mPct[1]) : 0;
-
-    // 거래량 (숫자에 , 만 존재)
-    // 랭킹 종류에 따라 열 위치가 다를 수 있어 다중 시도
-    const mVol =
-      chunk.match(/([0-9,]+)\s*<span[^>]*>株<\/span>/) ||
-      chunk.match(/([0-9,]+)\s*<\/td>\s*<\/tr>/);
-    const volume = mVol ? number(mVol[1]) : 0;
-
-    // 거래대금(엔) 혹은 (百万円) 표기가 있을 수 있음
-    let valueYen = 0;
-    const mValM = chunk.match(/([0-9,]+(?:\.\d+)?)\s*<span[^>]*>百万円<\/span>/);
-    if (mValM) {
-      valueYen = number(mValM[1]) * 1_000_000; // 百万円 → 円
-    } else {
-      // 표기 없으면 근사: price * volume
-      valueYen = Math.max(0, Math.round(price * volume));
-    }
-
-    rows.push({
-      code,
-      name,
-      price,
-      changePercent,
-      volume,
-      valueYen,
+// Try quote v7 batch (faster). Falls back per-symbol to chart v8 if v7 fails or missing fields.
+async function fetchYahooV7(symbols: string[]): Promise<Map<string, YahooQuoteV7>> {
+  const out = new Map<string, YahooQuoteV7>();
+  const batches = chunk(symbols, 40); // keep query URL reasonable
+  for (const b of batches) {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+      b.join(",")
+    )}`;
+    const res = await fetch(url, {
+      // lightweight header to reduce chance of 401 on some edges
+      headers: { "User-Agent": "Mozilla/5.0" },
+      // no-cache: keep it dynamic
+      cache: "no-store",
     });
-  }
-
-  // 혹시 파싱이 전혀 안 됐으면 실패 처리
-  if (rows.length === 0) {
-    throw new Error("Yahoo ranking parse returned 0 rows");
-  }
-  return rows;
-}
-
-/** 야후 글로벌 quote API (폴백/카드 보강용) */
-async function fetchQuoteBatch(symbols: string[]) {
-  if (symbols.length === 0) return [];
-  const qs = symbols.map(encodeURIComponent).join(",");
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${qs}`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) throw new Error(`Yahoo quote error: ${res.status}`);
-  const j: any = await res.json();
-  return (j?.quoteResponse?.result ?? []).map((r: any) => ({
-    symbol: r.symbol,
-    shortName: r.shortName ?? r.longName ?? r.symbol,
-    open: r.regularMarketOpen ?? null,
-    close: r.regularMarketPrice ?? null,
-    changePct: r.regularMarketChangePercent ?? null,
-    volume: r.regularMarketVolume ?? null,
-  }));
-}
-
-/** 카드 섹션 생성용: 메이저 12~15종목 */
-async function buildCards() {
-  try {
-    const quotes = await fetchQuoteBatch(MAJORS.map((m) => m.code));
-    const by = new Map(quotes.map((q) => [q.symbol, q]));
-    const lines: string[] = [];
-    for (const m of MAJORS) {
-      const q = by.get(m.code);
-      if (!q) continue;
-      const o = q.open ?? 0;
-      const c = q.close ?? 0;
-      const chg = q.changePct ?? 0;
-      const vol = q.volume ?? 0;
-      const valM = (c * (q.volume ?? 0)) / 1_000_000; // 百万円換算
-      lines.push(
-        `- ${m.code.replace(".T", "")} — ${m.brief}\n  - o→c: ${fmt(o)}→${fmt(
-          c
-        )} / Chg%: ${fmt(chg, 2)} / Vol: ${fmtInt(vol)} / ¥Vol(M): ${fmt(
-          valM,
-          0
-        )} / ${m.theme} — ${m.brief}`
-      );
+    if (!res.ok) continue;
+    const j = (await res.json()) as any;
+    const arr: any[] = j?.quoteResponse?.result ?? [];
+    for (const q of arr) {
+      const sym = String(q?.symbol ?? "");
+      if (!sym) continue;
+      out.set(sym, {
+        symbol: sym,
+        longName: q?.longName,
+        shortName: q?.shortName,
+        regularMarketOpen: num(q?.regularMarketOpen) ?? undefined,
+        regularMarketPreviousClose: num(q?.regularMarketPreviousClose) ?? undefined,
+        regularMarketPrice: num(q?.regularMarketPrice) ?? undefined,
+        regularMarketDayHigh: num(q?.regularMarketDayHigh) ?? undefined,
+        regularMarketDayLow: num(q?.regularMarketDayLow) ?? undefined,
+        regularMarketVolume: num(q?.regularMarketVolume) ?? undefined,
+        currency: q?.currency,
+      });
     }
-    return lines.join("\n");
-  } catch {
-    // 카드 전체 실패 시 빈 문자열 반환
-    return "（データを取得できませんでした）";
   }
+  return out;
 }
 
-/** Top10 표 생성기 */
+async function fetchYahooChartV8(symbol: string): Promise<{
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number | null;
+}> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?range=1d&interval=1d`;
+  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });
+  if (!res.ok) {
+    return { open: null, close: null, high: null, low: null, volume: null };
+  }
+  const j = (await res.json()) as YahooChartV8;
+  const r = j?.chart?.result?.[0];
+  const q = r?.indicators?.quote?.[0];
+  if (!q) return { open: null, close: null, high: null, low: null, volume: null };
+
+  const op = num(q.open?.[0] ?? null);
+  const clRaw = q.close?.[0] ?? null;
+  const clAdj = r?.indicators?.adjclose?.[0]?.adjclose?.[0] ?? null;
+  const cl = num(clRaw) ?? num(clAdj);
+  const hi = num(q.high?.[0] ?? null);
+  const lo = num(q.low?.[0] ?? null);
+  const vol = num(q.volume?.[0] ?? null);
+  return { open: op, close: cl, high: hi, low: lo, volume: vol };
+}
+
+/** ===== Markdown builders ===== */
+const td = (v: string) => v;
+const tdNum = (v: number | null, digits = 0) => (v == null ? "—" : JPY(v, digits));
+const tdPct = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "" : ""}${v.toFixed(2)}`);
+
 function tableBlock(
   title: string,
-  rows: any[],
-  showValue = false,
-  yenValueKey = "valueYen"
+  rows: Array<{
+    code: string;
+    oc: string;
+    chgPct: string;
+    vol: string;
+    val?: string;
+    theme: string;
+    brief: string;
+  }>,
+  showValue = false
 ) {
   const head = showValue
-    ? `| Rank | Ticker | o→c | Chg% | Vol | ¥Vol(M) | Theme | Brief |
-|---:|---:|---:|---:|---:|---:|---|---|`
-    : `| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |
-|---:|---:|---:|---:|---:|---|---|`;
-
+    ? `| Rank | Ticker | o→c | Chg% | Vol | ¥Vol(M) | Theme | Brief |\n|---:|---:|---:|---:|---:|---:|---|---|`
+    : `| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n|---:|---:|---:|---:|---:|---|---|`;
   const body = rows
-    .map((r: any, i: number) => {
-      const oc = `${fmt(r.open)}→${fmt(r.close)}`;
-      const chg = fmt(r.changePercent ?? r.chgPct ?? 0, 2);
-      const vol = fmtInt(r.volume ?? 0);
-      const brief = r.brief ?? "—";
-      const theme = r.theme ?? "—";
-      const sym = r.code?.replace(".T", "") ?? r.symbol?.replace(".T", "") ?? "-";
-      if (showValue) {
-        const yv = (r[yenValueKey] ?? r.valueYen ?? 0) / 1_000_000;
-        return `| ${i + 1} | ${sym} | ${oc} | ${chg} | ${vol} | ${fmt(
-          yv,
-          0
-        )} | ${theme} | ${brief} |`;
-      }
-      return `| ${i + 1} | ${sym} | ${oc} | ${chg} | ${vol} | ${theme} | ${brief} |`;
-    })
+    .map((r, i) =>
+      showValue
+        ? `| ${i + 1} | ${r.code} | ${r.oc} | ${r.chgPct} | ${r.vol} | ${r.val ?? "—"} | ${r.theme} | ${r.brief} |`
+        : `| ${i + 1} | ${r.code} | ${r.oc} | ${r.chgPct} | ${r.vol} | ${r.theme} | ${r.brief} |`
+    )
     .join("\n");
-
   return `### ${title}\n${head}\n${body}\n`;
 }
 
-/** 코드→테마/브리프 간단 매핑(알려진 대형주 위주) */
-function enrichThemeBrief(code: string, name?: string) {
-  const c = code.replace(".T", "");
-  const preset = new Map(
-    MAJORS.map((m) => [m.code.replace(".T", ""), { theme: m.theme, brief: m.brief }])
-  );
-  if (preset.has(c)) return preset.get(c)!;
-  // 이름 힌트로도 간단 분기
-  if (name?.includes("ソフトバンク")) return { theme: "投資/テック", brief: name };
-  if (name?.includes("トヨタ")) return { theme: "自動車", brief: name };
-  if (name?.includes("ソニー")) return { theme: "エレクトロニクス", brief: name };
-  if (name?.includes("キーエンス")) return { theme: "計測/FA", brief: name };
-  if (name?.includes("任天堂")) return { theme: "ゲーム", brief: name };
-  return { theme: "—", brief: name ?? "—" };
-}
-
-/** 메인 핸들러 */
+/** ===== Handler ===== */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const dateParam = searchParams.get("date"); // YYYY-MM-DD (optional)
-    const nowJST = toJST();
-    const cutoff = new Date(nowJST);
-    cutoff.setHours(JPX_CLOSE_HOUR, JPX_CLOSE_MIN + EOD_READY_BUFFER_MIN, 0, 0);
+    const url = new URL(req.url);
+    const sp = url.searchParams;
+    const dateParam = sp.get("date"); // YYYY-MM-DD (optional)
+    const jstNow = new Date(new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }));
+    // if no date specified, use prev biz day before 15:35 JST
+    const target = dateParam
+      ? new Date(dateParam + "T00:00:00+09:00")
+      : shouldUsePrevSession(jstNow)
+      ? prevBizDayJST(addDaysJST(jstNow, -1)) // same-day before 15:35 -> previous biz day
+      : prevBizDayJST(jstNow); // after 15:35 -> today unless weekend
 
-    let target = dateParam ? new Date(dateParam + "T00:00:00+09:00") : nowJST;
-    // 날짜 미지정 & 마감버퍼 이전이면 전영업일
-    if (!dateParam && nowJST < cutoff) {
-      target = previousBusinessDay(nowJST);
-    }
-    // 주말이면 전영업일 회귀
-    if (target.getDay() === 0 || target.getDay() === 6) {
-      target = previousBusinessDay(target);
-    }
+    const targetYMD = ymdJST(prevBizDayJST(target));
 
-    const ymd = yyyy_mm_dd(target);
-
-    /** 1) 랭킹 페이지 우선 시도 */
-    let rankGainers: any[] = [];
-    let rankLosers: any[] = [];
-    let rankVolume: any[] = [];
-    let rankValue: any[] = [];
-    let rankOk = true;
-    try {
-      const [g, l, v, val] = await Promise.all([
-        fetchYahooRanking("gainers"),
-        fetchYahooRanking("losers"),
-        fetchYahooRanking("volume"),
-        fetchYahooRanking("value"),
-      ]);
-      rankGainers = g;
-      rankLosers = l;
-      rankVolume = v;
-      rankValue = val;
-    } catch (e) {
-      rankOk = false;
-      // console.warn("Ranking fetch failed, fallback to quotes:", e);
-    }
-
-    /** 2) 랭킹 성공시: 전시장 기준 Top10 구성 */
-    let tableValueTop: any[] = [];
-    let tableVolumeTop: any[] = [];
-    let tableUpTop: any[] = [];
-    let tableDownTop: any[] = [];
-    let universeCount = 0;
-
-    if (rankOk) {
-      // 전시장 표본 수(중복 제거)
-      const setAll = new Set<string>();
-      [rankGainers, rankLosers, rankVolume, rankValue].forEach((arr) =>
-        arr.forEach((r) => setAll.add(ensureSuffix(r.code)))
-      );
-      universeCount = setAll.size;
-
-      // 거래대금 Top10
-      tableValueTop = pick(
-        rankValue
-          .map((r) => {
-            const sym = ensureSuffix(r.code);
-            const { theme, brief } = enrichThemeBrief(sym, r.name);
-            return {
-              code: sym,
-              name: r.name,
-              open: r.price, // open 미제공 → 근사
-              close: r.price,
-              changePercent: r.changePercent,
-              volume: r.volume,
-              valueYen: r.valueYen,
-              theme,
-              brief,
-            };
-          })
-          .sort((a, b) => (b.valueYen || 0) - (a.valueYen || 0)),
-        10
-      );
-
-      // 거래량 Top10
-      tableVolumeTop = pick(
-        rankVolume
-          .map((r) => {
-            const sym = ensureSuffix(r.code);
-            const { theme, brief } = enrichThemeBrief(sym, r.name);
-            const valY = r.valueYen || Math.max(0, Math.round(r.price * r.volume));
-            return {
-              code: sym,
-              name: r.name,
-              open: r.price,
-              close: r.price,
-              changePercent: r.changePercent,
-              volume: r.volume,
-              valueYen: valY,
-              theme,
-              brief,
-            };
-          })
-          .sort((a, b) => (b.volume || 0) - (a.volume || 0)),
-        10
-      );
-
-      // 상승 Top10 (종가 ≥ ¥1,000)
-      const gainersFiltered = rankGainers.filter((r) => number(r.price) >= 1000);
-      tableUpTop = pick(
-        gainersFiltered
-          .map((r) => {
-            const sym = ensureSuffix(r.code);
-            const { theme, brief } = enrichThemeBrief(sym, r.name);
-            const valY = r.valueYen || Math.max(0, Math.round(r.price * r.volume));
-            return {
-              code: sym,
-              name: r.name,
-              open: r.price,
-              close: r.price,
-              changePercent: r.changePercent,
-              volume: r.volume,
-              valueYen: valY,
-              theme,
-              brief,
-            };
-          })
-          .sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0)),
-        10
-      );
-
-      // 하락 Top10 (종가 ≥ ¥1,000)
-      const losersFiltered = rankLosers.filter((r) => number(r.price) >= 1000);
-      tableDownTop = pick(
-        losersFiltered
-          .map((r) => {
-            const sym = ensureSuffix(r.code);
-            const { theme, brief } = enrichThemeBrief(sym, r.name);
-            const valY = r.valueYen || Math.max(0, Math.round(r.price * r.volume));
-            return {
-              code: sym,
-              name: r.name,
-              open: r.price,
-              close: r.price,
-              changePercent: r.changePercent,
-              volume: r.volume,
-              valueYen: valY,
-              theme,
-              brief,
-            };
-          })
-          .sort((a, b) => (a.changePercent || 0) - (b.changePercent || 0)),
-        10
-      );
-    } else {
-      /** 3) 폴백: 메이저 유니버스만으로 근사 */
-      const quotes = await fetchQuoteBatch(MAJORS.map((m) => m.code));
-      universeCount = quotes.length;
-      const rows = quotes.map((q) => {
-        const meta = MAJORS.find((m) => m.code === q.symbol);
-        const close = number(q.close);
-        const open = number(q.open);
-        const vol = number(q.volume);
-        const valY = close * vol;
-        return {
-          code: q.symbol,
-          name: q.shortName,
-          open,
-          close,
-          changePercent: number(q.changePct),
-          volume: vol,
-          valueYen: valY,
-          theme: meta?.theme ?? "—",
-          brief: meta?.brief ?? q.shortName ?? "—",
-        };
+    // 1) Build base map with static metadata (typed!)
+    const by = new Map<string, QuoteRow>();
+    for (const u of JPX_UNIVERSE) {
+      by.set(u.code, {
+        code: u.code,
+        name: u.name,
+        theme: u.theme,
+        brief: u.brief,
+        open: null,
+        close: null,
+        high: null,
+        low: null,
+        prevClose: null,
+        changePct: null,
+        volume: null,
+        valueJPY: null,
       });
+    }
 
-      tableValueTop = pick(rows.sort((a, b) => b.valueYen - a.valueYen), 10);
-      tableVolumeTop = pick(rows.sort((a, b) => b.volume - a.volume), 10);
-      tableUpTop = pick(
-        rows.filter((r) => r.close >= 1000).sort((a, b) => b.changePercent - a.changePercent),
-        10
-      );
-      tableDownTop = pick(
-        rows.filter((r) => r.close >= 1000).sort((a, b) => a.changePercent - b.changePercent),
-        10
+    // 2) Fetch Yahoo v7 quotes (batch)
+    const symbols = JPX_UNIVERSE.map((u) => u.yahooSymbol);
+    const v7 = await fetchYahooV7(symbols);
+
+    // 3) Fill from v7 first, then fallback with chart v8 if missing
+    for (const u of JPX_UNIVERSE) {
+      const q = v7.get(u.yahooSymbol);
+      if (q) {
+        const row = by.get(u.code)!;
+        const open = num(q.regularMarketOpen);
+        const close = num(q.regularMarketPrice) ?? num(q.regularMarketPreviousClose);
+        const high = num(q.regularMarketDayHigh);
+        const low = num(q.regularMarketDayLow);
+        const vol = num(q.regularMarketVolume);
+
+        row.open = open;
+        row.close = close;
+        row.high = high;
+        row.low = low;
+        row.prevClose = num(q.regularMarketPreviousClose);
+        row.volume = vol;
+        row.changePct = open && close ? ((close - open) / open) * 100 : null;
+        row.valueJPY = close && vol ? close * vol : null;
+      }
+    }
+
+    // Fallback chart v8 for any rows with missing core fields
+    for (const u of JPX_UNIVERSE) {
+      const row = by.get(u.code)!;
+      if (row.open != null && row.close != null && row.volume != null) continue;
+      const ch = await fetchYahooChartV8(u.yahooSymbol);
+      if (row.open == null) row.open = ch.open;
+      if (row.close == null) row.close = ch.close;
+      if (row.high == null) row.high = ch.high;
+      if (row.low == null) row.low = ch.low;
+      if (row.volume == null) row.volume = ch.volume;
+      if (row.changePct == null && row.open != null && row.close != null) {
+        row.changePct = ((row.close - row.open) / row.open) * 100;
+      }
+      if (row.valueJPY == null && row.close != null && row.volume != null) {
+        row.valueJPY = row.close * row.volume;
+      }
+    }
+
+    // 4) Build Cards (key large caps + ETFs)
+    const CARD_CODES = [
+      "1321",
+      "1306",
+      "7203",
+      "6758",
+      "8035",
+      "6861",
+      "6501",
+      "4063",
+      "9432",
+      "6954",
+      "8306",
+      "8316",
+    ];
+    const cards: string[] = [];
+    for (const code of CARD_CODES) {
+      const m = by.get(code);
+      if (!m) continue;
+      const oc = `${m.open != null ? JPY(m.open) : "—"}→${m.close != null ? JPY(m.close) : "—"}`;
+      const chg = m.changePct != null ? m.changePct.toFixed(2) : "—";
+      const vol = m.volume != null ? JPY(m.volume) : "—";
+      const valM = m.valueJPY != null ? JPY(Math.round(m.valueJPY / 1_000_000)) : "—";
+      cards.push(
+        `- ${code} — ${m.name}\n  - o→c: ${oc} / Chg%: ${chg} / Vol: ${vol} / ¥Vol(M): ${valM} / ${m.theme} — ${m.brief}`
       );
     }
 
-    /** 카드 섹션 */
-    const cards = await buildCards();
+    // 5) Build Top tables
+    const rowsAll = Array.from(by.values()).filter((r) => r.close != null);
 
-    /** 간단 브레드스(거래대금 Top10 내) */
-    const upCnt = tableValueTop.filter((r) => (r.changePercent ?? 0) > 0).length;
-    const downCnt = tableValueTop.filter((r) => (r.changePercent ?? 0) < 0).length;
+    // 売買代金
+    const topByValue = rowsAll
+      .filter((r) => r.valueJPY != null)
+      .sort((a, b) => (b.valueJPY! - a.valueJPY!))
+      .slice(0, 10)
+      .map((m) => ({
+        code: m.code,
+        oc: `${m.open != null ? JPY(m.open) : "—"}→${m.close != null ? JPY(m.close) : "—"}`,
+        chgPct: m.changePct != null ? m.changePct.toFixed(2) : "—",
+        vol: m.volume != null ? JPY(m.volume) : "—",
+        val: m.valueJPY != null ? JPY(Math.round(m.valueJPY / 1_000_000)) : "—",
+        theme: m.theme,
+        brief: m.brief,
+      }));
 
-    /** 마크다운 조립 */
-    const header = `# 日本株 夜間警備員 日誌 | ${ymd}
-> ソース: Yahoo Finance（ランキング/quote → フォールバック） / ユニバース: ${universeCount}銘柄
-> 注記: JST **15:40**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります（ランキング反映遅延対策）。`;
+    // 出来高
+    const topByVol = rowsAll
+      .filter((r) => r.volume != null)
+      .sort((a, b) => (b.volume! - a.volume!))
+      .slice(0, 10)
+      .map((m) => ({
+        code: m.code,
+        oc: `${m.open != null ? JPY(m.open) : "—"}→${m.close != null ? JPY(m.close) : "—"}`,
+        chgPct: m.changePct != null ? m.changePct.toFixed(2) : "—",
+        vol: m.volume != null ? JPY(m.volume) : "—",
+        theme: m.theme,
+        brief: m.brief,
+      }));
 
-    const narrative = `## ナラティブ
-**ヘッドライン:** 主力はまちまち、物色は循環的。装置・一部電機に買い、通信・銀行は重め。\n
-**ブレッドス:** （売買代金上位10銘柄ベース） 上昇 ${upCnt} : 下落 ${downCnt}\n
-**所感:** 値がさの下支えとディフェンシブの重さが拮抗。ランキング主導の資金回転が速く、押し目待機の姿勢も観察。`;
+    // 上昇株（¥1,000+）
+    const up1k = rowsAll
+      .filter((r) => (r.close ?? 0) >= 1000 && r.changePct != null)
+      .sort((a, b) => (b.changePct! - a.changePct!))
+      .slice(0, 10)
+      .map((m) => ({
+        code: m.code,
+        oc: `${m.open != null ? JPY(m.open) : "—"}→${m.close != null ? JPY(m.close) : "—"}`,
+        chgPct: m.changePct != null ? m.changePct.toFixed(2) : "—",
+        vol: m.volume != null ? JPY(m.volume) : "—",
+        theme: m.theme,
+        brief: m.brief,
+      }));
 
-    const md =
-      `${header}\n\n` +
-      `## カード（主要ETF・大型）\n${cards}\n\n---\n\n` +
-      `${narrative}\n\n---\n\n` +
-      `## 📊 データ(Top10)\n` +
-      tableBlock("Top 10 — 売買代金（百万円換算）", tableValueTop, true) +
-      `\n` +
-      tableBlock("Top 10 — 出来高（株数）", tableVolumeTop, false) +
-      `\n` +
-      tableBlock("Top 10 — 上昇株（¥1,000+）", tableUpTop, false) +
-      `\n` +
-      tableBlock("Top 10 — 下落株（¥1,000+）", tableDownTop, false) +
-      `\n\n#日本株 #日経平均 #TOPIX #東証 #半導体 #AI #出来高 #売買代金`;
+    // 下落株（¥1,000+）
+    const down1k = rowsAll
+      .filter((r) => (r.close ?? 0) >= 1000 && r.changePct != null)
+      .sort((a, b) => (a.changePct! - b.changePct!))
+      .slice(0, 10)
+      .map((m) => ({
+        code: m.code,
+        oc: `${m.open != null ? JPY(m.open) : "—"}→${m.close != null ? JPY(m.close) : "—"}`,
+        chgPct: m.changePct != null ? m.changePct.toFixed(2) : "—",
+        vol: m.volume != null ? JPY(m.volume) : "—",
+        theme: m.theme,
+        brief: m.brief,
+      }));
 
-    return new Response(md, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  } catch (e: any) {
-    const emsg = (e as Error)?.message ?? String(e);
-    return new Response(`Fetch failed: ${emsg}`, { status: 500 });
+    // header
+    const title = `# 日本株 夜間警備員 日誌 | ${targetYMD}`;
+    const note =
+      `> ソース: Yahoo Finance (quote → fallback chart) / ユニバース: ${JPX_UNIVERSE.length}銘柄\n` +
+      `> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。\n`;
+
+    const cardBlock = `## カード（主要ETF・大型）\n${cards.join("\n")}\n`;
+
+    // tables
+    const tbl1 = tableBlock("Top 10 — 売買代金（百万円換算）", topByValue, true);
+    const tbl2 = tableBlock("Top 10 — 出来高（株数）", topByVol, false);
+    const tbl3 = tableBlock("Top 10 — 上昇株（¥1,000+）", up1k, false);
+    const tbl4 = tableBlock("Top 10 — 下落株（¥1,000+）", down1k, false);
+
+    const tags =
+      "\n\n#日本株 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金 #大型株";
+
+    const md = [title, note, "---", cardBlock, "---", "## 📊 データ(Top10)", tbl1, tbl2, tbl3, tbl4, tags].join(
+      "\n\n"
+    );
+
+    return new Response(md, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    return new Response(`Fetch failed: ${msg}`, { status: 500 });
   }
 }
