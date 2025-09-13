@@ -1,298 +1,304 @@
 // src/app/api/jpx-eod/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-export const runtime = "edge";
-export const preferredRegion = ["hnd1", "icn1", "sin1"]; // Tokyo / Seoul / Singapore
+/**
+ * 환경변수
+ * - TWELVEDATA_API_KEY: Twelve Data API Key (필수 권장)
+ * - JPX_UNIVERSE_URL: 유니버스 JSON URL (선택) 例) raw gist 등
+ *   형식: [{ code:"8035", name:"東京エレクトロン", theme:"半導体製造装置", brief:"製造装置大手", yahooSymbol:"8035.T" }, ...]
+ *   필드는 code/name 최소 필요. yahooSymbol 없으면 `${code}.T`로 생성.
+ * - JPX_HOLIDAYS_URL: 일본 휴장일(YYYY-MM-DD[]) JSON URL (선택)
+ */
 
-// =========================
-// Types
-// =========================
 type UniverseItem = {
-  code: string;         // "7203" (JPX 4자리 숫자)
-  name: string;         // "トヨタ自動車"
-  theme: string;        // "自動車"
-  brief: string;        // "世界最大級の自動車メーカー"
-  yahooSymbol?: string; // "7203.T" (없으면 code+".T")
+  code: string;          // 8035
+  name?: string;         // 東京エレクトロン
+  theme?: string;        // 半導体製造装置
+  brief?: string;        // 製造装置大手
+  yahooSymbol?: string;  // 8035.T
 };
 
 type Quote = {
-  symbol: string;         // "7203.T"
+  symbol: string;
   open?: number;
   high?: number;
   low?: number;
   close?: number;
   previousClose?: number;
   volume?: number;
-  currency?: string;      // "JPY"
+  currency?: string;
   name?: string;
 };
 
-// =========================
-// Helpers
-// =========================
-function safeNum(v: any): number | undefined {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
+type Row = {
+  code: string;
+  ticker: string;        // yahooSymbol
+  name: string;
+  theme: string;
+  brief: string;
+  open: number | null;
+  close: number | null;
+  previousClose: number | null;
+  chgPctPrev: number | null;      // (close / previousClose - 1) * 100
+  chgPctIntraday: number | null;  // (close / open - 1) * 100
+  volume: number | null;
+  yenVolM: number | null;         // close * volume / 1e6
+  currency: string;
+};
 
-function jstNow(): Date {
-  // JST = UTC+9
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + 9 * 3600 * 1000);
+// ---------- 시간 유틸 (JST 기준) ----------
+const JST_OFFSET_MIN = 9 * 60;
+function toJstDate(d = new Date()): Date {
+  const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+  return new Date(utc + JST_OFFSET_MIN * 60000);
 }
-
-function isBeforeJst1535(d: Date): boolean {
+function formatYmd(d: Date): string {
   const y = d.getFullYear();
-  const m = d.getMonth();
-  const day = d.getDate();
-  const cutoff = new Date(Date.UTC(y, m, day, 6, 35)); // 15:35 JST == 06:35 UTC
-  // d is JST-based Date, so compare by timestamps
-  const jstTs = d.getTime();
-  const cutoffTs = cutoff.getTime() + 9 * 3600 * 1000; // align to JST epoch
-  return jstTs < cutoffTs;
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function isWeekend(d: Date): boolean {
+  const wd = d.getDay(); // 0 Sun, 6 Sat
+  return wd === 0 || wd === 6;
+}
+function addDays(d: Date, n: number): Date {
+  const nd = new Date(d);
+  nd.setDate(d.getDate() + n);
+  return nd;
+}
+function prevBizDay(d: Date, holidays: Set<string>): Date {
+  // 주말 & (선택)공휴일을 피해 직전 영업일 반환
+  let cur = addDays(d, -1);
+  while (isWeekend(cur) || holidays.has(formatYmd(cur))) {
+    cur = addDays(cur, -1);
+  }
+  return cur;
 }
 
-function toYahooSymbol(code: string): string {
-  return `${code}.T`;
-}
-
-function calcChgPct(q: Quote): number | undefined {
+// ---------- 데이터 계산 유틸 ----------
+function chgPctPrev(q: Quote | undefined): number | undefined {
+  if (!q) return undefined;
   if (q.close != null && q.previousClose != null && q.previousClose > 0) {
     return ((q.close - q.previousClose) / q.previousClose) * 100;
   }
+  return undefined;
+}
+function chgPctIntraday(q: Quote | undefined): number | undefined {
+  if (!q) return undefined;
   if (q.open != null && q.open > 0 && q.close != null) {
-    // fallback: intraday
     return ((q.close - q.open) / q.open) * 100;
   }
   return undefined;
 }
-
-function yenMillions(q: Quote): number | undefined {
-  if (q.close != null && q.volume != null) {
-    return (q.close * q.volume) / 1_000_000;
-  }
-  return undefined;
+function yenMillions(q: Quote | undefined): number | undefined {
+  if (!q?.close || !q?.volume) return undefined;
+  return (q.close * q.volume) / 1_000_000;
 }
 
-async function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-// 간단 동시성 제한(외부 라이브러리 없이)
-async function runLimited<T>(items: string[], limit: number, task: (sym: string) => Promise<T>): Promise<T[]> {
-  const results: T[] = [];
-  let idx = 0;
-  const workers: Promise<void>[] = [];
-  for (let c = 0; c < Math.max(1, limit); c++) {
-    workers.push((async () => {
-      while (true) {
-        const i = idx++;
-        if (i >= items.length) break;
-        const s = items[i];
-        try {
-          const out = await task(s);
-          // @ts-ignore
-          results[i] = out;
-        } catch {
-          // ignore
-        }
-        // 과도한 폭주 방지
-        await sleep(120);
-      }
-    })());
-  }
-  await Promise.all(workers);
-  return results;
-}
-
-// =========================
-// Data Sources
-// =========================
-async function fetchFromTwelveData(sym: string): Promise<Quote | undefined> {
+// ---------- 외부 fetch ----------
+async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
   try {
-    const key = process.env.TWELVEDATA_KEY;
-    if (!key) return undefined;
-    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(key)}`;
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) return undefined;
-    const j = await r.json() as any;
-
-    // TwelveData 에러 포맷 가드
-    if (j && j.status === "error") return undefined;
-
-    // 정상 포맷 매핑
-    const q: Quote = {
-      symbol: sym,
-      open: safeNum(j.open),
-      high: safeNum(j.high),
-      low: safeNum(j.low),
-      close: safeNum(j.close),
-      previousClose: safeNum(j.previous_close),
-      volume: safeNum(j.volume),
-      currency: (typeof j.currency === "string" ? j.currency : "JPY"),
-      name: (typeof j.name === "string" ? j.name : undefined),
-    };
-    // close/pc 모두 없는 경우 무시
-    if (q.close == null && q.previousClose == null) return undefined;
-    return q;
+    const r = await fetch(url, { ...init, cache: "no-store" });
+    if (!r.ok) return null;
+    return (await r.json()) as T;
   } catch {
-    return undefined;
+    return null;
   }
 }
 
-async function fetchFromYahooChart(sym: string): Promise<Quote | undefined> {
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=1d`;
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) return undefined;
-    const j = await r.json() as any;
-    const res = j?.chart?.result?.[0];
-    if (!res) return undefined;
-
-    const meta = res.meta || {};
-    const ind = res.indicators?.quote?.[0] || {};
-    const open = safeNum(ind.open?.[0]);
-    const high = safeNum(ind.high?.[0]);
-    const low = safeNum(ind.low?.[0]);
-    const close = safeNum(ind.close?.[0] ?? meta.regularMarketPrice);
-    const volume = safeNum(ind.volume?.[0]);
-
-    const previousClose = safeNum(meta.chartPreviousClose ?? meta.previousClose);
-
-    const q: Quote = {
-      symbol: sym,
-      open,
-      high,
-      low,
-      close,
-      previousClose,
-      volume,
-      currency: typeof meta.currency === "string" ? meta.currency : "JPY",
-    };
-    if (q.close == null && q.previousClose == null) return undefined;
-    return q;
-  } catch {
-    return undefined;
-  }
-}
-
-// =========================
-// Universe
-// =========================
+// ---------- 유니버스 (기본 + 커스텀 URL) ----------
 const DEFAULT_UNIVERSE: UniverseItem[] = [
-  // ETF
   { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
   { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
-  // 반도체/장비
-  { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手" },
-  { code: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手" },
-  { code: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査" },
-  { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン" },
-  { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器" },
-  { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット" },
-  { code: "7735", name: "SCREEN", theme: "半導体製造装置", brief: "洗浄/成膜等" },
-  // 전기전자/부품
-  { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽" },
-  { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等" },
-  { code: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池" },
-  { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
-  { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体" },
-  { code: "7752", name: "リコー", theme: "OA/成膜装置", brief: "OA/装置(簡略)" },
-  // 자동차
   { code: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー" },
-  // 금융/통신/상사
+  { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽" },
+  { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手" },
+  { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器" },
+  { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT" },
+  { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン" },
+  { code: "9432", name: "日本電信電話", theme: "通信", brief: "国内通信大手" },
+  { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット" },
   { code: "8306", name: "三菱UFJフィナンシャルG", theme: "金融", brief: "メガバンク" },
   { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク" },
-  { code: "9432", name: "日本電信電話", theme: "通信", brief: "国内通信大手" },
-  { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
-  { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
   { code: "9984", name: "ソフトバンクグループ", theme: "投資/テック", brief: "投資持株/通信" },
-  // 유통/게임/철도/상사
   { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ" },
   { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
-  { code: "9020", name: "JR東日本", theme: "鉄道", brief: "関東/東北のJR" },
+  { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
+  { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
+  { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
+  { code: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査" },
+  { code: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手" },
+  { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等" },
+  { code: "7752", name: "リコー", theme: "OA/機器", brief: "OA/装置" },
+  { code: "7735", name: "SCREENホールディングス", theme: "半導体製造装置", brief: "洗浄/成膜等" },
+  { code: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池" },
+  { code: "9020", name: "東日本旅客鉄道", theme: "鉄道", brief: "関東/東北のJR" },
   { code: "8058", name: "三菱商事", theme: "商社", brief: "総合商社" },
+  { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体" },
   { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社" },
-  // 종합전기/에너지
-  { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT" },
-  { code: "5020", name: "ENEOS", theme: "エネルギー", brief: "石油・エネルギー" }
 ];
 
 async function loadUniverse(): Promise<UniverseItem[]> {
+  const url = process.env.JPX_UNIVERSE_URL;
+  if (!url) {
+    return DEFAULT_UNIVERSE.map(u => ({
+      ...u,
+      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+    }));
+  }
+  const data = await safeJson<UniverseItem[]>(url);
+  if (!Array.isArray(data) || data.length === 0) {
+    return DEFAULT_UNIVERSE.map(u => ({
+      ...u,
+      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+    }));
+  }
+  return data.map(u => ({
+    ...u,
+    yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+  }));
+}
+
+async function loadJpxHolidays(): Promise<Set<string>> {
+  const url = process.env.JPX_HOLIDAYS_URL;
+  if (!url) return new Set();
+  const data = await safeJson<string[]>(url);
+  if (!Array.isArray(data)) return new Set();
+  return new Set(data);
+}
+
+// ---------- Twelve Data (primary) ----------
+const TD_ENDPOINT = "https://api.twelvedata.com/quote";
+
+async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quote | null> {
+  // Twelve Data는 보통 야후형 심볼(예: 8035.T)도 지원.
+  const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
+  const r = await safeJson<any>(url);
+  if (!r) return null;
+  // 에러 케이스
+  if (r.status === "error" || r.code || r.message) return null;
+
+  // 단일 quote 형태일 때
+  const open = num(r.open);
+  const close = num(r.close);
+  const prev = num(r.previous_close ?? r.previousClose);
+  const volume = num(r.volume);
+  const currency = r.currency ?? "JPY";
+  const name = r.name;
+
+  // 일부 케이스에서 "close"가 null인 경우 있음 → null이면 실패로 간주하여 fallback로
+  if (close == null && prev == null && volume == null) return null;
+
+  return {
+    symbol,
+    open: open ?? undefined,
+    close: close ?? undefined,
+    previousClose: prev ?? undefined,
+    volume: volume ?? undefined,
+    currency,
+    name,
+  };
+}
+
+// ---------- Yahoo Chart (fallback) ----------
+async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
+  // 5일/1일간격으로 불러 마지막 2개 캔들에서 종가/이전종가 추정
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
+  const j = await safeJson<any>(url);
   try {
-    const url = process.env.JPX_UNIVERSE_URL;
-    if (!url) return DEFAULT_UNIVERSE;
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) return DEFAULT_UNIVERSE;
-    const j = await r.json() as any[];
-    const norm: UniverseItem[] = [];
-    for (const it of j) {
-      if (!it) continue;
-      const code = String(it.code ?? "").trim();
-      if (!code) continue;
-      norm.push({
-        code,
-        name: String(it.name ?? code),
-        theme: String(it.theme ?? ""),
-        brief: String(it.brief ?? ""),
-        yahooSymbol: typeof it.yahooSymbol === "string" ? it.yahooSymbol : undefined,
-      });
-    }
-    return norm.length ? norm : DEFAULT_UNIVERSE;
+    const res = j?.chart?.result?.[0];
+    if (!res) return null;
+    const meta = res.meta ?? {};
+    const ind = res.indicators?.quote?.[0] ?? {};
+    const closes: number[] = ind.close ?? [];
+    const opens: number[] = ind.open ?? [];
+    const vols: number[] = ind.volume ?? [];
+
+    const n = closes.length;
+    if (n === 0) return null;
+
+    const close = num(closes[n - 1]);
+    const open = num(opens[n - 1]);
+    const volume = num(vols[n - 1]);
+    // 이전종가는 meta.regularMarketPreviousClose 또는 마지막 직전 close
+    const prev = meta.regularMarketPreviousClose != null
+      ? num(meta.regularMarketPreviousClose)
+      : (n >= 2 ? num(closes[n - 2]) : undefined);
+
+    return {
+      symbol,
+      open: open ?? undefined,
+      close: close ?? undefined,
+      previousClose: prev ?? undefined,
+      volume: volume ?? undefined,
+      currency: meta.currency ?? "JPY",
+      name: meta.symbol ?? symbol,
+    };
   } catch {
-    return DEFAULT_UNIVERSE;
+    return null;
   }
 }
 
-// =========================
-// Fetch & Aggregate
-// =========================
-async function fetchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+// ---------- 숫자 변환 ----------
+function num(x: any): number | undefined {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+// ---------- 배치 로직 ----------
+async function fetchQuoteFor(symbol: string, apiKey?: string): Promise<Quote | null> {
+  if (apiKey) {
+    const td = await fetchTwelveDataQuote(symbol, apiKey);
+    if (td) return td;
+  }
+  // fallback
+  const yh = await fetchYahooChartQuote(symbol);
+  if (yh) return yh;
+  return null;
+}
+
+async function fetchAllQuotes(symbols: string[], apiKey?: string): Promise<Map<string, Quote>> {
+  // 무료 플랜 고려: 순차 + 약간의 지연 (서버리스 타임아웃 대비 40~80ms 수준)
   const out = new Map<string, Quote>();
-
-  // 1차: Twelve Data (동시성 제한)
-  const first = await runLimited<Quote | undefined>(symbols, 6, fetchFromTwelveData);
-  first.forEach((q, i) => {
-    if (q) out.set(symbols[i], q);
-  });
-
-  // 2차: Yahoo Chart 폴백
-  const missing = symbols.filter((s) => !out.has(s));
-  const second = await runLimited<Quote | undefined>(missing, 4, fetchFromYahooChart);
-  second.forEach((q, i) => {
-    if (q) out.set(missing[i], q);
-  });
-
+  for (const s of symbols) {
+    const q = await fetchQuoteFor(s, apiKey);
+    if (q) out.set(s, q);
+    // 소량 딜레이
+    await delay(60);
+  }
   return out;
 }
 
-function buildResponse(univ: UniverseItem[], by: Map<string, Quote>) {
-  const rows = univ.map((u) => {
-    const sym = u.yahooSymbol ?? toYahooSymbol(u.code);
+function delay(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+// ---------- 응답 빌드 ----------
+function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
+  return univ.map((u) => {
+    const sym = u.yahooSymbol ?? `${u.code}.T`;
     const q = by.get(sym);
-    const close = q?.close;
-    const pc = q?.previousClose;
-    const chgPct = calcChgPct(q ?? { symbol: sym });
-    const vol = q?.volume;
-    const yVolM = yenMillions(q ?? { symbol: sym });
-    return {
+    const row: Row = {
       code: u.code,
       ticker: sym,
-      name: u.name,
-      theme: u.theme,
-      brief: u.brief,
+      name: u.name ?? u.code,
+      theme: u.theme ?? "-",
+      brief: u.brief ?? "-",
       open: q?.open ?? null,
-      close: close ?? null,
-      previousClose: pc ?? null,
-      chgPct: chgPct ?? null,
-      volume: vol ?? null,
-      yenVolM: yVolM ?? null,
+      close: q?.close ?? null,
+      previousClose: q?.previousClose ?? null,
+      chgPctPrev: chgPctPrev(q) ?? null,
+      chgPctIntraday: chgPctIntraday(q) ?? null,
+      volume: q?.volume ?? null,
+      yenVolM: yenMillions(q) ?? null,
       currency: q?.currency ?? "JPY",
     };
+    return row;
   });
+}
 
-  // 랭킹 만들기
+function buildRankings(rows: Row[]) {
   const byValue = [...rows]
     .filter(r => r.yenVolM != null)
     .sort((a, b) => (b.yenVolM! - a.yenVolM!))
@@ -303,53 +309,81 @@ function buildResponse(univ: UniverseItem[], by: Map<string, Quote>) {
     .sort((a, b) => (b.volume! - a.volume!))
     .slice(0, 10);
 
-  // 1000엔 이상 필터 (상승/하락)
-  const priceForFilter = (r: any) => (r.close ?? r.previousClose ?? 0);
-  const eligible = rows.filter(r => (priceForFilter(r) ?? 0) >= 1000 && r.chgPct != null);
+  const price = (r: Row) => (r.close ?? r.previousClose ?? r.open ?? 0);
+  const elig = rows.filter(r => price(r) >= 1000 && r.chgPctPrev != null);
 
-  const topGainers = [...eligible].sort((a, b) => (b.chgPct! - a.chgPct!)).slice(0, 10);
-  const topLosers  = [...eligible].sort((a, b) => (a.chgPct! - b.chgPct!)).slice(0, 10);
+  const topGainers = [...elig]
+    .filter(r => (r.chgPctPrev as number) > 0)
+    .sort((a, b) => (b.chgPctPrev! - a.chgPctPrev!))
+    .slice(0, 10);
 
-  return { rows, byValue, byVolume, topGainers, topLosers };
+  const topLosers = [...elig]
+    .filter(r => (r.chgPctPrev as number) < 0)
+    .sort((a, b) => (a.chgPctPrev! - b.chgPctPrev!))
+    .slice(0, 10);
+
+  return { byValue, byVolume, topGainers, topLosers };
 }
 
-// =========================
-// Route
-// =========================
+// ---------- 메인 핸들러 ----------
 export async function GET(req: NextRequest) {
   try {
-    const nowJst = jstNow();
-    // 정보성 라벨 (마감 이후 캐치)
-    const note = isBeforeJst1535(nowJst)
-      ? "JST 15:35 이전 접근은 전영업일 기준(무료 소스 특성상 근사치)."
-      : "当日EOD基準（無料ソースのため微差可能）。";
+    const { searchParams } = new URL(req.url);
+    const apikey = process.env.TWELVEDATA_API_KEY || "";
+    const holidays = await loadJpxHolidays();
 
+    // 기준 날짜: ?date=YYYY-MM-DD가 있으면 그 날짜,
+    // 없으면 JST 시각이 15:35 이전이면 전 영업일, 이후면 오늘
+    const jstNow = toJstDate();
+    let baseDate: Date;
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      baseDate = new Date(dateParam + "T00:00:00+09:00");
+    } else {
+      // 15:35 이전 → 전 영업일
+      const hh = jstNow.getHours();
+      const mm = jstNow.getMinutes();
+      const before1535 = hh < 15 || (hh === 15 && mm < 35);
+      baseDate = before1535 ? prevBizDay(jstNow, holidays) : jstNow;
+      // 주말/휴일 당일 접근도 전 영업일로 보정
+      const ymdToday = formatYmd(baseDate);
+      if (isWeekend(baseDate) || holidays.has(ymdToday)) {
+        baseDate = prevBizDay(baseDate, holidays);
+      }
+    }
+
+    const baseYmd = formatYmd(baseDate);
+
+    // 유니버스 로딩
     const universe = await loadUniverse();
-    const symbols = universe.map(u => u.yahooSymbol ?? toYahooSymbol(u.code));
+    const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
 
-    const by = await fetchQuotes(symbols);
+    // 시세 취득 (현재/최근 데이터 기반)
+    const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
-    const { rows, byValue, byVolume, topGainers, topLosers } = buildResponse(universe, by);
+    // 행/랭킹 구성
+    const rows = buildRows(universe, quoteMap);
+    const rankings = buildRankings(rows);
 
-    return NextResponse.json({
+    const body = {
       ok: true,
-      note,
-      count: rows.length,
-      asOfJST: nowJst.toISOString().replace("T", " ").slice(0, 19),
-      universe,
+      date: baseYmd,
+      source: apikey ? "TwelveData(primary)->YahooChart(fallback)" : "YahooChart(only)",
+      universeCount: universe.length,
       quotes: rows,
-      rankings: {
-        byValue,
-        byVolume,
-        topGainers,
-        topLosers,
-      },
-    }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({
-      ok: false,
-      error: "JPX EOD fetch failed",
-      detail: e?.message ?? String(e),
-    }, { status: 500 });
+      rankings,
+      note: "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
+    };
+
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  } catch (err: any) {
+    const body = { ok: false, error: "backend_failure", message: err?.message ?? "unknown" };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+    });
   }
 }
