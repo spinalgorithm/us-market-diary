@@ -1,237 +1,158 @@
 // scripts/fetch_jpx_full.ts
-/**
- * JPX 유니버스 CSV 생성기
- * - 소스: Twelve Data "stocks" 심볼 리스트 (플랜/커버리지에 따라 결과가 달라질 수 있음)
- * - 출력: public/jpx_universe.csv  (code,name,theme,brief,yahooSymbol)
- *
- * 사용:
- *   TWELVEDATA_API_KEY=xxxxx npx ts-node scripts/fetch_jpx_full.ts
- * 옵션:
- *   --out=public/jpx_universe.csv
- *   --include=stock,etf,reit (콤마구분, 기본: stock,etf,reit)
- *   --limit=5000 (최대 라인 수 상한)
- *
- * 비고:
- * - Twelve Data가 제공하는 "stocks" 리스트를 사용.
- * - 타입 명칭은 Twelve Data의 응답(type) 필드에 의존(예: "Common Stock", "ETF", "REIT"...).
- * - 야후 심볼은 기본적으로 `${code}.T`로 생성(숫자 4자리 코드를 code로 간주).
- * - code가 4자리 숫자가 아닌 항목은 스킵(필요시 로직 수정 가능).
- */
+// 목적: Twelve Data /stocks에서 일본 종목을 페이지네이션으로 전부 수집해
+//       public/jpx_universe.csv 로 저장.
+// 실행: npm run fetch:jpx  (GitHub Actions에서 TWELVEDATA_API_KEY로 실행됨)
 
-import fs from "fs/promises";
-import path from "path";
+import { writeFile } from "node:fs/promises";
 
-// Node 18+ fetch 내장
-type TDStockItem = {
-  symbol?: string;           // ex) "8035" (보통 숫자코드), 가끔 영문/혼합 가능
-  name?: string;             // 기업/종목명(로마자/영문)
-  currency?: string;         // "JPY" 등
-  exchange?: string;         // "Tokyo" 혹은 "JPX" 등
-  mic_code?: string;         // "XJPX" 등
-  type?: string;             // "Common Stock" | "ETF" | "REIT" | ...
+type TDStock = {
+  symbol: string;      // 예: "7203", "8035.T", "7203:JP" 등
+  name: string;        // 종목명
+  currency?: string;   // "JPY" 등
+  exchange?: string;   // "TSE" 등
+  country?: string;    // "Japan"
+  type?: string;       // "Common Stock", "ETF", "REIT" 등
 };
 
 type TDStocksResponse =
-  | { data?: TDStockItem[]; next_page?: string } // 일부 문서 포맷
-  | { data?: TDStockItem[]; next_page_token?: string }
-  | { stocks?: TDStockItem[] }
-  | TDStockItem[]; // 혹시 배열만 올 수도
+  | { data: TDStock[]; status?: string }
+  | { status: "error"; message?: string }
+  | any;
 
-type UniverseRow = {
-  code: string;
-  name: string;
-  theme: string;
-  brief: string;
-  yahooSymbol: string;
-};
-
-// -------- CLI 옵션 --------
-const args = Object.fromEntries(
-  process.argv.slice(2).map((kv) => {
-    const [k, v] = kv.split("=");
-    return [k.replace(/^--/, ""), v ?? "true"];
-  })
-);
-
-const OUT = args.out ?? "public/jpx_universe.csv";
-const LIMIT = Math.max(100, Math.min(100000, Number(args.limit ?? "5000")));
-const INCLUDE = String(args.include ?? "stock,etf,reit")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-
-// Twelve Data API 설정
-const API_KEY = process.env.TWELVEDATA_API_KEY || "";
+const API_KEY = process.env.TWELVEDATA_API_KEY ?? "";
 if (!API_KEY) {
-  console.error("❌ TWELVEDATA_API_KEY가 필요합니다 (.env에 설정).");
-  process.exit(1);
+  console.warn("[warn] TWELVEDATA_API_KEY is empty. You can still try, but quota may be tiny.");
 }
 
-// Twelve Data가 사용하는 거래소 키워드(플랜/문서 버전에 따라 다를 수 있어 여러 값을 시도)
-const EXCH_KEYS = ["XJPX", "JPX", "Tokyo", "TSE"];
+// ---- 설정값(필요시 조정) ----
+const LIMIT = Number(process.argv.find(a => a.startsWith("--limit="))?.split("=")[1] ?? "5000");
+const INCLUDE_TYPES = new Set(["Common Stock", "ETF", "REIT"]); // 필요시 "Fund" 등 추가
+const COUNTRY = "Japan";     // 일본만
+// exchange 필터를 너무 좁히면 누락될 수 있어 country만으로 먼저 긁고, 후처리로 정제합니다.
+const MAX_PAGES = 500;       // 안전 상한
+const PAGE_PAUSE_MS = 250;   // 페이지 사이 살짝 딜레이(레이트 제한 방지)
 
-// -------- 유틸 --------
-function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
-}
-function isFourDigitCode(s?: string) {
-  return !!s && /^\d{4}$/.test(s);
-}
-function tdTypeToInclude(type?: string): "stock" | "etf" | "reit" | "other" {
-  const t = (type ?? "").toLowerCase();
-  if (t.includes("etf")) return "etf";
-  if (t.includes("reit")) return "reit";
-  // ADR/Preferred 등은 제외, Common Stock만 주식으로 포함
-  if (t.includes("common")) return "stock";
-  return "other";
-}
-function tdTypeToTheme(type?: string): string {
-  const g = tdTypeToInclude(type);
-  if (g === "stock") return "株式";
-  if (g === "etf") return "ETF";
-  if (g === "reit") return "REIT";
-  return "-";
-}
+// ---- 유틸 ----
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Twelve Data 응답을 가장 관대한 형태로 파싱
-function pickItems(resp: TDStocksResponse): TDStockItem[] {
-  if (Array.isArray(resp)) return resp;
-  if (resp?.data && Array.isArray(resp.data)) return resp.data;
-  if ((resp as any)?.stocks && Array.isArray((resp as any).stocks)) return (resp as any).stocks;
-  return [];
-}
-
-// (가능 시) 페이지 토큰
-function nextToken(resp: TDStocksResponse): string | undefined {
-  const r: any = resp;
-  return r?.next_page_token ?? r?.next_page ?? undefined;
-}
-
-// -------- Twelve Data 호출 --------
-async function fetchTDStocks(exchangeKey: string, pageToken?: string) {
+// 12Data /stocks 페이지 단위 요청
+async function fetchPage(page: number): Promise<TDStock[]> {
   const url = new URL("https://api.twelvedata.com/stocks");
-  url.searchParams.set("exchange", exchangeKey);
+  url.searchParams.set("country", COUNTRY);
+  url.searchParams.set("page", String(page));
   url.searchParams.set("apikey", API_KEY);
-  // 일부 플랜/환경에서 page_token 지원, 없으면 무시됨
-  if (pageToken) url.searchParams.set("page", pageToken);
+  // 필요시 exchange를 추가로 좁혀보고 싶다면:
+  // url.searchParams.set("exchange", "TSE"); // 누락 생기면 주석 처리하세요.
 
   const r = await fetch(url.toString(), { cache: "no-store" });
   if (!r.ok) {
-    throw new Error(`Twelve Data /stocks 실패: HTTP ${r.status}`);
+    console.warn(`[warn] /stocks page=${page} http=${r.status}`);
+    return [];
   }
   const j = (await r.json()) as TDStocksResponse;
-  return j;
+  if (!j || (j.status === "error")) {
+    console.warn(`[warn] /stocks page=${page} api-error: ${(j as any)?.message ?? ""}`);
+    return [];
+  }
+  const arr = (j as any).data as TDStock[] | undefined;
+  if (!Array.isArray(arr)) return [];
+  return arr;
 }
 
-// 여러 exchange 키워드를 순차 시도 + 페이지네이션
-async function fetchAllTDStocks(): Promise<TDStockItem[]> {
-  const seen = new Set<string>(); // symbol 중복 제거
-  const out: TDStockItem[] = [];
+// 심볼에서 JP 코드/야후심볼 추출
+function normalizeSymbol(s: string) {
+  // 다양한 패턴 대응: "8035", "8035.T", "8035:JP", "8035.TOKYO" 등 가능성
+  // 1) 숫자만 추출(선행 숫자 덩어리)
+  const m = s.match(/^(\d{3,5})/);
+  const code = m ? m[1] : s.replace(/[:.].*$/, "");
 
-  for (const ex of EXCH_KEYS) {
-    try {
-      let token: string | undefined = undefined;
-      let round = 0;
-      do {
-        const resp = await fetchTDStocks(ex, token);
-        const items = pickItems(resp);
-        let added = 0;
-        for (const it of items) {
-          const sym = it.symbol ?? "";
-          if (!sym) continue;
-          if (seen.has(sym)) continue;
-          seen.add(sym);
-          out.push(it);
-          added++;
-          if (out.length >= LIMIT) break;
-        }
-        if (out.length >= LIMIT) break;
-        token = nextToken(resp);
-        round++;
+  // 2) 야후 심볼로 통일
+  //    이미 *.T 이면 그대로, 아니면 "<code>.T"
+  const yahoo =
+    /\.T$/i.test(s) ? s.toUpperCase() :
+    `${code}.T`;
 
-        // 속도/레이트리밋 보호
-        await sleep(120);
-        // 안전장치: 무한루프 방지
-        if (round > 200) break;
-      } while (token);
+  return { code, yahooSymbol: yahoo };
+}
 
-      if (out.length >= LIMIT) break;
-      // 잠깐 쉼
-      await sleep(200);
-    } catch (e: any) {
-      // 한 키 실패해도 다음 키로 진행
-      console.warn(`⚠️ exchange='${ex}' 시도 중 오류: ${e?.message ?? e}`);
-      await sleep(200);
-      continue;
+// CSV 행 포맷
+type CSVRow = {
+  code: string;
+  name: string;
+  theme: string;       // 비워두면 "-" (추후 수동 보강 가능)
+  brief: string;       // 비워두면 "-"
+  yahooSymbol: string;
+};
+
+function toCSV(rows: CSVRow[]): string {
+  const header = ["code", "name", "theme", "brief", "yahooSymbol"];
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    // 아주 단순 CSV (필드에 쉼표가 거의 없다고 가정; 필요시 더 견고한 CSV 인코딩 적용)
+    lines.push(
+      [r.code, r.name ?? "", r.theme ?? "-", r.brief ?? "-", r.yahooSymbol].map(v =>
+        /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+      ).join(",")
+    );
+  }
+  return lines.join("\n") + "\n";
+}
+
+async function main() {
+  console.log(`[info] Start fetch JP stocks from Twelve Data /stocks, LIMIT=${LIMIT}`);
+  let all: TDStock[] = [];
+  for (let p = 1; p <= MAX_PAGES; p++) {
+    const arr = await fetchPage(p);
+    console.log(`[info] page ${p}: ${arr.length} items`);
+    if (arr.length === 0) break;
+    all = all.concat(arr);
+    await sleep(PAGE_PAUSE_MS);
+    if (all.length > LIMIT * 3) {
+      // 비정상 폭주 방지
+      break;
     }
   }
-  return out;
-}
+  console.log(`[info] raw fetched: ${all.length}`);
 
-// -------- 메인 --------
-async function main() {
-  console.log(`▶ JPX 유니버스 생성 시작 (limit=${LIMIT}, include=${INCLUDE.join(",")})`);
+  // 1) 국가/통화 정제
+  const jpy = all.filter(x =>
+    (x.country?.toLowerCase() === "japan") &&
+    (!x.currency || x.currency.toUpperCase() === "JPY")
+  );
 
-  const items = await fetchAllTDStocks();
-  console.log(`• Twelve Data 반환 ${items.length}건 (중복제거 후)`);
+  // 2) 타입 필터
+  const typed = jpy.filter(x => !x.type || INCLUDE_TYPES.has(x.type));
 
-  const rows: UniverseRow[] = [];
-  const taken = new Set<string>(); // code 중복 방지
+  console.log(`[info] after filter country=Japan,currency=JPY,type in ${[...INCLUDE_TYPES].join("/")}: ${typed.length}`);
 
-  for (const it of items) {
-    const symbol = String(it.symbol ?? "");
-    if (!isFourDigitCode(symbol)) continue; // 4자리 숫자코드만 포함(필요시 완화 가능)
-
-    const group = tdTypeToInclude(it.type);
-    if (!INCLUDE.includes(group)) continue;
-
-    const code = symbol;
-    if (taken.has(code)) continue;
-    taken.add(code);
-
-    rows.push({
-      code,
-      name: it.name ?? code,
-      theme: tdTypeToTheme(it.type),
-      brief: "-", // 원하면 나중에 수동/별도 스크립트로 채우기
-      yahooSymbol: `${code}.T`,
-    });
-
-    if (rows.length >= LIMIT) break;
+  // 3) 코드/야후심볼 정규화 + dedupe (code 기준)
+  const map = new Map<string, CSVRow>();
+  for (const s of typed) {
+    const { code, yahooSymbol } = normalizeSymbol(s.symbol);
+    if (!/^\d{3,5}$/.test(code)) continue; // 일본 코드는 보통 숫자 4자리 (ETF/REIT 등 3~5자리도 존재)
+    if (!map.has(code)) {
+      map.set(code, {
+        code,
+        name: s.name ?? code,
+        theme: "-",         // 필요시 나중에 수동 보강
+        brief: "-",
+        yahooSymbol,
+      });
+    }
   }
 
-  // 소팅: 숫자 코드 오름차순
-  rows.sort((a, b) => Number(a.code) - Number(b.code));
+  // 4) 정렬 및 LIMIT 적용
+  const rows = [...map.values()].sort((a, b) => Number(a.code) - Number(b.code)).slice(0, LIMIT);
 
-  // CSV 작성
-  const header = "code,name,theme,brief,yahooSymbol\n";
-  const csv = header + rows.map(r =>
-    [
-      r.code,
-      csvEscape(r.name),
-      csvEscape(r.theme),
-      csvEscape(r.brief),
-      r.yahooSymbol,
-    ].join(",")
-  ).join("\n") + "\n";
+  console.log(`[info] final rows: ${rows.length}`);
 
-  const outPath = path.resolve(process.cwd(), OUT);
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, csv, "utf8");
-
-  console.log(`✅ 생성 완료: ${outPath}  (${rows.length} 종목)`);
-  console.log("   이제 커밋/배포하면 /jpx_universe.csv가 API에서 자동 사용됩니다.");
-}
-
-function csvEscape(s: string) {
-  // 단순 이스케이프: 쉼표/따옴표/개행 포함 시 감싸기
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
+  // 5) CSV 저장
+  const csv = toCSV(rows);
+  await writeFile("public/jpx_universe.csv", csv, "utf8");
+  console.log(`[done] wrote public/jpx_universe.csv (${rows.length} rows)`);
 }
 
 main().catch((e) => {
-  console.error("❌ 실패:", e);
+  console.error("[fatal] fetch_jpx_full failed:", e);
   process.exit(1);
 });
