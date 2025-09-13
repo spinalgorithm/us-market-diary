@@ -1,18 +1,13 @@
-name: Fetch JPX Universe CSV
+name: Fetch JPX Universe CSV (commit)
 
 on:
-  workflow_dispatch:
-    inputs:
-      limit:
-        description: "Max rows to keep"
-        default: "5000"
-        required: false
+  workflow_dispatch: {}
 
 jobs:
-  fetch:
+  fetch-and-commit:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # 커밋/푸시 권한
 
     steps:
       - name: Checkout
@@ -21,60 +16,32 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 20
 
-      - name: Ensure public dir
-        run: mkdir -p public
+      - name: Show versions
+        run: |
+          echo "PWD=$(pwd)"
+          node -v
+          npm -v
 
-      - name: Run fetch script
+      - name: Fetch JPX from TwelveData
         env:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-        shell: bash
         run: |
-          set +e
-          echo "=== FETCH RUN START === $(date -u)" | tee fetch.log
-          echo "PWD=$(pwd)" | tee -a fetch.log
-          node -v | tee -a fetch.log
-          npm -v  | tee -a fetch.log
+          npm run fetch:jpx || true
+          echo "== AFTER WRITE =="
+          ls -al public || true
+          echo "== ROW COUNT =="
+          wc -l public/jpx_universe.csv || true
 
-          # ts-node로 스크립트 실행 (tsconfig.scripts.json 사용)
-          npm exec -y ts-node@10.9.2 -- \
-            --project tsconfig.scripts.json \
-            --transpile-only \
-            --esm scripts/fetch_jpx_full.ts \
-            --limit="${{ github.event.inputs.limit || '5000' }}" \
-            2>&1 | tee -a fetch.log
-          status=${PIPESTATUS[0]}
-          echo "script_status=$status" | tee -a fetch.log
-
-          echo "== AFTER WRITE ==" | tee -a fetch.log
-          ls -la public | tee -a fetch.log
-          echo "== ROW COUNT ==" | tee -a fetch.log
-          if [ -f public/jpx_universe.csv ]; then
-            wc -l public/jpx_universe.csv | tee -a fetch.log
-          else
-            echo "NO CSV WRITTEN" | tee -a fetch.log
-          fi
-
-          # 스텝은 항상 성공으로 처리(리포 상태 보존 목적)
-          exit 0
-
-      - name: Commit if CSV looks ok
-        shell: bash
+      - name: Commit & Push if changed
         run: |
-          if [ -f public/jpx_universe.csv ] && [ $(wc -l < public/jpx_universe.csv) -ge 200 ]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain public/jpx_universe.csv)" ]; then
             git add public/jpx_universe.csv
             git commit -m "chore: update JPX universe CSV"
             git push
-            echo "Committed updated CSV."
           else
-            echo "Skip commit: file missing or too small (<200 lines)."
+            echo "No changes to commit."
           fi
-
-      - name: Upload fetch log
-        uses: actions/upload-artifact@v4
-        with:
-          name: fetch-log
-          path: fetch.log
