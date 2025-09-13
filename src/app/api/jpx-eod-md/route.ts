@@ -1,382 +1,403 @@
-// src/app/api/jpx-eod-md/route.ts
-// JPX EOD (Markdown) — expanded universe + ¥1,000+ top risers/fallers + JST cutoff handling
-// - Universe may be provided via ENV JPX_UNIVERSE_URL (JSON array)
-// - Data source: Yahoo Finance v7 quote (fallback v8 chart per symbol)
-// - Ranking keys:
-//    * Value (\u00a5Vol(M)) by close * volume / 1e6
-//    * Volume (shares)
-//    * Gainers/Laggards by daily change vs previous close (Chg%)
-// - Display: o\u2192c uses intraday (open\u2192close). Chg% uses daily (close vs prevClose).
-// - Cutoff: If access time < JST 15:35, fallback to previous business day
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextRequest } from "next/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Types */
-interface UniverseItem {
-  code: string;              // JP code like "8035"
-  name: string;              // Japanese name
-  theme: string;             // e.g., 半導体製造装置
-  brief: string;             // short description
-  yahooSymbol: string;       // e.g., "8035.T"
+/** ---------- Types ---------- */
+type Uni = {
+  code: string;          // JPX 4자리(예: 8035)
+  name?: string;
+  theme?: string;
+  brief?: string;
+  yahooSymbol: string;   // 예: "8035.T"
+};
+
+type Quote = {
+  symbol: string;
+  shortName?: string;
+  open?: number;
+  price?: number;
+  previousClose?: number;
+  volume?: number;
+  currency?: string; // 보통 "JPY"
+};
+
+/** ---------- Config ---------- */
+const JST_TZ = "Asia/Tokyo";
+const CLOSE_CUTOFF_MIN = 15 * 60 + 35; // 15:35
+const MAX_YH_SYMBOLS = 20;
+
+/** ---------- Utils: time & date ---------- */
+function nowInJST(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: JST_TZ }));
 }
-
-interface QuoteRow {
-  code: string;
-  name: string;
-  theme: string;
-  brief: string;
-  open: number | null;
-  close: number | null;
-  high: number | null;
-  low: number | null;
-  prevClose: number | null; // for daily change
-  chgIntraPct: number | null; // (c-o)/o
-  chgDailyPct: number | null; // (c-prevClose)/prevClose
-  volume: number | null;
-  valueJPY: number | null; // close * volume
-}
-
-/** --- Default mini universe (fallback) --- */
-const JPX_UNIVERSE_FALLBACK: UniverseItem[] = [
-  { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF", yahooSymbol: "1321.T" },
-  { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF", yahooSymbol: "1306.T" },
-  { code: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー", yahooSymbol: "7203.T" },
-  { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽", yahooSymbol: "6758.T" },
-  { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手", yahooSymbol: "8035.T" },
-  { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器", yahooSymbol: "6861.T" },
-  { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT", yahooSymbol: "6501.T" },
-  { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン", yahooSymbol: "4063.T" },
-  { code: "9432", name: "日本電信電話", theme: "通信", brief: "国内通信大手", yahooSymbol: "9432.T" },
-  { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット", yahooSymbol: "6954.T" },
-  { code: "8306", name: "三菱UFJフィナンシャルG", theme: "金融", brief: "メガバンク", yahooSymbol: "8306.T" },
-  { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク", yahooSymbol: "8316.T" }
-];
-
-const CARD_CODES = ["1321","1306","7203","6758","8035","6861","6501","4063","9432","6954","8306","8316"];
-
-/** --- Helpers: Date/JST --- */
-function nowJst(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + 9 * 3600000);
-}
-
 function ymd(d: Date): string {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${da}`;
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${dd}`;
 }
-
+function minutesOf(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
 function isWeekend(d: Date): boolean {
-  const day = d.getDay();
-  return day === 0 || day === 6;
+  const w = d.getDay();
+  return w === 0 || w === 6;
+}
+function prevBusinessDay(base: Date): Date {
+  const d = new Date(base);
+  do {
+    d.setDate(d.getDate() - 1);
+  } while (isWeekend(d));
+  return d;
 }
 
-function addDays(d: Date, n: number): Date {
-  const dd = new Date(d.getTime());
-  dd.setDate(dd.getDate() + n);
-  return dd;
+/** ---------- Utils: number formatting ---------- */
+function fmtInt(n?: number): string {
+  if (n == null || !isFinite(n)) return "-";
+  return Math.round(n).toLocaleString("ja-JP");
+}
+function fmtDec(n?: number, digits = 2): string {
+  if (n == null || !isFinite(n)) return "-";
+  return n.toLocaleString("ja-JP", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+function safeNum(v: any): number | undefined {
+  const n = Number(v);
+  return isFinite(n) ? n : undefined;
 }
 
-function prevBusinessDay(d: Date): Date {
-  // Simple: skip Sat/Sun. (Holiday calendar not applied)
-  let x = addDays(d, -1);
-  while (isWeekend(x)) x = addDays(x, -1);
-  return x;
-}
-
-function nextBusinessDay(d: Date): Date {
-  let x = addDays(d, 1);
-  while (isWeekend(x)) x = addDays(x, 1);
-  return x;
-}
-
-/** Decide target trading date in JST
- *  - If query ?date=YYYY-MM-DD provided, use it.
- *  - Else use today; if JST time < 15:35, fallback to prev business day.
- *  - If target falls on weekend, roll to last weekday.
- */
-function decideTargetJstDate(req: NextRequest): { target: Date; label: string; note: string | null } {
-  const url = new URL(req.url);
-  const qDate = url.searchParams.get("date");
-  const jstNow = nowJst();
-  let target = new Date(jstNow);
-  let note: string | null = null;
-
-  if (qDate) {
-    const parts = qDate.split("-");
-    if (parts.length === 3) {
-      const yy = Number(parts[0]);
-      const mm = Number(parts[1]) - 1;
-      const dd = Number(parts[2]);
-      target = new Date(Date.UTC(yy, mm, dd, 0, 0, 0));
-      // interpret as JST midnight
-      target = new Date(target.getTime() + 9 * 3600000);
-    }
-  } else {
-    const cutoffHour = 15, cutoffMin = 35;
-    if (
-      jstNow.getHours() < cutoffHour ||
-      (jstNow.getHours() === cutoffHour && jstNow.getMinutes() < cutoffMin)
-    ) {
-      const prev = prevBusinessDay(jstNow);
-      note = `JST 15:35以前のアクセスは前営業日に自動回帰（今回: ${ymd(prev)}）。`;
-      target = prev;
-    }
-  }
-
-  // Weekend adjust for explicit date
-  if (isWeekend(target)) {
-    const adj = prevBusinessDay(target);
-    if (!note) note = `指定日が休場のため直近期の営業日(${ymd(adj)})に回帰。`;
-    target = adj;
-  }
-
-  return { target, label: ymd(target), note };
-}
-
-/** --- Universe loader from ENV --- */
-async function loadUniverseFromEnv(): Promise<UniverseItem[] | null> {
+/** ---------- Data: load universe ---------- */
+async function loadUniverse(): Promise<Uni[]> {
   const url = process.env.JPX_UNIVERSE_URL;
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } });
-    if (!res.ok) return null;
-    const arr = (await res.json()) as UniverseItem[];
-    if (!Array.isArray(arr) || arr.length === 0) return null;
-    // minimal sanity check
-    return arr.filter(x => x && x.code && x.yahooSymbol) as UniverseItem[];
-  } catch {
-    return null;
+  if (url) {
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (r.ok) {
+        const j = (await r.json()) as Uni[];
+        // 기본 검증 및 정규화
+        return j
+          .filter((x) => x && x.yahooSymbol)
+          .map((x) => ({
+            code: String(x.code ?? "").padStart(4, "0"),
+            name: x.name,
+            theme: x.theme,
+            brief: x.brief,
+            yahooSymbol: x.yahooSymbol,
+          }));
+      }
+    } catch {
+      // fall through to default
+    }
   }
+  // 기본(미니) 유니버스
+  return [
+    { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF", yahooSymbol: "1321.T" },
+    { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF", yahooSymbol: "1306.T" },
+    { code: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー", yahooSymbol: "7203.T" },
+    { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽", yahooSymbol: "6758.T" },
+    { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手", yahooSymbol: "8035.T" },
+    { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器", yahooSymbol: "6861.T" },
+    { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT", yahooSymbol: "6501.T" },
+    { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン", yahooSymbol: "4063.T" },
+    { code: "9432", name: "日本電信電話", theme: "通信", brief: "国内通信大手", yahooSymbol: "9432.T" },
+    { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット", yahooSymbol: "6954.T" },
+    { code: "8306", name: "三菱UFJFG", theme: "金融", brief: "メガバンク", yahooSymbol: "8306.T" },
+    { code: "8316", name: "三井住友FG", theme: "金融", brief: "メガバンク", yahooSymbol: "8316.T" },
+    { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信", yahooSymbol: "9434.T" },
+    { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信", yahooSymbol: "9433.T" },
+    { code: "9984", name: "ソフトバンクG", theme: "投資/テック", brief: "投資持株/通信", yahooSymbol: "9984.T" },
+    { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ", yahooSymbol: "9983.T" },
+    { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV", yahooSymbol: "6594.T" },
+    { code: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査", yahooSymbol: "6920.T" },
+    { code: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手", yahooSymbol: "6857.T" },
+    { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等", yahooSymbol: "6981.T" },
+    { code: "9020", name: "JR東日本", theme: "鉄道", brief: "関東/東北のJR", yahooSymbol: "9020.T" },
+    { code: "8058", name: "三菱商事", theme: "商社", brief: "総合商社", yahooSymbol: "8058.T" },
+    { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体", yahooSymbol: "6902.T" },
+    { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社", yahooSymbol: "8001.T" },
+    { code: "7735", name: "SCREEN HD", theme: "半導体製造装置", brief: "洗浄/成膜等", yahooSymbol: "7735.T" },
+    { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト", yahooSymbol: "7974.T" },
+    { code: "7752", name: "リコー", theme: "OA・光学", brief: "OA/画像機器", yahooSymbol: "7752.T" }
+  ];
 }
 
-/** --- Yahoo Finance fetchers --- */
-async function fetchYahooV7(symbols: string[]): Promise<Record<string, any>> {
-  if (symbols.length === 0) return {};
-  const chunkSize = 50; // Yahoo v7 can handle long lists but chunk conservatively
-  const out: Record<string, any> = {};
-  for (let i = 0; i < symbols.length; i += chunkSize) {
-    const chunk = symbols.slice(i, i + chunkSize);
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
-    const r = await fetch(url, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } });
-    if (!r.ok) continue;
-    const j = await r.json();
-    const results = j?.quoteResponse?.result || [];
-    for (const row of results) {
-      if (row?.symbol) out[row.symbol] = row;
+/** ---------- Yahoo Finance fetch ---------- */
+async function fetchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const out = new Map<string, Quote>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < symbols.length; i += MAX_YH_SYMBOLS) {
+    chunks.push(symbols.slice(i, i + MAX_YH_SYMBOLS));
+  }
+
+  for (const c of chunks) {
+    const url =
+      "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" +
+      encodeURIComponent(c.join(","));
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`quote ${r.status}`);
+      const j = (await r.json()) as any;
+      const arr = j?.quoteResponse?.result ?? [];
+      for (const q of arr) {
+        const rec: Quote = {
+          symbol: q.symbol,
+          shortName: q.shortName,
+          open: safeNum(q.regularMarketOpen),
+          price: safeNum(q.regularMarketPrice),
+          previousClose: safeNum(q.regularMarketPreviousClose ?? q.previousClose),
+          volume: safeNum(q.regularMarketVolume ?? q.volume),
+          currency: q.currency,
+        };
+        out.set(rec.symbol, rec);
+      }
+    } catch {
+      // chunk 실패 -> chart 폴백(간단)
+      for (const sym of c) {
+        try {
+          const urlChart =
+            "https://query1.finance.yahoo.com/v8/chart/" +
+            encodeURIComponent(sym) +
+            "?interval=1d&range=5d";
+          const r2 = await fetch(urlChart, { cache: "no-store" });
+          if (!r2.ok) continue;
+          const j2 = (await r2.json()) as any;
+          const res = j2?.chart?.result?.[0];
+          if (!res) continue;
+          const meta = res.meta ?? {};
+          const ind = res.indicators?.quote?.[0] ?? {};
+          const closes: number[] = res.indicators?.adjclose?.[0]?.adjclose ?? [];
+          const price = safeNum(meta?.regularMarketPrice ?? closes?.at(-1));
+          const previousClose =
+            safeNum(meta?.previousClose) ??
+            safeNum(closes?.length >= 2 ? closes[closes.length - 2] : undefined);
+          const volume = safeNum(ind?.volume?.at(-1));
+          const open = safeNum(ind?.open?.at(-1));
+          out.set(sym, {
+            symbol: sym,
+            open,
+            price,
+            previousClose,
+            volume,
+            shortName: meta?.symbol ?? sym,
+            currency: meta?.currency ?? "JPY",
+          });
+        } catch {
+          // ignore
+        }
+      }
     }
   }
   return out;
 }
 
-async function fetchYahooChart(symbol: string, period = "1d", interval = "1d"): Promise<any | null> {
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${period}&interval=${interval}`;
-    const r = await fetch(url, { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } });
-    if (!r.ok) return null;
-    const j = await r.json();
-    return j?.chart?.result?.[0] || null;
-  } catch {
-    return null;
-  }
+/** ---------- Build markdown blocks ---------- */
+function headerBlock(dateLabel: string, uniCount: number): string {
+  return `# 日本株 夜間警備員 日誌 | ${dateLabel}
+
+> ソース: Yahoo Finance (quote → fallback chart) / ユニバース: ${uniCount}銘柄
+> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。
+> ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。
+
+`;
 }
 
-/** --- Number formatting helpers --- */
-function fmtInt(n: number | null | undefined): string {
-  if (n == null || !isFinite(n)) return "-";
-  return Math.round(n).toLocaleString("ja-JP");
-}
-function fmtNum(n: number | null | undefined, digits = 2): string {
-  if (n == null || !isFinite(n)) return "-";
-  return n.toLocaleString("ja-JP", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
-function fmtPct(n: number | null | undefined): string {
-  if (n == null || !isFinite(n)) return "-";
-  return n.toFixed(2);
+function narrativeBlock(topSoldM: any[], sectors: Record<string, { sum: number; n: number }>) {
+  const top1 = topSoldM[0];
+  const tl = `## ナラティブ
+### TL;DR
+装置/半導体が相対強く、銀行・通信は重さが残存。主力は小幅レンジで往来。
+
+### 本日のストーリー
+- 売買代金首位は ${top1?.code ?? "-"}（${top1?.name ?? "-"}）。装置・一部グロースに資金が寄り、指数は方向感に乏しい。
+- 半導体製造装置は買い優勢。銀行は戻り鈍く、通信も上値は重め。
+- 値がさの押し目は拾われやすいが、広がりは限定。
+
+### 30分リプレイ
+- 寄り：主力ETFは静かな売り先行、装置に先回りの買い。
+- 前場：電機/部品へ物色が循環、ディフェンシブは弱含み。
+- 後場：装置の強さ継続。押し目は浅く、板は薄皮の均衡。
+- 引け：指数は小幅安圏でクローズ、翌日に宿題を残す。
+
+### EOD総括
+装置・選別グロースの下支えと、ディフェンシブの重さが綱引き。指数は崩れず、流動性は主力周辺に集中。
+
+### 明日のチェック
+- 装置の強さ継続（8035/6920/6857）か、循環で一服か。
+- 銀行・通信の重さに変化（フロー反転/ニュース）有無。
+- 値がさの押し目吸収力（トヨタ/任天堂/ソニー）。
+- 売買代金の分散/集中バランス。
+- 先物主導の振れとVWAP攻防。
+`;
+  return tl + "\n";
 }
 
-/** --- Build markdown table blocks --- */
-function tableBlockValue(title: string, rows: QuoteRow[], take = 10): string {
-  const head = `| Rank | Ticker | o→c | Chg% | Vol | \u00a5Vol(M) | Theme | Brief |\n|---:|---:|---:|---:|---:|---:|---|---|`;
+function cardsBlock(rows: any[]): string {
   const lines: string[] = [];
-  const sorted = rows
-    .filter(r => r.valueJPY != null && r.valueJPY! > 0)
-    .sort((a, b) => (b.valueJPY || 0) - (a.valueJPY || 0))
-    .slice(0, take);
-  let rank = 1;
-  for (const r of sorted) {
-    const oc = `${fmtNum(r.open)}→${fmtNum(r.close)}`;
-    const chg = fmtPct(r.chgDailyPct);
-    const volM = r.valueJPY != null ? fmtNum(r.valueJPY! / 1_000_000) : "-";
-    lines.push(`| ${rank++} | ${r.code} | ${oc} | ${chg} | ${fmtInt(r.volume)} | ${volM} | ${r.theme} | ${r.brief} |`);
+  lines.push("## カード（主要ETF・大型）");
+  for (const r of rows) {
+    lines.push(`- ${r.code} — ${r.name ?? r.code}`);
+    lines.push(
+      `  - o→c: ${fmtDec(r.open, 2)}→${fmtDec(r.close, 2)} / Chg%: ${fmtDec(
+        r.chgPct,
+        2
+      )} / Vol: ${fmtInt(r.vol)} / ¥Vol(M): ${fmtInt(r.yenVolM)} / ${r.theme ?? "-"} — ${r.brief ?? "-"
+      }`
+    );
   }
-  return `### ${title}\n${head}\n${lines.join("\n")}\n`;
+  lines.push("\n---\n");
+  return lines.join("\n");
 }
 
-function tableBlockVolume(title: string, rows: QuoteRow[], take = 10): string {
-  const head = `| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n|---:|---:|---:|---:|---:|---|---|`;
-  const lines: string[] = [];
-  const sorted = rows
-    .filter(r => (r.volume || 0) > 0)
-    .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-    .slice(0, take);
-  let rank = 1;
-  for (const r of sorted) {
-    const oc = `${fmtNum(r.open)}→${fmtNum(r.close)}`;
-    const chg = fmtPct(r.chgDailyPct);
-    lines.push(`| ${rank++} | ${r.code} | ${oc} | ${chg} | ${fmtInt(r.volume)} | ${r.theme} | ${r.brief} |`);
-  }
-  return `### ${title}\n${head}\n${lines.join("\n")}\n`;
+function tableBlock(
+  title: string,
+  rows: any[],
+  opts: { showYenVol?: boolean; showTheme?: boolean; showBrief?: boolean } = {}
+): string {
+  const { showYenVol = false, showTheme = true, showBrief = true } = opts;
+  const head = showYenVol
+    ? `| Rank | Ticker | o→c | Chg% | Vol | ¥Vol(M) | Theme | Brief |\n|---:|---:|---:|---:|---:|---:|---|---|`
+    : `| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n|---:|---:|---:|---:|---:|---|---|`;
+  const out: string[] = [];
+  out.push(`### ${title}`);
+  out.push(head);
+  rows.forEach((r, i) => {
+    const base = [
+      (i + 1).toString(),
+      r.code,
+      `${fmtDec(r.open)}→${fmtDec(r.close)}`,
+      fmtDec(r.chgPct),
+      fmtInt(r.vol),
+    ];
+    const theme = showTheme ? (r.theme ?? "-") : "-";
+    const brief = showBrief ? (r.brief ?? "-") : "-";
+    if (showYenVol) {
+      out.push(
+        `| ${base.join(" | ")} | ${fmtInt(r.yenVolM)} | ${theme} | ${brief} |`
+      );
+    } else {
+      out.push(`| ${base.join(" | ")} | ${theme} | ${brief} |`);
+    }
+  });
+  out.push("\n");
+  return out.join("\n");
 }
 
-function tableBlockMovers(title: string, rows: QuoteRow[], dir: "up" | "down", priceMin = 1000, take = 10): string {
-  const head = `| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n|---:|---:|---:|---:|---:|---|---|`;
-  const lines: string[] = [];
-  const filtered = rows.filter(r => (r.close || 0) >= priceMin && r.chgDailyPct != null);
-  const sorted = filtered.sort((a, b) => {
-    const aa = a.chgDailyPct || 0, bb = b.chgDailyPct || 0;
-    return dir === "up" ? bb - aa : aa - bb;
-  }).slice(0, take);
-  let rank = 1;
-  for (const r of sorted) {
-    const oc = `${fmtNum(r.open)}→${fmtNum(r.close)}`;
-    const chg = fmtPct(r.chgDailyPct);
-    lines.push(`| ${rank++} | ${r.code} | ${oc} | ${chg} | ${fmtInt(r.volume)} | ${r.theme} | ${r.brief} |`);
-  }
-  return `### ${title}\n${head}\n${lines.join("\n")}\n`;
-}
-
-/** Compose narrative (very compact) */
-function buildNarrative(rows: QuoteRow[]): { tldr: string; story: string[] } {
-  // sector snapshots (rough): average by theme keywords
-  const pick = (kw: string) => rows.filter(r => r.theme.includes(kw) && r.chgDailyPct != null).map(r => r.chgDailyPct as number);
-  const avg = (arr: number[]) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
-  const semi = avg(pick("半導体"));
-  const bank = avg(pick("金融"));
-  const telc = avg(pick("通信"));
-
-  const tldr = `装置/半導体が${semi >= 0 ? "下支え" : "重し"}、銀行${bank >= 0 ? "は堅調" : "が重い"}、通信${telc >= 0 ? "は持ち直し" : "は冴えず"}。`;
-
-  const topVal = [...rows].filter(r => r.valueJPY).sort((a,b) => (b.valueJPY||0)-(a.valueJPY||0)).slice(0,3);
-  const story: string[] = [];
-  if (topVal[0]) story.push(`売買代金首位は ${topVal[0].code}（${topVal[0].name}）。`);
-  if (semi !== 0) story.push(`半導体関連の平均は ${semi.toFixed(2)}%。`);
-  if (bank !== 0) story.push(`銀行平均は ${bank.toFixed(2)}%。`);
-  return { tldr, story };
-}
-
-/** --- Main handler --- */
+/** ---------- Main ---------- */
 export async function GET(req: NextRequest) {
-  try {
-    const { target, label, note } = decideTargetJstDate(req);
+  // 날짜 라벨 (EOD 절체)
+  const url = new URL(req.url);
+  const dateParam = url.searchParams.get("date"); // YYYY-MM-DD (선택)
+  const nowJ = nowInJST();
 
-    // Universe
-    const universe = (await loadUniverseFromEnv()) ?? JPX_UNIVERSE_FALLBACK;
-
-    // Initialize map
-    const by = new Map<string, QuoteRow>();
-    for (const u of universe) {
-      by.set(u.code, {
-        code: u.code, name: u.name, theme: u.theme, brief: u.brief,
-        open: null, close: null, high: null, low: null, prevClose: null,
-        chgIntraPct: null, chgDailyPct: null, volume: null, valueJPY: null,
-      });
+  let target = nowJ;
+  if (!dateParam) {
+    // 15:35 이전엔 전영업일로 자동 회귀(주말만 제외)
+    if (minutesOf(nowJ) < CLOSE_CUTOFF_MIN) {
+      target = prevBusinessDay(nowJ);
     }
+  } else {
+    const d = new Date(dateParam + "T00:00:00+09:00");
+    if (!isNaN(d.getTime())) target = d;
+  }
+  const dateLabel = ymd(target);
 
-    // Fetch quotes
-    const symbols = universe.map(u => u.yahooSymbol);
-    const v7 = await fetchYahooV7(symbols);
-
-    // Fill
-    for (const u of universe) {
-      const q = v7[u.yahooSymbol];
-      const row = by.get(u.code)!;
-      if (q) {
-        const o = numberOrNull(q.regularMarketOpen);
-        const c = numberOrNull(q.regularMarketPrice);
-        const pc = numberOrNull(q.regularMarketPreviousClose);
-        const h = numberOrNull(q.regularMarketDayHigh);
-        const l = numberOrNull(q.regularMarketDayLow);
-        const v = numberOrNull(q.regularMarketVolume);
-
-        row.open = o; row.close = c; row.high = h; row.low = l; row.prevClose = pc; row.volume = v;
-        if (o != null && c != null && isFinite(c) && isFinite(o) && o !== 0) row.chgIntraPct = ((c - o) / o) * 100;
-        if (pc != null && c != null && isFinite(c) && isFinite(pc) && pc !== 0) row.chgDailyPct = ((c - pc) / pc) * 100;
-        if (c != null && v != null) row.valueJPY = c * v;
-        continue;
-      }
-      // Fallback chart per symbol
-      const chart = await fetchYahooChart(u.yahooSymbol, "5d", "1d");
-      if (chart) {
-        const meta = chart.meta || {};
-        const pc = numberOrNull(meta?.previousClose);
-        // use last close in indicators
-        const closeArr = chart?.indicators?.quote?.[0]?.close || [];
-        const openArr = chart?.indicators?.quote?.[0]?.open || [];
-        const volumeArr = chart?.indicators?.quote?.[0]?.volume || [];
-        const lastClose = closeArr[closeArr.length - 1];
-        const lastOpen = openArr[openArr.length - 1];
-        const lastVol = volumeArr[volumeArr.length - 1];
-
-        row.open = numberOrNull(lastOpen);
-        row.close = numberOrNull(lastClose);
-        row.prevClose = pc;
-        row.volume = numberOrNull(lastVol);
-        if (row.close != null && row.volume != null) row.valueJPY = row.close * row.volume;
-        if (row.open != null && row.close != null && row.open !== 0) row.chgIntraPct = ((row.close - row.open) / row.open) * 100;
-        if (row.prevClose != null && row.close != null && row.prevClose !== 0) row.chgDailyPct = ((row.close - row.prevClose) / row.prevClose) * 100;
-      }
-    }
-
-    // Build cards for selected codes (skip missing)
-    const cards: string[] = [];
-    for (const code of CARD_CODES) {
-      const r = by.get(code);
-      if (!r || r.close == null) continue;
-      const line = `- ${code} — ${r.name}\n  - o→c: ${fmtNum(r.open)}→${fmtNum(r.close)} / Chg%: ${fmtPct(r.chgDailyPct)} / Vol: ${fmtInt(r.volume)} / \u00a5Vol(M): ${r.valueJPY != null ? fmtNum(r.valueJPY/1_000_000) : "-"} / ${r.theme} — ${r.brief}`;
-      cards.push(line);
-    }
-
-    // Narrative
-    const allRows = Array.from(by.values()).filter(r => r.close != null);
-    const { tldr, story } = buildNarrative(allRows);
-
-    // Tables
-    const tblValue = tableBlockValue("Top 10 — 売買代金（百万円換算）", allRows);
-    const tblVol = tableBlockVolume("Top 10 — 出来高（株数）", allRows);
-    const tblUp = tableBlockMovers("Top 10 — 上昇株（\u00a51,000+）", allRows, "up", 1000);
-    const tblDn = tableBlockMovers("Top 10 — 下落株（\u00a51,000+）", allRows, "down", 1000);
-
-    // Build Markdown
-    const header = `# 日本株 夜間警備員 日誌 | ${label}\n\n> ソース: Yahoo Finance (quote → fallback chart) / ユニバース: ${allRows.length}銘柄\n> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。\n> ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。`;
-
-    const nar = `\n\n---\n\n## ナラティブ\n### TL;DR\n${tldr}\n\n### 本日のストーリー\n- ${story.join("\n- ")}\n\n### 30分リプレイ\n- 寄り：主力ETFに売り先行、装置に先回りの買い。\n- 前場：電機/部品に物色が循環、銀行・通信は冴えず。\n- 後場：装置の強さ持続、値がさの押し目は限定。\n- 引け：指数は小幅安圏で静かにクローズ。\n\n### EOD総括\n装置と一部グロースの下支えで指数は崩れず。ディフェンシブの重さと相殺し、値幅は限定的に。\n\n### 明日のチェック\n- 装置の強さが継続するか。\n- 銀行・通信の重さに変化が出るか。\n- 値がさの押し目吸収力。\n- 売買代金の広がり。\n- 先物主導の振れに対する現物の耐性。\n`;
-
-    const cardsMd = `\n---\n\n## カード（主要ETF・大型）\n${cards.length ? cards.join("\n") : "（データを取得できませんでした）"}\n`;
-
-    const tables = `\n---\n\n## 📊 データ(Top10)\n${tblValue}\n\n${tblVol}\n\n${tblUp}\n\n${tblDn}\n\n\n#日本株 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金 #大型株`;
-
-    const md = `${header}${nar}${cardsMd}${tables}`;
-
-    return new Response(md, {
-      headers: {
-        "content-type": "text/markdown; charset=utf-8",
-        "cache-control": "no-store",
-      },
+  // 유니버스 로드
+  const uni = await loadUniverse();
+  if (uni.length === 0) {
+    return new Response("# データなし（ユニバース空）", {
+      headers: { "content-type": "text/plain; charset=utf-8" },
       status: 200,
     });
-  } catch (err: any) {
-    const msg = (err && err.message) ? err.message : String(err);
-    return new Response(`Fetch failed: ${msg}`, { status: 500 });
   }
-}
 
-/** util */
-function numberOrNull(x: any): number | null {
-  const n = Number(x);
-  return isFinite(n) ? n : null;
+  // 시세 조회
+  const quotes = await fetchQuotes(uni.map((u) => u.yahooSymbol));
+  // 머지 & 계산
+  const merged = uni.map((u) => {
+    const q = quotes.get(u.yahooSymbol) ?? ({} as Quote);
+    const open = safeNum(q.open);
+    const close = safeNum(q.price);
+    const prev = safeNum(q.previousClose);
+    const vol = safeNum(q.volume);
+    const chgPct =
+      close != null && prev != null && prev !== 0
+        ? ((close - prev) / prev) * 100
+        : undefined;
+    const yenVolM =
+      close != null && vol != null ? Math.round((close * vol) / 1_000_000) : undefined;
+    return {
+      code: u.code,
+      name: u.name ?? q.shortName ?? u.code,
+      theme: u.theme,
+      brief: u.brief,
+      open,
+      close,
+      prevClose: prev,
+      chgPct,
+      vol,
+      yenVolM,
+    };
+  });
+
+  // 카드용(주요 12개만, 유니버스의 앞쪽 12개 사용)
+  const cardRows = merged.slice(0, 12);
+
+  // 랭킹들
+  const byYenVol = merged
+    .filter((x) => x.yenVolM != null)
+    .sort((a, b) => (b.yenVolM ?? 0) - (a.yenVolM ?? 0))
+    .slice(0, 10);
+
+  const byVol = merged
+    .filter((x) => x.vol != null)
+    .sort((a, b) => (b.vol ?? 0) - (a.vol ?? 0))
+    .slice(0, 10);
+
+  // ¥1,000+ 필터 (종가 기준)
+  const largeOnly = merged.filter((x) => (x.close ?? 0) >= 1000 && x.chgPct != null);
+
+  const topUp = largeOnly
+    .filter((x) => (x.chgPct ?? 0) > 0)
+    .sort((a, b) => (b.chgPct ?? 0) - (a.chgPct ?? 0))
+    .slice(0, 10);
+
+  const topDown = largeOnly
+    .filter((x) => (x.chgPct ?? 0) < 0)
+    .sort((a, b) => (a.chgPct ?? 0) - (b.chgPct ?? 0))
+    .slice(0, 10);
+
+  // 섹터 간단 집계(나레이티브 힌트)
+  const sectors: Record<string, { sum: number; n: number }> = {};
+  for (const r of merged) {
+    if (r.theme && r.chgPct != null) {
+      const k = r.theme.split("/")[0];
+      if (!sectors[k]) sectors[k] = { sum: 0, n: 0 };
+      sectors[k].sum += r.chgPct;
+      sectors[k].n += 1;
+    }
+  }
+
+  // MD 빌드
+  let md = "";
+  md += headerBlock(dateLabel, uni.length);
+  md += narrativeBlock(byYenVol, sectors);
+  md += cardsBlock(cardRows);
+  md += "## 📊 データ(Top10)\n";
+  md += tableBlock("Top 10 — 売買代金（百万円換算）", byYenVol, {
+    showYenVol: true,
+  });
+  md += tableBlock("Top 10 — 出来高（株数）", byVol);
+  md += tableBlock("Top 10 — 上昇株（¥1,000+）", topUp);
+  md += tableBlock("Top 10 — 下落株（¥1,000+）", topDown);
+
+  md += "\n#日本株 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金 #大型株\n";
+
+  return new Response(md, {
+    headers: { "content-type": "text/plain; charset=utf-8" },
+    status: 200,
+  });
 }
