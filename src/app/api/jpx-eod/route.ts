@@ -8,12 +8,18 @@ import { NextRequest } from "next/server";
  * - JPX_HOLIDAYS_URL: 일본 휴장일(YYYY-MM-DD[]) JSON URL (optional)
  */
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Types
+ * ──────────────────────────────────────────────────────────────────── */
 type UniverseItem = {
-  code: string;
-  name?: string;
-  theme?: string;
-  brief?: string;
-  yahooSymbol?: string;
+  code: string;          // 8035
+  name?: string;         // 東京エレクトロン
+  theme?: string;        // 半導体製造装置
+  brief?: string;        // 製造装置大手
+  yahooSymbol?: string;  // 8035.T
 };
 
 type Quote = {
@@ -30,21 +36,23 @@ type Quote = {
 
 type Row = {
   code: string;
-  ticker: string;
+  ticker: string;        // yahooSymbol
   name: string;
   theme: string;
   brief: string;
   open: number | null;
   close: number | null;
   previousClose: number | null;
-  chgPctPrev: number | null;
-  chgPctIntraday: number | null;
+  chgPctPrev: number | null;      // (close / previousClose - 1) * 100
+  chgPctIntraday: number | null;  // (close / open - 1) * 100
   volume: number | null;
-  yenVolM: number | null;
+  yenVolM: number | null;         // close * volume / 1e6
   currency: string;
 };
 
-// ---------- 시간 유틸 (JST 기준) ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * JST Date Utils
+ * ──────────────────────────────────────────────────────────────────── */
 const JST_OFFSET_MIN = 9 * 60;
 function toJstDate(d = new Date()): Date {
   const utc = d.getTime() + d.getTimezoneOffset() * 60000;
@@ -57,7 +65,7 @@ function formatYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 function isWeekend(d: Date): boolean {
-  const wd = d.getDay();
+  const wd = d.getDay(); // 0 Sun, 6 Sat
   return wd === 0 || wd === 6;
 }
 function addDays(d: Date, n: number): Date {
@@ -73,7 +81,13 @@ function prevBizDay(d: Date, holidays: Set<string>): Date {
   return cur;
 }
 
-// ---------- 계산 유틸 ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Math/Calc
+ * ──────────────────────────────────────────────────────────────────── */
+function num(x: any): number | undefined {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : undefined;
+}
 function chgPctPrev(q: Quote | undefined): number | undefined {
   if (!q) return undefined;
   if (q.close != null && q.previousClose != null && q.previousClose > 0) {
@@ -93,7 +107,9 @@ function yenMillions(q: Quote | undefined): number | undefined {
   return (q.close * q.volume) / 1_000_000;
 }
 
-// ---------- fetch 유틸 ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Safe fetch
+ * ──────────────────────────────────────────────────────────────────── */
 async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
   try {
     const r = await fetch(url, { ...init, cache: "no-store" });
@@ -113,38 +129,82 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
   }
 }
 
-// ---------- CSV 파서 ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Robust CSV Parser (quotes, commas safe)
+ * ──────────────────────────────────────────────────────────────────── */
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"'; i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        out.push(cur); cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
 function csvToUniverse(csv: string): UniverseItem[] {
-  // 기대 헤더: code,name,theme,brief,yahooSymbol
-  const lines = csv.trim().split(/\r?\n/);
+  const lines = csv.replace(/\r\n?/g, "\n").trim().split("\n");
   if (lines.length <= 1) return [];
-  const header = lines[0].split(",").map(s => s.trim());
-  const idx = (k: string) => header.findIndex(h => h.toLowerCase() === k.toLowerCase());
-  const iCode = idx("code");
-  const iName = idx("name");
-  const iTheme = idx("theme");
-  const iBrief = idx("brief");
-  const iY = idx("yahoosymbol");
+  const header = parseCsvLine(lines[0]);
+  const findIdx = (keys: string[]) => {
+    const lower = header.map(h => h.toLowerCase());
+    for (const k of keys) {
+      const idx = lower.indexOf(k.toLowerCase());
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  };
+
+  const iCode  = findIdx(["code"]);
+  const iName  = findIdx(["name"]);
+  const iTheme = findIdx(["theme"]);
+  const iBrief = findIdx(["brief"]);
+  const iYsym  = findIdx(["yahooSymbol", "yahoosymbol"]);
 
   const out: UniverseItem[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const raw = lines[i];
-    if (!raw) continue;
-    const cols = raw.split(",").map(s => s.trim());
-    const code = cols[iCode]?.replace(/"/g, "");
-    if (!code) continue;
-    out.push({
-      code,
-      name: cols[iName]?.replace(/"/g, ""),
-      theme: cols[iTheme]?.replace(/"/g, ""),
-      brief: cols[iBrief]?.replace(/"/g, ""),
-      yahooSymbol: cols[iY]?.replace(/"/g, ""),
-    });
+    const cols = parseCsvLine(lines[i]);
+    const code = cols[iCode] ?? "";
+    if (!/^\d{4,5}$/.test(code)) continue;
+
+    const name = cols[iName] && cols[iName] !== "-" ? cols[iName] : code;
+    const theme = cols[iTheme] && cols[iTheme] !== "-" ? cols[iTheme] : "-";
+    const brief = cols[iBrief] && cols[iBrief] !== "-" ? cols[iBrief] : "-";
+    let yahooSymbol = cols[iYsym];
+
+    if (!yahooSymbol || yahooSymbol === "-") {
+      yahooSymbol = `${code}.T`;
+    }
+
+    out.push({ code, name, theme, brief, yahooSymbol });
   }
   return out;
 }
 
-// ---------- 유니버스 ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Universe loaders
+ * ──────────────────────────────────────────────────────────────────── */
 const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
   { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
@@ -163,24 +223,15 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
   { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
   { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
-  { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
-  { code: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査" },
-  { code: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手" },
-  { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等" },
-  { code: "7752", name: "リコー", theme: "OA/機器", brief: "OA/装置" },
-  { code: "7735", name: "SCREENホールディングス", theme: "半導体製造装置", brief: "洗浄/成膜等" },
-  { code: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池" },
-  { code: "9020", name: "東日本旅客鉄道", theme: "鉄道", brief: "関東/東北のJR" },
-  { code: "8058", name: "三菱商事", theme: "商社", brief: "総合商社" },
-  { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体" },
-  { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社" },
 ];
 
 async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
   const url = process.env.JPX_UNIVERSE_URL ?? fallbackUrl;
+
   if (!url) {
     return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
+
   if (url.endsWith(".csv")) {
     const text = await safeText(url);
     const parsed = text ? csvToUniverse(text) : [];
@@ -189,6 +240,7 @@ async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
     }
     return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
+
   const data = await safeJson<UniverseItem[]>(url);
   if (Array.isArray(data) && data.length > 0) {
     return data.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
@@ -204,76 +256,103 @@ async function loadJpxHolidays(): Promise<Set<string>> {
   return new Set(data);
 }
 
-// ---------- Twelve Data (보완용) ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Yahoo Finance Batch (primary)
+ * ──────────────────────────────────────────────────────────────────── */
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const out = new Map<string, Quote>();
+  if (symbols.length === 0) return out;
+
+  // 야후 v7 quote는 심볼을 , 로 연결해 한 번에 요청 (URL 길이 고려해서 60개씩)
+  const batches = chunk(symbols, 60);
+  for (const b of batches) {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(b.join(","))}`;
+    const j = await safeJson<any>(url);
+    const arr = j?.quoteResponse?.result ?? [];
+    for (const r of arr) {
+      const symbol = String(r?.symbol ?? "");
+      if (!symbol) continue;
+      const open = num(r?.regularMarketOpen ?? r?.open);
+      const close = num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice);
+      const prev = num(r?.regularMarketPreviousClose);
+      const volume = num(r?.regularMarketVolume ?? r?.volume);
+      const currency = r?.currency ?? "JPY";
+      const name = r?.shortName ?? r?.longName ?? symbol;
+
+      out.set(symbol, {
+        symbol,
+        open: open ?? undefined,
+        close: close ?? undefined,
+        previousClose: prev ?? undefined,
+        volume: volume ?? undefined,
+        currency,
+        name,
+      });
+    }
+    // 살짝 텀
+    await delay(120);
+  }
+  return out;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Twelve Data (fallback for missing)
+ * ──────────────────────────────────────────────────────────────────── */
 const TD_ENDPOINT = "https://api.twelvedata.com/quote";
 async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quote | null> {
   const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
   const r = await safeJson<any>(url);
-  if (!r) return null;
-  if (r.status === "error" || r.code || r.message) return null;
+  if (!r || r.status === "error" || r.code || r.message) return null;
+
   const open = num(r.open);
   const close = num(r.close);
   const prev = num(r.previous_close ?? r.previousClose);
   const volume = num(r.volume);
   const currency = r.currency ?? "JPY";
-  const name = r.name;
+  const name = r.name ?? symbol;
+
+  // 필드가 전부 비어 있으면 무시
   if (close == null && prev == null && volume == null) return null;
-  return { symbol, open: open ?? undefined, close: close ?? undefined, previousClose: prev ?? undefined,
-           volume: volume ?? undefined, currency, name };
+
+  return { symbol, open, close, previousClose: prev, volume, currency, name };
 }
 
-// ---------- Yahoo v7 quote (배치 멀티심볼) ----------
-function num(x: any): number | undefined {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : undefined;
-}
+/* ──────────────────────────────────────────────────────────────────────
+ * Batch + Fallback combiner
+ * ──────────────────────────────────────────────────────────────────── */
+async function fetchAllQuotes(symbols: string[], apikey?: string): Promise<Map<string, Quote>> {
+  const primary = await fetchYahooBatchQuotes(symbols);
+  if (!apikey) return primary;
 
-async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
-  const map = new Map<string, Quote>();
-  const chunkSize = 100;                // 한번에 100개
-  const pauseMs = 120;                  // 청크 사이 살짝 대기
-  for (let i = 0; i < symbols.length; i += chunkSize) {
-    const chunk = symbols.slice(i, i + chunkSize);
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
-    const j = await safeJson<any>(url);
-    const res: any[] = j?.quoteResponse?.result ?? [];
-    for (const r of res) {
-      const sym = r.symbol as string;
-      const q: Quote = {
-        symbol: sym,
-        open: num(r.regularMarketOpen),
-        close: num(r.regularMarketPrice),
-        previousClose: num(r.regularMarketPreviousClose),
-        volume: num(r.regularMarketVolume),
-        currency: r.currency ?? "JPY",
-        name: r.shortName ?? r.longName ?? sym,
-      };
-      if (q.close != null || q.previousClose != null || q.volume != null) {
-        map.set(sym, q);
-      }
+  // 보강: 야후에서 비어 있는(없거나 close/vol 전무) 심볼만 TwelveData로 채움
+  const out = new Map(primary);
+  for (const s of symbols) {
+    const q = out.get(s);
+    const missing = !q || (
+      (q.close == null || q.previousClose == null) &&
+      (q.volume == null)
+    );
+    if (missing) {
+      const td = await fetchTwelveDataQuote(s, apikey);
+      if (td) out.set(s, td);
+      await delay(80);
     }
-    await new Promise(res => setTimeout(res, pauseMs));
   }
-  return map;
+  return out;
 }
 
-async function fetchAllQuotesBatch(symbols: string[], apiKey?: string): Promise<Map<string, Quote>> {
-  const batch = await fetchYahooBatchQuotes(symbols);
-  if (!apiKey) return batch;
-  // 야후에서 누락된 소수만 TwelveData로 보완 (과도 방지)
-  const missing = symbols.filter(s => !batch.has(s)).slice(0, 50);
-  for (const s of missing) {
-    const td = await fetchTwelveDataQuote(s, apiKey);
-    if (td) batch.set(s, td);
-    await new Promise(res => setTimeout(res, 80));
-  }
-  return batch;
-}
-
-// ---------- 응답 빌드 ----------
+/* ──────────────────────────────────────────────────────────────────────
+ * Build rows / rankings
+ * ──────────────────────────────────────────────────────────────────── */
 function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
   return univ.map((u) => {
-    const sym = u.yahooSymbol ?? `${u.code}.T`;
+    const sym = (u.yahooSymbol ?? `${u.code}.T`).toUpperCase();
     const q = by.get(sym);
     const row: Row = {
       code: u.code,
@@ -293,6 +372,7 @@ function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
     return row;
   });
 }
+
 function buildRankings(rows: Row[]) {
   const byValue = [...rows]
     .filter(r => r.yenVolM != null)
@@ -320,19 +400,24 @@ function buildRankings(rows: Row[]) {
   return { byValue, byVolume, topGainers, topLosers };
 }
 
-// ---------- 메인 핸들러 ----------
+function delay(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * GET handler
+ * ──────────────────────────────────────────────────────────────────── */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const apikey = process.env.TWELVEDATA_API_KEY || "";
     const holidays = await loadJpxHolidays();
 
-    // full=1 이면 전체, 아니면 start/count 슬라이스
-    const requestAll = searchParams.get("full") === "1";
+    // 페이징 (?start, ?count)
     const start = Math.max(0, Number(searchParams.get("start") ?? "0"));
-    const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "300")), 500);
+    const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "120")), 300);
 
-    // 기준 날짜 보정
+    // 기준 날짜: 15:35 이전이면 전 영업일, 이후면 오늘
     const jstNow = toJstDate();
     let baseDate: Date;
     const dateParam = searchParams.get("date");
@@ -356,24 +441,26 @@ export async function GET(req: NextRequest) {
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
     const urlFromReq = `${origin}/jpx_universe.csv`;
 
-    // 유니버스 로딩
+    // 유니버스 로드 + 슬라이스
     const universeAll = await loadUniverse(urlFromReq);
-    const universe = requestAll ? universeAll : universeAll.slice(start, start + count);
-    const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
+    const universe = universeAll.slice(start, start + count);
+    const symbols = universe.map(u => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
-    // 멀티심볼 배치로 시세 취득 (+TD 보완)
-    const quoteMap = await fetchAllQuotesBatch(symbols, apikey || undefined);
+    // 시세 취득
+    const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
-    // 행/랭킹 구성(현재 범위 내 계산)
+    // 행/랭킹 구성(슬라이스 범위 내)
     const rows = buildRows(universe, quoteMap);
     const rankings = buildRankings(rows);
 
     const body = {
       ok: true,
       date: baseYmd,
-      source: apikey ? "YahooBatch(primary)+TwelveData(missing-fallback)" : "YahooBatch(only)",
+      source: apikey
+        ? "YahooBatch(primary)+TwelveData(missing-fallback)"
+        : "YahooBatch(only)",
       universeCount: universeAll.length,
-      page: requestAll ? { full: true, returned: rows.length } : { start, count, returned: rows.length },
+      page: { start, count, returned: rows.length },
       quotes: rows,
       rankings,
       note: "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
