@@ -1,318 +1,355 @@
 // src/app/api/jpx-eod/route.ts
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-/** ===== Runtime / Cache ===== */
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const runtime = "edge";
+export const preferredRegion = ["hnd1", "icn1", "sin1"]; // Tokyo / Seoul / Singapore
 
-/** ===== 유틸 ===== */
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
+// =========================
+// Types
+// =========================
+type UniverseItem = {
+  code: string;         // "7203" (JPX 4자리 숫자)
+  name: string;         // "トヨタ自動車"
+  theme: string;        // "自動車"
+  brief: string;        // "世界最大級の自動車メーカー"
+  yahooSymbol?: string; // "7203.T" (없으면 code+".T")
+};
 
-const JP_TZ_OFFSET = 9 * 60 * 60 * 1000;
+type Quote = {
+  symbol: string;         // "7203.T"
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  previousClose?: number;
+  volume?: number;
+  currency?: string;      // "JPY"
+  name?: string;
+};
 
-function toJstDate(d: Date) {
-  return new Date(d.getTime() + JP_TZ_OFFSET);
-}
-function fromJstDate(jst: Date) {
-  return new Date(jst.getTime() - JP_TZ_OFFSET);
-}
-function ymd(dateLike: Date) {
-  const d = toJstDate(dateLike);
-  const y = d.getUTCFullYear();
-  const m = (d.getUTCMonth() + 1).toString().padStart(2, "0");
-  const day = d.getUTCDate().toString().padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function isWeekendJst(d: Date) {
-  const wd = toJstDate(d).getUTCDay(); // 0 Sun ... 6 Sat
-  return wd === 0 || wd === 6;
-}
-function previousWeekdayJst(d: Date) {
-  let t = new Date(d);
-  while (isWeekendJst(t)) t = new Date(t.getTime() - 24 * 60 * 60 * 1000);
-  return t;
-}
-function numberfmt(n: number | null | undefined) {
-  if (n == null || Number.isNaN(n)) return null;
-  return Math.round(n * 100) / 100;
+// =========================
+// Helpers
+// =========================
+function safeNum(v: any): number | undefined {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
 }
 
-/** ===== 일본 주요 유니버스 (확장) =====
- *  sym: 야후 심볼(.T), ticker: 숫자 티커 표기, theme/brief: 표와 카드에 사용
- */
-type JPItem = { sym: string; ticker: string; name: string; theme: string; brief: string };
-const JP_LIST: JPItem[] = [
-  { sym: "1321.T", ticker: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
-  { sym: "1306.T", ticker: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
+function jstNow(): Date {
+  // JST = UTC+9
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utc + 9 * 3600 * 1000);
+}
 
-  { sym: "7203.T", ticker: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー" },
-  { sym: "6758.T", ticker: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽" },
-  { sym: "8035.T", ticker: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手" },
-  { sym: "6861.T", ticker: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器" },
-  { sym: "6501.T", ticker: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT" },
-  { sym: "4063.T", ticker: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン" },
-  { sym: "9432.T", ticker: "9432", name: "日本電信電話(NTT)", theme: "通信", brief: "国内通信大手" },
-  { sym: "6954.T", ticker: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット" },
-  { sym: "8306.T", ticker: "8306", name: "三菱UFJフィナンシャルG", theme: "金融", brief: "メガバンク" },
-  { sym: "8316.T", ticker: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク" },
+function isBeforeJst1535(d: Date): boolean {
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  const day = d.getDate();
+  const cutoff = new Date(Date.UTC(y, m, day, 6, 35)); // 15:35 JST == 06:35 UTC
+  // d is JST-based Date, so compare by timestamps
+  const jstTs = d.getTime();
+  const cutoffTs = cutoff.getTime() + 9 * 3600 * 1000; // align to JST epoch
+  return jstTs < cutoffTs;
+}
 
-  // 유니버스 확장 (가독/테마 강화를 위해 30~40개 권장)
-  { sym: "9984.T", ticker: "9984", name: "ソフトバンクグループ", theme: "投資/テック", brief: "投資持株/通信" },
-  { sym: "9983.T", ticker: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ" },
-  { sym: "8031.T", ticker: "8031", name: "三井物産", theme: "商社", brief: "総合商社" },
-  { sym: "8058.T", ticker: "8058", name: "三菱商事", theme: "商社", brief: "総合商社" },
-  { sym: "8001.T", ticker: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社" },
-  { sym: "6594.T", ticker: "6594", name: "日本電産(ニデック)", theme: "電機/モーター", brief: "小型モーター/EV" },
-  { sym: "6920.T", ticker: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査" },
-  { sym: "7735.T", ticker: "7735", name: "SCREEN HD", theme: "半導体製造装置", brief: "洗浄/成膜等" },
-  { sym: "6981.T", ticker: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等" },
-  { sym: "6762.T", ticker: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池" },
-  { sym: "6367.T", ticker: "6367", name: "ダイキン工業", theme: "空調", brief: "空調世界大手" },
-  { sym: "7751.T", ticker: "7751", name: "キヤノン", theme: "精密機器", brief: "映像/事務機" },
-  { sym: "7974.T", ticker: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
-  { sym: "9433.T", ticker: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
-  { sym: "9434.T", ticker: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
-  { sym: "5401.T", ticker: "5401", name: "日本製鉄", theme: "鉄鋼", brief: "高炉大手" },
-  { sym: "6098.T", ticker: "6098", name: "リクルートHD", theme: "人材/プラットフォーム", brief: "Indeed等" },
-  { sym: "9020.T", ticker: "9020", name: "JR東日本", theme: "鉄道", brief: "関東/東北のJR" },
-  { sym: "7752.T", ticker: "7752", name: "ローム", theme: "半導体", brief: "パワー半導体" },
-  { sym: "6857.T", ticker: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手" },
-  { sym: "6902.T", ticker: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体" },
+function toYahooSymbol(code: string): string {
+  return `${code}.T`;
+}
+
+function calcChgPct(q: Quote): number | undefined {
+  if (q.close != null && q.previousClose != null && q.previousClose > 0) {
+    return ((q.close - q.previousClose) / q.previousClose) * 100;
+  }
+  if (q.open != null && q.open > 0 && q.close != null) {
+    // fallback: intraday
+    return ((q.close - q.open) / q.open) * 100;
+  }
+  return undefined;
+}
+
+function yenMillions(q: Quote): number | undefined {
+  if (q.close != null && q.volume != null) {
+    return (q.close * q.volume) / 1_000_000;
+  }
+  return undefined;
+}
+
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// 간단 동시성 제한(외부 라이브러리 없이)
+async function runLimited<T>(items: string[], limit: number, task: (sym: string) => Promise<T>): Promise<T[]> {
+  const results: T[] = [];
+  let idx = 0;
+  const workers: Promise<void>[] = [];
+  for (let c = 0; c < Math.max(1, limit); c++) {
+    workers.push((async () => {
+      while (true) {
+        const i = idx++;
+        if (i >= items.length) break;
+        const s = items[i];
+        try {
+          const out = await task(s);
+          // @ts-ignore
+          results[i] = out;
+        } catch {
+          // ignore
+        }
+        // 과도한 폭주 방지
+        await sleep(120);
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return results;
+}
+
+// =========================
+// Data Sources
+// =========================
+async function fetchFromTwelveData(sym: string): Promise<Quote | undefined> {
+  try {
+    const key = process.env.TWELVEDATA_KEY;
+    if (!key) return undefined;
+    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(key)}`;
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) return undefined;
+    const j = await r.json() as any;
+
+    // TwelveData 에러 포맷 가드
+    if (j && j.status === "error") return undefined;
+
+    // 정상 포맷 매핑
+    const q: Quote = {
+      symbol: sym,
+      open: safeNum(j.open),
+      high: safeNum(j.high),
+      low: safeNum(j.low),
+      close: safeNum(j.close),
+      previousClose: safeNum(j.previous_close),
+      volume: safeNum(j.volume),
+      currency: (typeof j.currency === "string" ? j.currency : "JPY"),
+      name: (typeof j.name === "string" ? j.name : undefined),
+    };
+    // close/pc 모두 없는 경우 무시
+    if (q.close == null && q.previousClose == null) return undefined;
+    return q;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchFromYahooChart(sym: string): Promise<Quote | undefined> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=1d`;
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) return undefined;
+    const j = await r.json() as any;
+    const res = j?.chart?.result?.[0];
+    if (!res) return undefined;
+
+    const meta = res.meta || {};
+    const ind = res.indicators?.quote?.[0] || {};
+    const open = safeNum(ind.open?.[0]);
+    const high = safeNum(ind.high?.[0]);
+    const low = safeNum(ind.low?.[0]);
+    const close = safeNum(ind.close?.[0] ?? meta.regularMarketPrice);
+    const volume = safeNum(ind.volume?.[0]);
+
+    const previousClose = safeNum(meta.chartPreviousClose ?? meta.previousClose);
+
+    const q: Quote = {
+      symbol: sym,
+      open,
+      high,
+      low,
+      close,
+      previousClose,
+      volume,
+      currency: typeof meta.currency === "string" ? meta.currency : "JPY",
+    };
+    if (q.close == null && q.previousClose == null) return undefined;
+    return q;
+  } catch {
+    return undefined;
+  }
+}
+
+// =========================
+// Universe
+// =========================
+const DEFAULT_UNIVERSE: UniverseItem[] = [
+  // ETF
+  { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
+  { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
+  // 반도체/장비
+  { code: "8035", name: "東京エレクトロン", theme: "半導体製造装置", brief: "製造装置大手" },
+  { code: "6857", name: "アドバンテスト", theme: "半導体検査", brief: "テスタ大手" },
+  { code: "6920", name: "レーザーテック", theme: "半導体検査", brief: "EUV検査" },
+  { code: "4063", name: "信越化学工業", theme: "素材/化学", brief: "半導体用シリコン" },
+  { code: "6861", name: "キーエンス", theme: "計測/FA", brief: "センサー/FA機器" },
+  { code: "6954", name: "ファナック", theme: "FA/ロボット", brief: "産業用ロボット" },
+  { code: "7735", name: "SCREEN", theme: "半導体製造装置", brief: "洗浄/成膜等" },
+  // 전기전자/부품
+  { code: "6758", name: "ソニーグループ", theme: "エレクトロニクス", brief: "ゲーム/画像センサー/音楽" },
+  { code: "6981", name: "村田製作所", theme: "電子部品", brief: "コンデンサ等" },
+  { code: "6762", name: "TDK", theme: "電子部品", brief: "受動部品/二次電池" },
+  { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
+  { code: "6902", name: "デンソー", theme: "自動車部品", brief: "車載/半導体" },
+  { code: "7752", name: "リコー", theme: "OA/成膜装置", brief: "OA/装置(簡略)" },
+  // 자동차
+  { code: "7203", name: "トヨタ自動車", theme: "自動車", brief: "世界最大級の自動車メーカー" },
+  // 금융/통신/상사
+  { code: "8306", name: "三菱UFJフィナンシャルG", theme: "金融", brief: "メガバンク" },
+  { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク" },
+  { code: "9432", name: "日本電信電話", theme: "通信", brief: "国内通信大手" },
+  { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
+  { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
+  { code: "9984", name: "ソフトバンクグループ", theme: "投資/テック", brief: "投資持株/通信" },
+  // 유통/게임/철도/상사
+  { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ" },
+  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
+  { code: "9020", name: "JR東日本", theme: "鉄道", brief: "関東/東北のJR" },
+  { code: "8058", name: "三菱商事", theme: "商社", brief: "総合商社" },
+  { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社" },
+  // 종합전기/에너지
+  { code: "6501", name: "日立製作所", theme: "総合電機", brief: "社会インフラ/IT" },
+  { code: "5020", name: "ENEOS", theme: "エネルギー", brief: "石油・エネルギー" }
 ];
 
-/** ===== 야후 응답 타입(필요한 필드만) ===== */
-type QuoteRow = {
-  symbol: string;
-  regularMarketOpen?: number;
-  regularMarketPrice?: number;
-  regularMarketPreviousClose?: number;
-  regularMarketChangePercent?: number;
-  regularMarketVolume?: number;
-  currency?: string;
-  longName?: string;
-  shortName?: string;
-  regularMarketTime?: number; // epoch
-};
-type ChartRow = {
-  chart: {
-    result: Array<{
-      timestamp: number[];
-      indicators: { quote: Array<{ open?: number[]; close?: number[]; volume?: number[] }> };
-    }>;
-    error: any;
-  };
-};
-
-/** ===== Fetch Helpers ===== */
-async function fetchYahooQuote(symbols: string[]): Promise<QuoteRow[]> {
-  if (symbols.length === 0) return [];
-  const url =
-    "https://query1.finance.yahoo.com/v7/finance/quote?region=JP&lang=ja-JP&symbols=" +
-    encodeURIComponent(symbols.join(","));
-  const r = await fetch(url, { headers: { "User-Agent": UA }, cache: "no-store" });
-  if (!r.ok) throw new Error(`Yahoo quote HTTP ${r.status}`);
-  const j = await r.json();
-  return (j?.quoteResponse?.result ?? []) as QuoteRow[];
-}
-
-async function fetchYahooChart(symbol: string): Promise<{ o?: number; c?: number; v?: number }> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5d&interval=1d&region=JP&lang=ja-JP`;
-  const r = await fetch(url, { headers: { "User-Agent": UA }, cache: "no-store" });
-  if (!r.ok) return {};
-  const j = (await r.json()) as ChartRow;
-  const res = j?.chart?.result?.[0];
-  if (!res) return {};
-  const q = res.indicators?.quote?.[0];
-  const ts = res.timestamp || [];
-  const close = q?.close || [];
-  const open = q?.open || [];
-  const volume = q?.volume || [];
-
-  // 마지막 유효 캔들
-  let idx = close.length - 1;
-  while (idx >= 0 && (close[idx] == null || Number.isNaN(close[idx]!))) idx--;
-  if (idx < 0) return {};
-  return { o: open?.[idx], c: close?.[idx], v: volume?.[idx] };
-}
-
-/** 심볼 단일 계산 (Quote 우선, 부족 시 Chart 폴백) */
-async function getOne(symbol: string) {
-  let row: QuoteRow | undefined;
+async function loadUniverse(): Promise<UniverseItem[]> {
   try {
-    const rr = await fetchYahooQuote([symbol]);
-    row = rr?.[0];
+    const url = process.env.JPX_UNIVERSE_URL;
+    if (!url) return DEFAULT_UNIVERSE;
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) return DEFAULT_UNIVERSE;
+    const j = await r.json() as any[];
+    const norm: UniverseItem[] = [];
+    for (const it of j) {
+      if (!it) continue;
+      const code = String(it.code ?? "").trim();
+      if (!code) continue;
+      norm.push({
+        code,
+        name: String(it.name ?? code),
+        theme: String(it.theme ?? ""),
+        brief: String(it.brief ?? ""),
+        yahooSymbol: typeof it.yahooSymbol === "string" ? it.yahooSymbol : undefined,
+      });
+    }
+    return norm.length ? norm : DEFAULT_UNIVERSE;
   } catch {
-    // ignore
+    return DEFAULT_UNIVERSE;
   }
-
-  let o = row?.regularMarketOpen;
-  let c = row?.regularMarketPrice;
-  const prev = row?.regularMarketPreviousClose;
-  let v = row?.regularMarketVolume;
-  if (c == null || v == null) {
-    const fb = await fetchYahooChart(symbol);
-    o = o ?? fb.o;
-    c = c ?? fb.c;
-    v = v ?? fb.v;
-  }
-  let chgPct =
-    row?.regularMarketChangePercent != null
-      ? row!.regularMarketChangePercent
-      : prev && c
-      ? ((c - prev) / prev) * 100
-      : o && c
-      ? ((c - o) / o) * 100
-      : undefined;
-
-  return {
-    symbol,
-    o: numberfmt(o ?? null),
-    c: numberfmt(c ?? null),
-    v: Math.round((v ?? 0) as number),
-    chgPct: numberfmt(chgPct ?? null),
-  };
 }
 
-/** 멀티 심볼 병렬 (적당히 청크 처리) */
-async function getMany(symbols: string[]) {
-  const out: Record<string, Awaited<ReturnType<typeof getOne>>> = {};
-  const CHUNK = 20;
-  for (let i = 0; i < symbols.length; i += CHUNK) {
-    const part = symbols.slice(i, i + CHUNK);
-    const arr = await Promise.all(part.map((s) => getOne(s)));
-    for (const row of arr) out[row.symbol] = row;
-  }
+// =========================
+// Fetch & Aggregate
+// =========================
+async function fetchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const out = new Map<string, Quote>();
+
+  // 1차: Twelve Data (동시성 제한)
+  const first = await runLimited<Quote | undefined>(symbols, 6, fetchFromTwelveData);
+  first.forEach((q, i) => {
+    if (q) out.set(symbols[i], q);
+  });
+
+  // 2차: Yahoo Chart 폴백
+  const missing = symbols.filter((s) => !out.has(s));
+  const second = await runLimited<Quote | undefined>(missing, 4, fetchFromYahooChart);
+  second.forEach((q, i) => {
+    if (q) out.set(missing[i], q);
+  });
+
   return out;
 }
 
-/** ===== 메인 핸들러 ===== */
+function buildResponse(univ: UniverseItem[], by: Map<string, Quote>) {
+  const rows = univ.map((u) => {
+    const sym = u.yahooSymbol ?? toYahooSymbol(u.code);
+    const q = by.get(sym);
+    const close = q?.close;
+    const pc = q?.previousClose;
+    const chgPct = calcChgPct(q ?? { symbol: sym });
+    const vol = q?.volume;
+    const yVolM = yenMillions(q ?? { symbol: sym });
+    return {
+      code: u.code,
+      ticker: sym,
+      name: u.name,
+      theme: u.theme,
+      brief: u.brief,
+      open: q?.open ?? null,
+      close: close ?? null,
+      previousClose: pc ?? null,
+      chgPct: chgPct ?? null,
+      volume: vol ?? null,
+      yenVolM: yVolM ?? null,
+      currency: q?.currency ?? "JPY",
+    };
+  });
+
+  // 랭킹 만들기
+  const byValue = [...rows]
+    .filter(r => r.yenVolM != null)
+    .sort((a, b) => (b.yenVolM! - a.yenVolM!))
+    .slice(0, 10);
+
+  const byVolume = [...rows]
+    .filter(r => r.volume != null)
+    .sort((a, b) => (b.volume! - a.volume!))
+    .slice(0, 10);
+
+  // 1000엔 이상 필터 (상승/하락)
+  const priceForFilter = (r: any) => (r.close ?? r.previousClose ?? 0);
+  const eligible = rows.filter(r => (priceForFilter(r) ?? 0) >= 1000 && r.chgPct != null);
+
+  const topGainers = [...eligible].sort((a, b) => (b.chgPct! - a.chgPct!)).slice(0, 10);
+  const topLosers  = [...eligible].sort((a, b) => (a.chgPct! - b.chgPct!)).slice(0, 10);
+
+  return { rows, byValue, byVolume, topGainers, topLosers };
+}
+
+// =========================
+// Route
+// =========================
 export async function GET(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const dateQ = url.searchParams.get("date"); // YYYY-MM-DD (선택)
-    const now = new Date();
-    const jstNow = toJstDate(now);
+    const nowJst = jstNow();
+    // 정보성 라벨 (마감 이후 캐치)
+    const note = isBeforeJst1535(nowJst)
+      ? "JST 15:35 이전 접근은 전영업일 기준(무료 소스 특성상 근사치)."
+      : "当日EOD基準（無料ソースのため微差可能）。";
 
-    // 타겟 날짜: 장 마감(15:10 JST) 전엔 전영업일로 자동 회귀
-    let targetJst = dateQ ? toJstDate(new Date(dateQ + "T00:00:00")) : jstNow;
-    // 15:10 이전이라면 전일로
-    const hhmm = toJstDate(now);
-    const isBeforeClose = hhmm.getUTCHours() < 6 || (hhmm.getUTCHours() === 6 && hhmm.getUTCMinutes() < 10); // 06:10 UTC ≒ 15:10 JST
-    if (!dateQ && isBeforeClose) targetJst = new Date(targetJst.getTime() - 24 * 60 * 60 * 1000);
-    // 주말 보정
-    targetJst = previousWeekdayJst(targetJst);
+    const universe = await loadUniverse();
+    const symbols = universe.map(u => u.yahooSymbol ?? toYahooSymbol(u.code));
 
-    const usedDate = ymd(targetJst);
+    const by = await fetchQuotes(symbols);
 
-    const symbols = JP_LIST.map((x) => x.sym);
-    const rows = await getMany(symbols);
+    const { rows, byValue, byVolume, topGainers, topLosers } = buildResponse(universe, by);
 
-    // 머지: JP_LIST 메타 + 시세 합치기
-    type Row = {
-      ticker: string;
-      symbol: string;
-      name: string;
-      theme: string;
-      brief: string;
-      o?: number | null;
-      c?: number | null;
-      chgPct?: number | null;
-      v: number;
-      jpyVolM?: number | null; // ¥Vol(M) = c * v / 1e6
-    };
-    const merged: Row[] = JP_LIST.map((m) => {
-      const r = rows[m.sym];
-      const jpyVolM = r?.c != null && r?.v != null ? numberfmt((r.c! * r.v!) / 1_000_000) : null;
-      return {
-        ticker: m.ticker,
-        symbol: m.sym,
-        name: m.name,
-        theme: m.theme,
-        brief: m.brief,
-        o: r?.o ?? null,
-        c: r?.c ?? null,
-        chgPct: r?.chgPct ?? null,
-        v: r?.v ?? 0,
-        jpyVolM,
-      };
-    });
-
-    // Top10: 売買代金(¥VolM), 出来高(Vol), 上昇/下落(종가 ¥1,000 이상 필터)
-    const byValue = merged
-      .filter((r) => (r.jpyVolM ?? 0) > 0)
-      .sort((a, b) => (b.jpyVolM ?? 0) - (a.jpyVolM ?? 0))
-      .slice(0, 10);
-
-    const byVolume = merged
-      .filter((r) => r.v > 0)
-      .sort((a, b) => b.v - a.v)
-      .slice(0, 10);
-
-    const priceGE1000 = merged.filter((r) => (r.c ?? 0) >= 1000);
-    const risers = priceGE1000
-      .filter((r) => (r.chgPct ?? 0) > 0)
-      .sort((a, b) => (b.chgPct ?? 0) - (a.chgPct ?? 0))
-      .slice(0, 10);
-
-    const fallers = priceGE1000
-      .filter((r) => (r.chgPct ?? 0) < 0)
-      .sort((a, b) => (a.chgPct ?? 0) - (b.chgPct ?? 0))
-      .slice(0, 10);
-
-    // 카드(요약): 대표 12개 고정
-    const CARD_TICKERS = new Set([
-      "1321",
-      "1306",
-      "7203",
-      "6758",
-      "8035",
-      "6861",
-      "6501",
-      "4063",
-      "9432",
-      "6954",
-      "8306",
-      "8316",
-    ]);
-    const cards = merged.filter((r) => CARD_TICKERS.has(r.ticker));
-
-    // 스토리(숫자→간단 요약)
-    const upCnt = byValue.filter((r) => (r.chgPct ?? 0) > 0).length;
-    const dnCnt = byValue.filter((r) => (r.chgPct ?? 0) < 0).length;
-    const semi = merged.filter((r) => ["半導体製造装置", "半導体", "半導体検査"].includes(r.theme));
-    const fin = merged.filter((r) => r.theme === "金融");
-    const avg = (arr: number[]) => (arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : 0);
-    const semiAvg = avg(semi.map((x) => x.chgPct ?? 0));
-    const finAvg = avg(fin.map((x) => x.chgPct ?? 0));
-    const story = {
-      headline:
-        semiAvg - finAvg > 0.4
-          ? "半導体/電子部品が主役、選別オン継続"
-          : finAvg - semiAvg > 0.4
-          ? "金融が相対強、指数は持ち合い傾向"
-          : "主力はまちまち、物色は循環的",
-      breadth: `売買代金上位では 上昇${upCnt} : 下落${dnCnt}。`,
-      sectors: `セクター平均: 半導体系 ${numberfmt(semiAvg)}%、金融 ${numberfmt(finAvg)}%。`,
-    };
-
-    return Response.json({
+    return NextResponse.json({
       ok: true,
-      market: "JPX",
-      dateJst: ymd(now),
-      usedDate, // 集計基準（休場/前場時は自動回帰）
-      universe: merged.length,
-      note: "Source: Yahoo Finance (quote→chart fallback). Times in JST. Free source特性上、厳密なEODと微差あり得ます。",
-      story,
-      cards,
-      topByValue: byValue,
-      topByVolume: byVolume,
-      topGainers: risers,
-      topLosers: fallers,
-    });
-  } catch (err: any) {
-    const msg = err?.message || String(err);
-    return new Response(`JPX EOD error: ${msg}`, { status: 500 });
+      note,
+      count: rows.length,
+      asOfJST: nowJst.toISOString().replace("T", " ").slice(0, 19),
+      universe,
+      quotes: rows,
+      rankings: {
+        byValue,
+        byVolume,
+        topGainers,
+        topLosers,
+      },
+    }, { status: 200 });
+  } catch (e: any) {
+    return NextResponse.json({
+      ok: false,
+      error: "JPX EOD fetch failed",
+      detail: e?.message ?? String(e),
+    }, { status: 500 });
   }
 }
