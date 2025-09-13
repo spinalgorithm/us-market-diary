@@ -16,48 +16,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Touch fetch.log early (always have artifact)
+        run: |
+          set -eux
+          : > fetch.log
+
       - name: Debug repo state
         run: |
           set -euxo pipefail
-          echo "Current branch:"
-          git rev-parse --abbrev-ref HEAD || true
-          echo "Repo tree (top):"
-          ls -la
-          echo "Repo tree (scripts):"
-          ls -la scripts || true
-          echo "Repo tree (public):"
-          ls -la public || true
+          echo "== PWD =="; pwd
+          echo "== BRANCH =="; git rev-parse --abbrev-ref HEAD || true
+          echo "== TREE (top) =="; ls -la
+          echo "== TREE (.github/workflows) =="; ls -la .github/workflows || true
+          echo "== TREE (scripts) =="; ls -la scripts || true
+          echo "== TREE (public) =="; ls -la public || true
+          echo "== SHOW package.json =="; cat package.json || true
+          echo "== SHOW scripts/fetch_jpx_full.ts (first 50 lines) =="; sed -n '1,50p' scripts/fetch_jpx_full.ts || true
+          echo "== SHOW scripts/fetch_jpx_full.mjs (first 50 lines) =="; sed -n '1,50p' scripts/fetch_jpx_full.mjs || true >> fetch.log
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install tsx (no lockfile needed)
+      - name: Install tsx (for TS runner)
         run: |
           set -euxo pipefail
           npm i -D tsx
-          node -v
-          npm -v
-          npx tsx --version
+          node -v; npm -v; npx tsx --version
 
       - name: Ensure public dir
         run: mkdir -p public
 
-      - name: Run fetch script
+      - name: Run fetch script (TS first, then JS fallback)
         id: runfetch
+        continue-on-error: true
         run: |
           set -euxo pipefail
-          if [ ! -f scripts/fetch_jpx_full.ts ]; then
-            echo "ERROR: scripts/fetch_jpx_full.ts not found" | tee fetch.log
+          if [ -f scripts/fetch_jpx_full.ts ]; then
+            echo "[run] TS script" | tee -a fetch.log
+            npx tsx scripts/fetch_jpx_full.ts --limit=5000 2>&1 | tee -a fetch.log
+          elif [ -f scripts/fetch_jpx_full.mjs ]; then
+            echo "[run] JS fallback" | tee -a fetch.log
+            node scripts/fetch_jpx_full.mjs --limit=5000 2>&1 | tee -a fetch.log
+          else
+            echo "ERROR: No fetch script found at scripts/fetch_jpx_full.ts or .mjs" | tee -a fetch.log
             exit 1
           fi
-          # 실행 + 로그 저장
-          npx tsx scripts/fetch_jpx_full.ts --limit=5000 2>&1 | tee fetch.log
-          echo "---- HEAD of CSV ----"
-          head -n 5 public/jpx_universe.csv || true
-          echo "---- LINE COUNT ----"
-          wc -l public/jpx_universe.csv || true
+          echo "---- HEAD of CSV ----" | tee -a fetch.log
+          head -n 5 public/jpx_universe.csv | tee -a fetch.log || true
+          echo "---- LINE COUNT ----" | tee -a fetch.log
+          wc -l public/jpx_universe.csv | tee -a fetch.log || true
 
       - name: Upload fetch log (always)
         if: always()
@@ -65,6 +74,12 @@ jobs:
         with:
           name: fetch-log
           path: fetch.log
+
+      - name: Fail job if fetch failed
+        if: steps.runfetch.outcome != 'success'
+        run: |
+          echo "Fetch step failed. See 'fetch-log' artifact and logs."
+          exit 1
 
       - name: Commit on branch
         run: |
