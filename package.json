@@ -2,12 +2,13 @@
   "name": "us-market-diary",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "next build",
-    "start": "next start",
-    "dev": "next dev",
-    "fetch:jpx": "npx -y ts-node@10.9.2 --esm scripts/fetch_jpx_full.ts --limit=5000"
-  },
+ "scripts": {
+  "build": "next build",
+  "start": "next start",
+  "dev": "next dev",
+  "fetch:jpx": "npx -y ts-node@10.9.2 --project tsconfig.scripts.json --transpile-only --esm scripts/fetch_jpx_full.ts --limit=5000"
+}、
+
   "dependencies": {
     "next": "14.2.5",
     "react": "18.2.0",
