@@ -1,123 +1,82 @@
 name: Fetch JPX Universe CSV (PR)
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: write
+  workflow_dispatch: {}
 
 jobs:
   fetch-and-pr:
     runs-on: ubuntu-latest
-    env:
-      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start log
+      - name: Debug env and tree
         run: |
-          set -eux
           echo "=== FETCH RUN START === $(date -u)" | tee -a fetch.log
-
-      - name: Debug repo state
-        run: |
-          set -euxo pipefail
-          {
-            echo "== PWD =="; pwd
-            echo "== BRANCH =="; git rev-parse --abbrev-ref HEAD || true
-            echo "== TREE (top) =="; ls -la
-            echo "== TREE (.github/workflows) =="; ls -la .github/workflows || true
-            echo "== TREE (scripts) =="; ls -la scripts || true
-            echo "== TREE (public) =="; ls -la public || true
-            echo "== SHOW package.json =="; cat package.json || true
-            echo "== SHOW scripts/fetch_jpx_full.ts (1..60) =="; sed -n '1,60p' scripts/fetch_jpx_full.ts 2>&1 || echo "NO TS SCRIPT"
-            echo "== SHOW scripts/fetch_jpx_full.mjs (1..60) =="; sed -n '1,60p' scripts/fetch_jpx_full.mjs 2>&1 || echo "NO MJS SCRIPT"
-          } | tee -a fetch.log
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Node info
-        run: |
-          set -euxo pipefail
-          {
-            node -v
-            npm -v
-          } | tee -a fetch.log
-
-      - name: Install tsx (optional for TS)
-        run: |
-          set -euxo pipefail
-          {
-            npm i -D tsx
-            npx tsx --version
-          } | tee -a fetch.log
-
-      - name: Ensure public dir
-        run: |
-          set -euxo pipefail
-          {
-            mkdir -p public
-            echo "public ensured"
-          } | tee -a fetch.log
-
-      - name: Run fetch script (TS first, then MJS fallback)
-        id: runfetch
-        continue-on-error: true
-        run: |
-          set -euxo pipefail
-          if [ -f scripts/fetch_jpx_full.ts ]; then
-            echo "[run] TS script" | tee -a fetch.log
-            npx tsx scripts/fetch_jpx_full.ts --limit=5000 2>&1 | tee -a fetch.log
-          elif [ -f scripts/fetch_jpx_full.mjs ]; then
-            echo "[run] MJS script" | tee -a fetch.log
-            node scripts/fetch_jpx_full.mjs --limit=5000 2>&1 | tee -a fetch.log
+          echo "== PWD ==" | tee -a fetch.log
+          pwd | tee -a fetch.log
+          echo "== BRANCH ==" | tee -a fetch.log
+          git rev-parse --abbrev-ref HEAD | tee -a fetch.log
+          echo "== TREE (top) ==" | tee -a fetch.log
+          ls -la | tee -a fetch.log
+          echo "== TREE (.github/workflows) ==" | tee -a fetch.log
+          ls -la .github/workflows | tee -a fetch.log
+          echo "== TREE (scripts) ==" | tee -a fetch.log
+          ls -la scripts | tee -a fetch.log
+          echo "== TREE (public) ==" | tee -a fetch.log
+          ls -la public | tee -a fetch.log
+          echo "== SHOW package.json ==" | tee -a fetch.log
+          cat package.json | tee -a fetch.log
+          echo "== SHOW scripts/fetch_jpx_full.ts (1..120) ==" | tee -a fetch.log
+          sed -n '1,120p' scripts/fetch_jpx_full.ts | tee -a fetch.log
+          if [ -f scripts/fetch_jpx_full.mjs ]; then
+            echo "== SHOW scripts/fetch_jpx_full.mjs (1..120) ==" | tee -a fetch.log
+            sed -n '1,120p' scripts/fetch_jpx_full.mjs | tee -a fetch.log
           else
-            echo "ERROR: No fetch script at scripts/fetch_jpx_full.ts or .mjs" | tee -a fetch.log
-            exit 1
+            echo "NO MJS SCRIPT" | tee -a fetch.log
           fi
-          echo "---- HEAD of CSV ----" | tee -a fetch.log
-          head -n 10 public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
-          echo "---- TAIL of CSV ----" | tee -a fetch.log
-          tail -n 10 public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
-          echo "---- LINE COUNT ----" | tee -a fetch.log
-          wc -l public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
+          echo "== Node/NPM versions ==" | tee -a fetch.log
+          node -v | tee -a fetch.log
+          npm -v | tee -a fetch.log
 
-      - name: Upload fetch log (always)
-        if: always()
+      - name: Run fetch script (npx ts-node)
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+        run: |
+          set -e
+          npx -y ts-node@10.9.2 --esm scripts/fetch_jpx_full.ts --limit=5000 | tee -a fetch.log
+          echo "== CSV HEAD ==" | tee -a fetch.log
+          head -n 5 public/jpx_universe.csv | tee -a fetch.log
+          echo "== CSV TAIL ==" | tee -a fetch.log
+          tail -n 5 public/jpx_universe.csv | tee -a fetch.log
+          echo "== ROW COUNT ==" | tee -a fetch.log
+          wc -l public/jpx_universe.csv | tee -a fetch.log
+
+      - name: Upload fetch log
         uses: actions/upload-artifact@v4
         with:
           name: fetch-log
           path: fetch.log
+          retention-days: 7
 
-      - name: Fail job if fetch failed
-        if: steps.runfetch.outcome != 'success'
+      - name: Commit changes to a branch
         run: |
-          echo "Fetch step failed. See 'fetch-log' artifact and step logs." | tee -a fetch.log
-          exit 1
-
-      - name: Commit to branch
-        run: |
-          set -euxo pipefail
-          git config user.name "github-actions[bot]"
+          set -e
+          if git diff --quiet --exit-code -- public/jpx_universe.csv; then
+            echo "No change in CSV. Skipping commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B update/jpx-universe
           git add public/jpx_universe.csv
-          git commit -m "chore: update JPX universe CSV" || echo "no changes to commit"
-          git push -u origin update/jpx-universe || true
+          git commit -m "chore: update JPX universe CSV"
+          git push -f origin update/jpx-universe
 
-      - name: Create PR
+      - name: Open PR
         uses: peter-evans/create-pull-request@v6
         with:
           branch: update/jpx-universe
-          title: "chore: update JPX universe CSV"
-          body: |
-            Automated update of JPX universe.
-            See attached fetch log artifact for details.
-          commit-message: "chore: update JPX universe CSV"
-          labels: data
+          title: "Update JPX Universe CSV"
+          body: "Automated update of `public/jpx_universe.csv`."
+          base: main
