@@ -1,196 +1,226 @@
-// src/app/api/jpx-eod/route.ts
-import { NextRequest } from 'next/server'
-export const dynamic = 'force-dynamic'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+// ====== 設定 ======
+const JST_OFFSET = 9 * 60; // minutes
+const MIN_ROWS_FOR_TABLE = 6; // 최소 확보 못하면 가능한 만큼만 표 생성
+
+// JPX 대표 티커(야후 포맷, .T)
+type JPItem = { sym: string; name: string; theme: string; brief: string };
+const JP_LIST: JPItem[] = [
+  // ETF
+  { sym: '1321.T', name: '日経225連動型上場投資信託', theme: 'インデックス/ETF', brief: '日経225連動ETF' },
+  { sym: '1306.T', name: 'TOPIX連動型上場投資信託', theme: 'インデックス/ETF', brief: 'TOPIX連動ETF' },
+
+  // 대형/대표주
+  { sym: '7203.T', name: 'トヨタ自動車', theme: '自動車', brief: '世界最大級の自動車メーカー' },
+  { sym: '6758.T', name: 'ソニーグループ', theme: 'エレクトロニクス', brief: 'ゲーム・画像センサー・音楽' },
+  { sym: '8035.T', name: '東京エレクトロン', theme: '半導体製造装置', brief: '製造装置の大手' },
+  { sym: '6861.T', name: 'キーエンス', theme: '計測/FA', brief: 'センサー・FA機器' },
+  { sym: '6501.T', name: '日立製作所', theme: '総合電機', brief: '社会インフラ・ITソリューション' },
+  { sym: '4063.T', name: '信越化学工業', theme: '素材/化学', brief: '半導体用シリコン等' },
+  { sym: '9432.T', name: '日本電信電話(NTT)', theme: '通信', brief: '国内通信大手' },
+  { sym: '6954.T', name: 'ファナック', theme: 'FA/ロボット', brief: '産業用ロボット' },
+  { sym: '8306.T', name: '三菱UFJフィナンシャルG', theme: '金融', brief: 'メガバンク' },
+  { sym: '8316.T', name: '三井住友フィナンシャルG', theme: '金融', brief: 'メガバンク' },
+  { sym: '9984.T', name: 'ソフトバンクグループ', theme: '投資/テック', brief: '投資持株・通信' },
+  { sym: '5020.T', name: 'ＥＮＥＯＳホールディングス', theme: 'エネルギー', brief: '石油・エネルギー' },
+];
+
+// ====== 유틸 ======
+const toJst = (d: Date) => new Date(d.getTime() + (JST_OFFSET - d.getTimezoneOffset()) * 60000);
+
+const fmtYmd = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+
+const previousBusinessDayJST = (d: Date) => {
+  const x = new Date(d);
+  // 하루 전으로 이동 후, 토/일 스킵
+  do {
+    x.setDate(x.getDate() - 1);
+  } while (x.getDay() === 0 || x.getDay() === 6);
+  return x;
+};
+
+type Quote = {
+  symbol: string;
+  open?: number;
+  price?: number;
+  volume?: number;
+  currency?: string;
+};
+
+// Yahoo Finance quote API (비공식)
+async function fetchYahooQuotes(symbols: string[]): Promise<Record<string, Quote>> {
+  if (symbols.length === 0) return {};
+  const url =
+    'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' +
+    encodeURIComponent(symbols.join(','));
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
+      Accept: 'application/json,text/plain,*/*',
+    },
+    // 야후는 캐시가 남아있으면 가끔 오래된 값이 돌아올 수 있어요.
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`Yahoo quote error: ${res.status}`);
+  }
+  const json = await res.json();
+  const results: any[] = json?.quoteResponse?.result || [];
+
+  const out: Record<string, Quote> = {};
+  for (const r of results) {
+    out[r.symbol] = {
+      symbol: r.symbol,
+      open: num(r.regularMarketOpen),
+      price: num(r.regularMarketPrice ?? r.regularMarketPreviousClose),
+      volume: num(r.regularMarketVolume),
+      currency: r.currency,
+    };
+  }
+  return out;
+}
+
+const num = (v: any): number | undefined => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 type Row = {
-  ticker: string
-  name?: string
-  theme?: string
-  brief?: string
-  o?: number
-  c?: number
-  vol?: number
-  chgPct?: number
-  jpyValueM?: number // ¥(백만)
+  rank?: number;
+  ticker: string;
+  name: string;
+  theme: string;
+  brief: string;
+  o2c: string; // "o→c"
+  chgPct: string; // "0.85"
+  vol: string; // number as string
+  jpyVolM?: string; // 거래대금(백만엔)
+};
+
+function toRow(j: JPItem, q?: Quote): Row | null {
+  if (!q || q.price == null || q.open == null || q.volume == null) return null;
+  const o = q.open!;
+  const c = q.price!;
+  const v = q.volume!;
+  const chgPct = o > 0 ? ((c - o) / o) * 100 : 0;
+  const jpyVolM = c * v / 1_000_000;
+
+  return {
+    ticker: j.sym.replace('.T', ''),
+    name: j.name,
+    theme: j.theme,
+    brief: j.brief,
+    o2c: `${o.toFixed(2)}→${c.toFixed(2)}`,
+    chgPct: chgPct.toFixed(2),
+    vol: v.toLocaleString('en-US'),
+    jpyVolM: Math.round(jpyVolM).toLocaleString('en-US'),
+  };
 }
 
-type Payload = {
-  ok: true
-  dateJst: string
-  isHoliday: boolean
-  reason?: string
-  cards: Row[]
-  tables: {
-    byValue: Row[]
-    byVolume: Row[]
-    gainers: Row[]
-    losers: Row[]
-  }
-} | { ok: false; error: string }
-
-const JP_TZ = 'Asia/Tokyo'
-
-// ---- 휴장/거래일 판정 ----
-const JP_HOLIDAYS_2025 = new Set<string>([
-  // 2025년 일본 공휴일(주요) — 필요시 추가
-  '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-03-20',
-  '2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06',
-  '2025-07-21','2025-08-11','2025-09-15','2025-09-23',
-  '2025-10-13','2025-11-03','2025-11-23','2025-11-24'
-])
-function fmtDateJst(d: Date) {
-  const f = new Intl.DateTimeFormat('ja-JP', { timeZone: JP_TZ, year:'numeric', month:'2-digit', day:'2-digit' })
-  const p = f.formatToParts(d)
-  const y = p.find(x=>x.type==='year')!.value
-  const m = p.find(x=>x.type==='month')!.value
-  const dd= p.find(x=>x.type==='day')!.value
-  return `${y}-${m}-${dd}`
-}
-function getNowJst() {
-  const now = new Date()
-  const str = new Intl.DateTimeFormat('en-CA', { timeZone: JP_TZ, hour12:false,
-    year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).format(now)
-  // "YYYY-MM-DD, HH:MM"
-  const [date, time] = str.split(', ').map(s=>s.trim())
-  return { date, time }
-}
-function isWeekend(dateStr: string) {
-  // JST 자정 기준 요일 계산
-  const [y,m,d] = dateStr.split('-').map(Number)
-  const dt = new Date(Date.UTC(y, m-1, d, 15)) // UTC 15시는 JST 0시
-  const day = dt.getUTCDay()
-  return day===0 || day===6
-}
-function isJpHoliday(dateStr: string) {
-  return JP_HOLIDAYS_2025.has(dateStr) || isWeekend(dateStr)
-}
-function prevBusinessDay(dateStr: string): string {
-  let [y,m,d] = dateStr.split('-').map(Number)
-  let dt = new Date(y, m-1, d)
-  do {
-    dt.setDate(dt.getDate()-1)
-  } while (isJpHoliday(fmtDateJst(dt)))
-  return fmtDateJst(dt)
-}
-function resolveTargetDate(req: NextRequest): { target: string, isHoliday: boolean, reason?: string } {
-  const q = req.nextUrl.searchParams.get('date') // YYYY-MM-DD (JST)
-  if (q) {
-    const holiday = isJpHoliday(q)
-    return { target: holiday ? prevBusinessDay(q) : q, isHoliday: holiday, reason: holiday ? 'holiday_or_weekend_input' : undefined }
-  }
-  const { date, time } = getNowJst()
-  // 장 마감 15:00 JST 이후만 "당일" EOD 확정. 이전이면 직전 영업일로 굴림
-  const afterClose = time >= '15:10'
-  if (isJpHoliday(date)) {
-    return { target: prevBusinessDay(date), isHoliday: true, reason: 'holiday_or_weekend' }
-  }
-  return { target: afterClose ? date : prevBusinessDay(date), isHoliday: false, reason: afterClose ? undefined : 'before_close' }
+function topBy<T>(rows: Row[], key: (r: Row) => number, limit = 10): Row[] {
+  return rows
+    .slice()
+    .sort((a, b) => key(b) - key(a))
+    .slice(0, limit)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
-// ---- 간단 테마/브리프 사전 ----
-type Info = { name: string; theme: string; brief: string }
-const INFO: Record<string, Info> = {
-  '1321.T': { name:'iシェアーズ 日経225', theme:'インデックス/ETF', brief:'日経225連動ETF' },
-  '1306.T': { name:'NEXT FUNDS TOPIX', theme:'インデックス/ETF', brief:'TOPIX連動ETF' },
-  '1570.T': { name:'日経レバ', theme:'インデックス/ETF', brief:'日経平均レバレッジ' },
-  '8035.T': { name:'東京エレクトロン', theme:'半導体/装置', brief:'半導体製造装置' },
-  '9984.T': { name:'ソフトバンクG', theme:'投資/通信', brief:'投資持株・通信' },
-  '7203.T': { name:'トヨタ', theme:'自動車', brief:'自動車' },
-  '6758.T': { name:'ソニーG', theme:'エレクトロニクス', brief:'エレクトロニクス/エンタメ' },
-  '7974.T': { name:'任天堂', theme:'ゲーム', brief:'家庭用ゲーム' },
-  '8306.T': { name:'三菱UFJ', theme:'金融', brief:'メガバンク' },
-  '4063.T': { name:'信越化学', theme:'化学/半導体材料', brief:'シリコンウエハ' },
-  '8031.T': { name:'三井物産', theme:'商社', brief:'総合商社' },
-  '6861.T': { name:'キーエンス', theme:'FA/センサー', brief:'工場自動化' },
-  '9432.T': { name:'NTT', theme:'通信', brief:'通信キャリア' },
-  '6501.T': { name:'日立', theme:'重電/IT', brief:'社会インフラ/IT' },
-  '4502.T': { name:'武田薬品', theme:'医薬', brief:'製薬大手' },
-  '9101.T': { name:'日本郵船', theme:'海運', brief:'海運大手' },
-  '9501.T': { name:'東電HD', theme:'電力', brief:'電力' },
-  '8316.T': { name:'三井住友FG', theme:'金融', brief:'メガバンク' },
+function filterByPrice(rows: Row[], minYen = 1000): Row[] {
+  // o→c 의 c를 파싱(마지막 값)
+  return rows.filter((r) => {
+    const cStr = r.o2c.split('→')[1];
+    const c = Number(cStr);
+    return Number.isFinite(c) && c >= minYen;
+  });
 }
 
-const UNIVERSE: string[] = [
-  '1321.T','1306.T','1570.T',
-  '8035.T','9984.T','7203.T','6758.T','7974.T','8306.T','4063.T','8031.T','6861.T',
-  '9432.T','6501.T','4502.T','9101.T','9501.T','8316.T'
-]
-
-// ---- Stooq에서 일괄 견적 ----
-// https://stooq.com/q/l/?s=1321.jp,8035.jp&i=d
-function y2s(y: string){ return y.replace(/\.T$/i, '.jp') }
-function s2y(s: string){ return s.replace(/\.jp$/i, '.T') }
-async function fetchStooqDaily(yahooTickers: string[]): Promise<Row[]> {
-  if (!yahooTickers.length) return []
-  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(yahooTickers.map(y2s).join(','))}&i=d`
-  const res = await fetch(url, { cache:'no-store' })
-  if (!res.ok) throw new Error(`Stooq ${res.status}`)
-  const txt = await res.text()
-  // header: Symbol,Date,Time,Open,High,Low,Close,Volume
-  const lines = txt.trim().split('\n')
-  const out: Row[] = []
-  for (let i=1; i<lines.length; i++){
-    const c = lines[i].split(',')
-    const symS = (c[0]||'').trim()         // 1321.jp
-    const symY = s2y(symS)                 // 1321.T
-    const o = num(c[3])
-    const close = num(c[6])
-    const v = num(c[7])
-    const info = INFO[symY]
-    out.push({
-      ticker: symY,
-      name: info?.name,
-      theme: info?.theme,
-      brief: info?.brief,
-      o, c: close, vol: v,
-      chgPct: (o && close) ? round2(((close - o)/o)*100) : undefined,
-      jpyValueM: (close && v) ? round2((close * v)/1_000_000) : undefined
-    })
-  }
-  return out
+function gainers(rows: Row[], limit = 10): Row[] {
+  const withPrice = filterByPrice(rows);
+  return topBy(
+    withPrice,
+    (r) => Number(r.chgPct),
+    limit,
+  ).filter((r) => Number(r.chgPct) > 0);
 }
 
-// ---- 유틸 ----
-function num(v:any){ const n=Number(v); return Number.isFinite(n)? n: undefined }
-function round2(n:number){ return Math.round(n*100)/100 }
-function topN<T>(arr:T[], n=10){ return arr.slice(0, n) }
-
-function makeTables(rows: Row[]){
-  const valid = rows.filter(r => r.c && r.vol)
-  const byValue = topN([...valid].sort((a,b)=>(b.jpyValueM??0)-(a.jpyValueM??0)))
-  const byVolume= topN([...valid].sort((a,b)=>(b.vol??0)-(a.vol??0)))
-  const big = valid.filter(r => (r.c ?? 0) >= 1000)
-  const gainers = topN([...big].sort((a,b)=>(b.chgPct??-1)-(a.chgPct??-1)))
-  const losers  = topN([...big].sort((a,b)=>(a.chgPct??999)-(b.chgPct??999)))
-  return { byValue, byVolume, gainers, losers }
+function losers(rows: Row[], limit = 10): Row[] {
+  const withPrice = filterByPrice(rows);
+  return topBy(
+    withPrice,
+    (r) => -Number(r.chgPct),
+    limit,
+  ).filter((r) => Number(r.chgPct) < 0);
 }
 
-// ---- 핸들러 ----
-export async function GET(req: NextRequest){
+// ====== 핸들러 ======
+export async function GET(req: NextRequest) {
   try {
-    const { target, isHoliday, reason } = resolveTargetDate(req)
+    const { searchParams } = new URL(req.url);
+    const dateParam = searchParams.get('date'); // YYYY-MM-DD (옵션)
+    const nowJst = toJst(new Date());
 
-    // 휴일/주말이면 직전 영업일을 타겟으로 자동 설정(위에서 이미 처리됨)
-    // 데이터 가져오기 (Stooq 단일 소스, 야후 401 회피)
-    let cards: Row[] = []
-    try {
-      cards = await fetchStooqDaily(UNIVERSE)
-    } catch (e){
-      // 완전 실패시 빈배열
-      cards = []
+    // 목표 날짜(표시용). 15:10 JST 이전이면 전 영업일로 자동 보정
+    let target = dateParam ? new Date(dateParam + 'T00:00:00+09:00') : nowJst;
+    const cutoff = new Date(`${fmtYmd(nowJst)}T15:10:00+09:00`);
+    if (!dateParam && nowJst < cutoff) {
+      target = previousBusinessDayJST(nowJst);
     }
-    const tables = makeTables(cards)
 
-    const body: Payload = {
+    // 실 데이터는 야후의 "현재/최종"을 사용(야후는 날짜 쿼리를 받지 않음).
+    const quotes = await fetchYahooQuotes(JP_LIST.map((x) => x.sym));
+
+    // 표 변환
+    const rows: Row[] = [];
+    for (const j of JP_LIST) {
+      const row = toRow(j, quotes[j.sym]);
+      if (row) rows.push(row);
+    }
+
+    // 빈 응답이면 에러 처리
+    if (rows.length === 0) {
+      return Response.json(
+        { ok: false, error: 'JPX data not available (Yahoo quote empty).' },
+        { status: 502 },
+      );
+    }
+
+    // 테이블(샘플 유니버스 내에서 TOP 산출)
+    const byTurnover = topBy(rows, (r) => Number(r.jpyVolM || '0'));
+    const byVolume = topBy(rows, (r) => Number(r.vol.replace(/,/g, '')));
+    const ups = gainers(rows);
+    const downs = losers(rows);
+
+    return Response.json({
       ok: true,
-      dateJst: target,
-      isHoliday,
-      reason,
-      cards,
-      tables
-    }
-    return Response.json(body)
-  } catch (e:any){
-    return Response.json({ ok:false, error:String(e?.message||e) }, { status:500 })
+      dateJst: fmtYmd(target),
+      notice:
+        '※ 無料ソース(quote)の性質上、当日クローズ後はEODに一致します。マケ休場/早引け時は前営業日に自動回帰。',
+      source: 'Yahoo Finance (quote)',
+      universe: JP_LIST.length,
+      cards: rows.slice(0, 12), // 상단 카드용(대표 12)
+      tables: {
+        turnover: byTurnover,
+        volume: byVolume,
+        gainers: ups,
+        losers: downs,
+      },
+    });
+  } catch (err: any) {
+    return Response.json(
+      { ok: false, error: String(err?.message || err) },
+      { status: 500 },
+    );
   }
 }
