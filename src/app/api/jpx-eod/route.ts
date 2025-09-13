@@ -32,6 +32,9 @@ const prevBiz = (d: Date) => { const x=new Date(d); do { x.setDate(x.getDate()-1
 
 type Quote = { symbol: string; open?: number; close?: number; volume?: number; currency?: string };
 
+const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
+const isNum = (v: any) => Number.isFinite(Number(v));
+
 async function fetchYahooQuoteBatch(symbols: string[]): Promise<Record<string, Quote>> {
   if (!symbols.length) return {};
   const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(symbols.join(','));
@@ -60,12 +63,8 @@ async function fetchYahooQuoteBatch(symbols: string[]): Promise<Record<string, Q
 }
 
 async function fetchYahooChartLast(sym: string): Promise<Quote | null> {
-  // 5일/1일 캔들에서 마지막 유효값
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=5d&interval=1d`;
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json,text/plain,*/*' },
-    cache: 'no-store',
-  });
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' });
   if (!r.ok) return null;
   const j = await r.json();
   const res = j?.chart?.result?.[0];
@@ -74,23 +73,11 @@ async function fetchYahooChartLast(sym: string): Promise<Quote | null> {
   const opens: number[] = q.open || [];
   const closes: number[] = q.close || [];
   const vols: number[] = q.volume || [];
-
-  // 마지막 non-null index
   let i = Math.min(closes.length, opens.length, vols.length) - 1;
   while (i >= 0 && (!isNum(opens[i]) || !isNum(closes[i]) || !isNum(vols[i]))) i--;
   if (i < 0) return null;
-
-  return {
-    symbol: sym,
-    open: opens[i],
-    close: closes[i],
-    volume: vols[i],
-    currency: res?.meta?.currency || 'JPY',
-  };
+  return { symbol: sym, open: opens[i], close: closes[i], volume: vols[i], currency: res?.meta?.currency || 'JPY' };
 }
-
-const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
-const isNum = (v: any) => Number.isFinite(Number(v));
 
 type Row = {
   rank?: number;
@@ -134,24 +121,19 @@ function losers(rows: Row[], n=10){ return topBy(rows.filter(r=>priceC(r)>=1000)
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const date = url.searchParams.get('date'); // 표시용
+    const date = url.searchParams.get('date');
     const nowJst = toJst(new Date());
     let target = date ? new Date(date+'T00:00:00+09:00') : nowJst;
     const cutoff = new Date(`${ymd(nowJst)}T15:10:00+09:00`);
     if (!date && nowJst < cutoff) target = prevBiz(nowJst);
 
-    // 1) quote 배치
     let map: Record<string, Quote> | null = null;
-    try {
-      map = await fetchYahooQuoteBatch(JP_LIST.map(x=>x.sym));
-      // 일부만 채워져도 폴백 대상으로 보강
-    } catch { map = null; }
+    try { map = await fetchYahooQuoteBatch(JP_LIST.map(x=>x.sym)); } catch { map = null; }
 
     const rows: Row[] = [];
     for (const meta of JP_LIST) {
       let q: Quote | null | undefined = map ? map[meta.sym] : null;
       if (!q || !isNum(q.open) || !isNum(q.close) || !isNum(q.volume)) {
-        // 2) chart 폴백
         q = await fetchYahooChartLast(meta.sym);
       }
       const row = toRow(meta, q);
@@ -174,12 +156,7 @@ export async function GET(req: NextRequest) {
       universe: JP_LIST.length,
       notice: 'JST 15:10以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。',
       cards: rows.slice(0, 12),
-      tables: {
-        turnover: turnoverTop,
-        volume: volumeTop,
-        gainers: ups,
-        losers: downs
-      }
+      tables: { turnover: turnoverTop, volume: volumeTop, gainers: ups, losers: downs }
     });
   } catch (e: any) {
     return Response.json({ ok:false, error: String(e?.message || e) }, { status: 500 });
