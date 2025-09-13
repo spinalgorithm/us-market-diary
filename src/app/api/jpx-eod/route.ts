@@ -1,192 +1,202 @@
-// app/api/jpx-eod/route.ts
+// src/app/api/jpx-eod/route.ts
 import { NextRequest } from 'next/server'
-
 export const dynamic = 'force-dynamic'
 
-type Quote = {
-  symbol: string
-  shortName?: string
-  regularMarketOpen?: number
-  regularMarketPrice?: number
-  regularMarketPreviousClose?: number
-  regularMarketChangePercent?: number
-  regularMarketVolume?: number
-  currency?: string
-}
-
-type Row = {
+// ====== Types ======
+type TableRow = {
   rank?: number
-  ticker: string
-  name: string
-  o: string
-  c: string
-  chgPct: string
-  vol: string
-  jpyValueM?: string
+  ticker?: string
+  o?: number | string
+  c?: number | string
+  chgPct?: number | string
+  vol?: number | string
+  jpyValueM?: number | string // 売買代金（百万円）
   theme?: string
   brief?: string
 }
 
-// ===== 설정 =====
-const DEFAULT_UNIVERSE = [
-  // 인덱스/ETF
-  '1321.T', // 日経225 連動型上場投信
-  '1306.T', // TOPIX 連動型上場投信
-  '1570.T', // 日経平均レバレッジ
-  // 메가캡/대표
-  '7203.T', // TOYOTA
-  '6758.T', // SONY GROUP
-  '9984.T', // SOFTBANK GROUP
-  '8035.T', // TOKYO ELECTRON
-  '6861.T', // KEYENCE
-  '6098.T', // RECRUIT
-  '9432.T', // NTT
-  '9433.T', // KDDI
-  '7974.T', // NINTENDO
-  '4502.T', // TAKEDA
-  '4063.T', // SHIN-ETSU
-  '7735.T', // SCREEN
-  '6920.T', // LASERTEC
-  '8316.T', // SUMITOMO MITSUI
-  '8306.T', // MUFG
-  '9983.T', // FAST RETAILING
-  '6752.T', // PANASONIC
-  '7267.T', // HONDA
-]
-
-const THEMES: Record<string, { theme: string; brief: string }> = {
-  // ETF / 인덱스
-  '1321.T': { theme: 'インデックス/ETF', brief: '日経225連動ETF' },
-  '1306.T': { theme: 'インデックス/ETF', brief: 'TOPIX連動ETF' },
-  '1570.T': { theme: 'インデックス/ETF', brief: '日経平均レバレッジETF' },
-  // 대형 섹터
-  '7203.T': { theme: '自動車/モビリティ', brief: '自動車メーカー（トヨタ）' },
-  '6758.T': { theme: 'エレクトロニクス/エンタメ', brief: 'ソニー（エレクトロニクス・ゲーム）' },
-  '9984.T': { theme: '投資持株/テック', brief: 'ソフトバンクG（投資持株）' },
-  '8035.T': { theme: '半導体/製造装置', brief: '東京エレクトロン（半導体製造装置）' },
-  '6861.T': { theme: '計測/FA', brief: 'キーエンス（センサー/FA）' },
-  '6098.T': { theme: '人材/プラットフォーム', brief: 'リクルートHD（人材/メディア）' },
-  '9432.T': { theme: '通信', brief: 'NTT（通信）' },
-  '9433.T': { theme: '通信', brief: 'KDDI（通信）' },
-  '7974.T': { theme: 'ゲーム/エンタメ', brief: '任天堂（ゲーム）' },
-  '4502.T': { theme: '製薬', brief: '武田薬品（製薬）' },
-  '4063.T': { theme: '化学/素材', brief: '信越化学工業（化学/半導体材料）' },
-  '7735.T': { theme: '半導体/製造装置', brief: 'SCREEN（半導体製造装置）' },
-  '6920.T': { theme: '半導体/検査装置', brief: 'レーザーテック（半導体検査）' },
-  '8316.T': { theme: '銀行/金融', brief: '三井住友FG（メガバンク）' },
-  '8306.T': { theme: '銀行/金融', brief: '三菱UFJ（メガバンク）' },
-  '9983.T': { theme: '小売/アパレル', brief: 'ファーストリテイリング（ユニクロ）' },
-  '6752.T': { theme: 'エレクトロニクス', brief: 'パナソニック（家電/B2B）' },
-  '7267.T': { theme: '自動車/モビリティ', brief: 'ホンダ（自動車）' },
+type TablesPayload = {
+  byValue?: TableRow[]   // 売買代金Top
+  byVolume?: TableRow[]  // 出来高Top
+  gainers?: TableRow[]   // 上昇（¥1,000+ など任意）
+  losers?: TableRow[]    // 下落（¥1,000+ など任意）
 }
 
-function fmt(n?: number, d = 2) {
-  if (n === undefined || n === null || Number.isNaN(n)) return ''
-  return new Intl.NumberFormat('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)
+// ====== Small utils ======
+const toNumber = (v: any): number | undefined => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : undefined
 }
-function fmtInt(n?: number) {
-  if (n === undefined || n === null || Number.isNaN(n)) return ''
-  return new Intl.NumberFormat('ja-JP').format(Math.round(n))
+const pct = (o?: number, c?: number): string => {
+  if (!Number.isFinite(o!) || !Number.isFinite(c!)) return ''
+  return (((c! - o!) / o!) * 100).toFixed(2)
 }
-function jpyMillions(price?: number, vol?: number) {
-  if (!price || !vol) return ''
-  const v = (price * vol) / 1_000_000 // 百万円
-  return new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 1 }).format(v)
-}
-
-async function fetchYahooQuotes(symbols: string[]): Promise<Quote[]> {
-  // Yahoo Finance quote API (非公式). サーバー側fetchはCORS影響 없음.
-  const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(symbols.join(','))
-  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' })
-  if (!r.ok) throw new Error(`Yahoo quote error: ${r.status}`)
-  const j = await r.json()
-  return (j?.quoteResponse?.result ?? []) as Quote[]
+const jpyM = (v?: number): string => {
+  if (!Number.isFinite(v!)) return ''
+  return (v! / 1_000_000).toFixed(1)
 }
 
-function toRow(q: Quote): Row {
-  const o = q.regularMarketOpen ?? q.regularMarketPreviousClose ?? q.regularMarketPrice ?? 0
-  const c = q.regularMarketPrice ?? q.regularMarketPreviousClose ?? 0
-  const chgPct = q.regularMarketChangePercent
-  const vol = q.regularMarketVolume
-  const meta = THEMES[q.symbol] ?? { theme: 'その他/テーマ不明', brief: q.shortName || '' }
-  return {
-    ticker: q.symbol,
-    name: q.shortName || q.symbol,
-    o: o ? fmt(o, 2) : '',
-    c: c ? fmt(c, 2) : '',
-    chgPct: chgPct !== undefined ? fmt(chgPct, 2) : '',
-    vol: vol !== undefined ? fmtInt(vol) : '',
-    jpyValueM: jpyMillions(c || o, vol),
-    theme: meta.theme,
-    brief: meta.brief || '',
+// ====== Date (JST) ======
+const getDateJst = (req: NextRequest): string => {
+  const q = req.nextUrl.searchParams.get('date')
+  if (q) return q
+  const fmt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' })
+  const parts = fmt.formatToParts(new Date())
+  const y = parts.find(p => p.type === 'year')?.value
+  const m = parts.find(p => p.type === 'month')?.value
+  const d = parts.find(p => p.type === 'day')?.value
+  return `${y}-${m}-${d}`
+}
+
+// ====== Theme/Brief dictionary (代表例だけ搭載。必要に応じて拡張してください) ======
+const JP_BRIEF: Record<string, { theme: string, brief: string, name?: string }> = {
+  '1321.T': { theme: 'インデックス/ETF', brief: '日経225連動ETF', name: 'iシェアーズ 日経225' },
+  '1306.T': { theme: 'インデックス/ETF', brief: 'TOPIX連動ETF', name: 'NEXT FUNDS TOPIX' },
+  '8035.T': { theme: '半導体/装置', brief: '半導体製造装置', name: '東京エレクトロン' },
+  '9984.T': { theme: '投資/通信', brief: '投資持株・通信', name: 'ソフトバンクG' },
+  '7203.T': { theme: '自動車', brief: '自動車', name: 'トヨタ自動車' },
+  '6758.T': { theme: 'エレクトロニクス/ゲーム', brief: 'エレクトロニクス・エンタメ', name: 'ソニーG' },
+  '7974.T': { theme: 'ゲーム', brief: '家庭用ゲーム', name: '任天堂' },
+  '8306.T': { theme: '金融', brief: 'メガバンク', name: '三菱UFJ' },
+  '3436.T': { theme: '半導体材料', brief: 'フォトレジスト', name: 'SUMCO' }, // 例
+}
+
+// ====== Yahoo quotes (best-effort, may 401) ======
+const fetchYahooCards = async (tickers: string[]) => {
+  if (!tickers.length) return []
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(tickers.join(','))}`
+  const res = await fetch(url, {
+    cache: 'no-store',
+    headers: {
+      // 일부 환경에서 UA 없으면 더 잘 막힘
+      'User-Agent': 'Mozilla/5.0 (compatible; JPX-EOD/1.0; +https://vercel.app)',
+      'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'
+    }
+  })
+  if (!res.ok) throw new Error(`Yahoo quote error: ${res.status}`)
+  const j = await res.json()
+  const out: any[] = []
+  const results = j?.quoteResponse?.result ?? []
+  for (const r of results) {
+    const t: string = r.symbol
+    const open = toNumber(r.regularMarketOpen ?? r.open)
+    const close = toNumber(r.regularMarketPrice ?? r.price ?? r.regularMarketPreviousClose)
+    const vol = toNumber(r.regularMarketVolume ?? r.volume)
+    const info = JP_BRIEF[t] ?? {}
+    out.push({
+      ticker: t,
+      name: info.name ?? r.shortName ?? r.longName ?? '',
+      o: open,
+      c: close,
+      chgPct: (open && close) ? pct(open, close) : '',
+      vol: vol ?? '',
+      theme: info.theme ?? '',
+      brief: info.brief ?? ''
+    })
+  }
+  return out
+}
+
+// ====== Stooq fallback for cards (無料・キー不要) ======
+const toStooq = (yahoo: string) => yahoo.replace(/\.T$/i, '.jp')
+const fetchStooqCards = async (yahooTickers: string[]) => {
+  if (!yahooTickers.length) return []
+  const syms = yahooTickers.map(toStooq).join(',')
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(syms)}&i=d`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`Stooq error: ${res.status}`)
+  const csv = await res.text()
+  const lines = csv.trim().split('\n')
+  const out: any[] = []
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',')
+    const sym = (cols[0] || '').trim()
+    const o = toNumber(cols[3])
+    const c = toNumber(cols[6])
+    const v = toNumber(cols[7])
+    const ysym = sym.replace(/\.jp$/i, '.T')
+    const info = JP_BRIEF[ysym] ?? {}
+    out.push({
+      ticker: ysym,
+      name: info.name ?? '',
+      o, c,
+      chgPct: (o && c) ? pct(o, c) : '',
+      vol: v ?? '',
+      theme: info.theme ?? '',
+      brief: info.brief ?? ''
+    })
+  }
+  return out
+}
+
+// ====== Tables builder (소스 없으면 안전한 빈표 반환) ======
+/**
+ * 표 데이터 소스 우선순위
+ * 1) process.env.JPX_SOURCE_URL 에서 사전 집계 JSON 가져오기 (권장)
+ *   형태 예: { byValue: TableRow[], byVolume: TableRow[], gainers: TableRow[], losers: TableRow[] }
+ * 2) 없으면 빈 배열 반환
+ */
+const buildJpxTables = async (): Promise<TablesPayload> => {
+  const src = process.env.JPX_SOURCE_URL
+  if (!src) {
+    return { byValue: [], byVolume: [], gainers: [], losers: [] }
+  }
+  try {
+    const r = await fetch(src, { cache: 'no-store' })
+    if (!r.ok) throw new Error(`JPX_SOURCE_URL fetch ${r.status}`)
+    const j = await r.json()
+    // 최소 방어적 매핑
+    const safe = (a: any): TableRow[] => Array.isArray(a) ? a : []
+    return {
+      byValue: safe(j.byValue),
+      byVolume: safe(j.byVolume),
+      gainers: safe(j.gainers),
+      losers: safe(j.losers)
+    }
+  } catch (e) {
+    console.warn('JPX_SOURCE_URL failed:', e)
+    return { byValue: [], byVolume: [], gainers: [], losers: [] }
   }
 }
 
+// ====== Main handler ======
 export async function GET(req: NextRequest) {
   try {
-    const universeParam = req.nextUrl.searchParams.get('tickers')
-    const universe = (universeParam?.split(',').map(s => s.trim()).filter(Boolean)) ||
-      (process.env.JPX_TICKERS?.split(',').map(s => s.trim()).filter(Boolean)) ||
-      DEFAULT_UNIVERSE
+    const dateJst = getDateJst(req)
+    const url = new URL(req.url)
+    const skipQuotes = url.searchParams.get('noQuotes') === '1' || url.searchParams.get('skipQuotes') === '1'
+    const topTickers = (url.searchParams.get('tickers')
+      ?? '1321.T,1306.T,8035.T,9984.T,7203.T,6758.T,7974.T,8306.T'
+    ).split(',').map(s => s.trim()).filter(Boolean)
 
-    const quotes = await fetchYahooQuotes(universe)
-    const rows = quotes.map(toRow)
+    // 1) 표 데이터 (항상 시도, 실패해도 빈표로)
+    const tables = await buildJpxTables()
 
-    // 랭킹 만들기 (유니버스 내에서만): 売買代金/出来高/上昇/下落
-    const byValue = [...rows]
-      .filter(r => r.jpyValueM)
-      .sort((a, b) => (Number(b.jpyValueM!.replace(/,/g, '')) - Number(a.jpyValueM!.replace(/,/g, ''))))
-      .slice(0, 10)
-      .map((r, i) => ({ ...r, rank: i + 1 }))
+    // 2) 카드 (야후 → 실패 시 Stooq → 그래도 실패면 빈배열)
+    let cards: any[] = []
+    if (!skipQuotes) {
+      try {
+        cards = await fetchYahooCards(topTickers)
+      } catch (e) {
+        console.warn('Yahoo quotes failed. Fallback to Stooq.', e)
+        try {
+          cards = await fetchStooqCards(topTickers)
+        } catch (e2) {
+          console.warn('Stooq fallback failed.', e2)
+          cards = []
+        }
+      }
+    }
 
-    const byVolume = [...rows]
-      .filter(r => r.vol)
-      .sort((a, b) => (Number(b.vol!.replace(/,/g, '')) - Number(a.vol!.replace(/,/g, ''))))
-      .slice(0, 10)
-      .map((r, i) => ({ ...r, rank: i + 1 }))
-
-    const gainers = [...rows]
-      .filter(r => r.chgPct !== '')
-      .filter(r => {
-        const price = Number((r.c || r.o).replace(/,/g, ''))
-        return price >= 1000 // 1,000円以上のみ
-      })
-      .sort((a, b) => (Number(b.chgPct) - Number(a.chgPct)))
-      .slice(0, 10)
-      .map((r, i) => ({ ...r, rank: i + 1 }))
-
-    const losers = [...rows]
-      .filter(r => r.chgPct !== '')
-      .filter(r => {
-        const price = Number((r.c || r.o).replace(/,/g, ''))
-        return price >= 1000
-      })
-      .sort((a, b) => (Number(a.chgPct) - Number(b.chgPct)))
-      .slice(0, 10)
-      .map((r, i) => ({ ...r, rank: i + 1 }))
-
-    // 카드용 추천 (ETF + 메가캡 몇 개)
-    const prefer = ['1321.T', '1306.T', '7203.T', '8035.T', '9984.T', '6758.T', '7974.T']
-    const cards = rows.filter(r => prefer.includes(r.ticker))
-
-    const now = new Date()
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-    const dateJst = jst.toISOString().slice(0, 10)
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        dateJst,
-        universe,
-        cards,
-        tables: { byValue, byVolume, gainers, losers },
-      }),
-      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    )
-  } catch (err: any) {
-    return new Response(JSON.stringify({ ok: false, error: String(err?.message || err) }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    // 3) 응답
+    return Response.json({
+      ok: true,
+      dateJst,
+      tables,
+      cards
     })
+
+  } catch (err: any) {
+    return Response.json({ ok: false, error: String(err?.message || err) }, { status: 500 })
   }
 }
