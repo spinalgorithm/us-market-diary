@@ -1,20 +1,16 @@
-# .github/workflows/fetch-jpx.yml
 name: Fetch JPX Universe CSV
 
 on:
-  # 수동 실행 버튼
-  workflow_dispatch: {}
-  # 평일마다 자동 실행 (UTC 기준 07:20 → JST 16:20)
-  schedule:
-    - cron: "20 7 * * 1-5"
+  workflow_dispatch:
 
 permissions:
-  contents: write  # CSV 커밋하려면 필요
+  contents: write
 
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
-
+    env:
+      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,19 +19,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install deps
-        run: npm ci
+      - name: Install deps (generate package-lock.json)
+        run: |
+          npm install --no-fund --no-audit
+          npm install -D ts-node
 
-      - name: Generate CSV (up to 5000 rows)
-        # package.json에 스크립트 만들었으면: npm run fetch:jpx 로 바꿔도 OK
-        run: npx ts-node --esm scripts/fetch_jpx_full.ts --limit=5000
-        env:
-          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+      - name: Ensure tsconfig for scripts exists
+        run: |
+          if [ ! -f tsconfig.scripts.json ]; then
+            cat > tsconfig.scripts.json <<'JSON'
+            {
+              "extends": "./tsconfig.json",
+              "compilerOptions": {
+                "target": "ES2020",
+                "module": "NodeNext",
+                "moduleResolution": "NodeNext",
+                "esModuleInterop": true,
+                "resolveJsonModule": true,
+                "skipLibCheck": true,
+                "strict": false,
+                "types": ["node"]
+              },
+              "include": ["scripts/**/*"]
+            }
+            JSON
+          fi
 
-      - name: Commit & push CSV if changed
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore(data): update JPX universe CSV"
-          file_pattern: public/jpx_universe.csv
+      - name: Generate CSV
+        run: |
+          npx ts-node --project tsconfig.scripts.json scripts/fetch_jpx_full.ts --limit=5000
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/jpx_universe.csv package-lock.json
+          git commit -m "chore: update JPX universe CSV" || echo "no changes to commit"
+          git push
