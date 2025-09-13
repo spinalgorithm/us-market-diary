@@ -6,7 +6,12 @@
     "build": "next build",
     "start": "next start",
     "dev": "next dev",
-    "fetch:jpx": "node scripts/fetch_jpx_full.mjs --limit=5000"
+ 
+    "fetch:jpx": "node scripts/fetch_jpx_full.mjs --limit=5000",
+ 
+    "enrich:jpx": "node scripts/enrich_universe.mjs",
+ 
+    "fetch+enrich:jpx": "node scripts/fetch_jpx_full.mjs --limit=5000 && node scripts/enrich_universe.mjs"
   },
   "dependencies": {
     "next": "14.2.5",
