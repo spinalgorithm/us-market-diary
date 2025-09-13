@@ -1,17 +1,20 @@
 // scripts/fetch_jpx_full.ts
-// 목적: Twelve Data /stocks에서 일본 종목을 페이지네이션으로 전부 수집해
-//       public/jpx_universe.csv 로 저장.
-// 실행: npm run fetch:jpx  (GitHub Actions에서 TWELVEDATA_API_KEY로 실행됨)
+// 목적: Twelve Data /stocks에서 일본 종목을 페이지네이션으로 수집해
+//       public/jpx_universe.csv 로 저장
+// 실행: npx -y ts-node@10.9.2 --esm scripts/fetch_jpx_full.ts --limit=5000
+//  - GitHub Actions에서는 TWELVEDATA_API_KEY 시크릿을 주입
 
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 
+// ===== 타입 =====
 type TDStock = {
-  symbol: string;      // 예: "7203", "8035.T", "7203:JP" 등
-  name: string;        // 종목명
-  currency?: string;   // "JPY" 등
-  exchange?: string;   // "TSE" 등
-  country?: string;    // "Japan"
-  type?: string;       // "Common Stock", "ETF", "REIT" 등
+  symbol: string;     // "7203", "8035.T", "7203:JP" 등
+  name: string;       // 종목명
+  currency?: string;  // "JPY"
+  exchange?: string;  // "TSE" 등
+  country?: string;   // "Japan"
+  type?: string;      // "Common Stock", "ETF", "REIT" 등
 };
 
 type TDStocksResponse =
@@ -19,30 +22,53 @@ type TDStocksResponse =
   | { status: "error"; message?: string }
   | any;
 
+// ===== 설정 =====
 const API_KEY = process.env.TWELVEDATA_API_KEY ?? "";
 if (!API_KEY) {
-  console.warn("[warn] TWELVEDATA_API_KEY is empty. You can still try, but quota may be tiny.");
+  console.warn("[warn] TWELVEDATA_API_KEY is empty. Public quota may be tiny.");
 }
 
-// ---- 설정값(필요시 조정) ----
 const LIMIT = Number(process.argv.find(a => a.startsWith("--limit="))?.split("=")[1] ?? "5000");
-const INCLUDE_TYPES = new Set(["Common Stock", "ETF", "REIT"]); // 필요시 "Fund" 등 추가
-const COUNTRY = "Japan";     // 일본만
-// exchange 필터를 너무 좁히면 누락될 수 있어 country만으로 먼저 긁고, 후처리로 정제합니다.
+const INCLUDE_TYPES = new Set(["Common Stock", "ETF", "REIT"]); // 필요시 "Fund" 추가
+const COUNTRY = "Japan";
 const MAX_PAGES = 500;       // 안전 상한
-const PAGE_PAUSE_MS = 250;   // 페이지 사이 살짝 딜레이(레이트 제한 방지)
+const PAGE_PAUSE_MS = 250;   // 페이지 사이 딜레이(레이트 제한 회피)
 
-// ---- 유틸 ----
+// ===== 유틸 =====
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// 12Data /stocks 페이지 단위 요청
+function csvEncode(v: string): string {
+  if (v == null) return "";
+  if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+// 다양한 심볼을 표준 코드/야후심볼로 정규화
+function normalizeSymbol(sym: string): { code?: string; yahooSymbol?: string } {
+  // 1) 선행 4~5자리 숫자 우선
+  let m = sym.match(/^(\d{4,5})/);
+  let code = m?.[1];
+
+  // 2) 못 찾으면 전체에서 4~5자리 숫자 검색
+  if (!code) {
+    m = sym.match(/(\d{4,5})/);
+    code = m?.[1];
+  }
+  if (!code) return {};
+
+  // 야후 심볼로 통일
+  const yahoo = /\.T$/i.test(sym) ? sym.toUpperCase() : `${code}.T`;
+  return { code, yahooSymbol: yahoo };
+}
+
+// ===== API =====
 async function fetchPage(page: number): Promise<TDStock[]> {
   const url = new URL("https://api.twelvedata.com/stocks");
   url.searchParams.set("country", COUNTRY);
   url.searchParams.set("page", String(page));
   url.searchParams.set("apikey", API_KEY);
-  // 필요시 exchange를 추가로 좁혀보고 싶다면:
-  // url.searchParams.set("exchange", "TSE"); // 누락 생기면 주석 처리하세요.
+  // 누락 있으면 exchange 제한을 빼두는 게 안전
+  // url.searchParams.set("exchange", "TSE");
 
   const r = await fetch(url.toString(), { cache: "no-store" });
   if (!r.ok) {
@@ -55,32 +81,15 @@ async function fetchPage(page: number): Promise<TDStock[]> {
     return [];
   }
   const arr = (j as any).data as TDStock[] | undefined;
-  if (!Array.isArray(arr)) return [];
-  return arr;
+  return Array.isArray(arr) ? arr : [];
 }
 
-// 심볼에서 JP 코드/야후심볼 추출
-function normalizeSymbol(s: string) {
-  // 다양한 패턴 대응: "8035", "8035.T", "8035:JP", "8035.TOKYO" 등 가능성
-  // 1) 숫자만 추출(선행 숫자 덩어리)
-  const m = s.match(/^(\d{3,5})/);
-  const code = m ? m[1] : s.replace(/[:.].*$/, "");
-
-  // 2) 야후 심볼로 통일
-  //    이미 *.T 이면 그대로, 아니면 "<code>.T"
-  const yahoo =
-    /\.T$/i.test(s) ? s.toUpperCase() :
-    `${code}.T`;
-
-  return { code, yahooSymbol: yahoo };
-}
-
-// CSV 행 포맷
+// ===== CSV 포맷 =====
 type CSVRow = {
   code: string;
   name: string;
-  theme: string;       // 비워두면 "-" (추후 수동 보강 가능)
-  brief: string;       // 비워두면 "-"
+  theme: string;       // 기본 "-"
+  brief: string;       // 기본 "-"
   yahooSymbol: string;
 };
 
@@ -88,71 +97,109 @@ function toCSV(rows: CSVRow[]): string {
   const header = ["code", "name", "theme", "brief", "yahooSymbol"];
   const lines = [header.join(",")];
   for (const r of rows) {
-    // 아주 단순 CSV (필드에 쉼표가 거의 없다고 가정; 필요시 더 견고한 CSV 인코딩 적용)
     lines.push(
-      [r.code, r.name ?? "", r.theme ?? "-", r.brief ?? "-", r.yahooSymbol].map(v =>
-        /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
-      ).join(",")
+      [
+        csvEncode(r.code),
+        csvEncode(r.name ?? ""),
+        csvEncode(r.theme ?? "-"),
+        csvEncode(r.brief ?? "-"),
+        csvEncode(r.yahooSymbol),
+      ].join(",")
     );
   }
   return lines.join("\n") + "\n";
 }
 
+// ===== 메인 =====
 async function main() {
   console.log(`[info] Start fetch JP stocks from Twelve Data /stocks, LIMIT=${LIMIT}`);
   let all: TDStock[] = [];
+
   for (let p = 1; p <= MAX_PAGES; p++) {
     const arr = await fetchPage(p);
     console.log(`[info] page ${p}: ${arr.length} items`);
     if (arr.length === 0) break;
     all = all.concat(arr);
     await sleep(PAGE_PAUSE_MS);
-    if (all.length > LIMIT * 3) {
-      // 비정상 폭주 방지
-      break;
-    }
+    if (all.length > LIMIT * 3) break; // 비정상 방지
   }
+
   console.log(`[info] raw fetched: ${all.length}`);
 
-  // 1) 국가/통화 정제
-  const jpy = all.filter(x =>
-    (x.country?.toLowerCase() === "japan") &&
-    (!x.currency || x.currency.toUpperCase() === "JPY")
-  );
+  // 1) 1차 필터: 국가/통화/타입
+  const filtered = all.filter(x => {
+    if (x.country?.toLowerCase() !== "japan") return false;
+    if (x.currency && x.currency.toUpperCase() !== "JPY") return false;
+    if (x.type && !INCLUDE_TYPES.has(x.type)) return false;
+    return true;
+  });
 
-  // 2) 타입 필터
-  const typed = jpy.filter(x => !x.type || INCLUDE_TYPES.has(x.type));
+  console.log(`[info] after country/currency/type filter: ${filtered.length}`);
 
-  console.log(`[info] after filter country=Japan,currency=JPY,type in ${[...INCLUDE_TYPES].join("/")}: ${typed.length}`);
+  // 2) 코드/야후심볼 정규화 + 4~5자리 코드만 채택
+  type Picked = TDStock & { _code: string; _yahoo: string };
+  const picked: Picked[] = [];
+  for (const x of filtered) {
+    const { code, yahooSymbol } = normalizeSymbol(x.symbol);
+    if (!code || !/^\d{4,5}$/.test(code)) continue;
+    const ys = yahooSymbol ?? `${code}.T`;
+    picked.push({ ...x, _code: code, _yahoo: ys });
+  }
+  console.log(`[info] after normalize: ${picked.length}`);
 
-  // 3) 코드/야후심볼 정규화 + dedupe (code 기준)
-  const map = new Map<string, CSVRow>();
-  for (const s of typed) {
-    const { code, yahooSymbol } = normalizeSymbol(s.symbol);
-    if (!/^\d{3,5}$/.test(code)) continue; // 일본 코드는 보통 숫자 4자리 (ETF/REIT 등 3~5자리도 존재)
-    if (!map.has(code)) {
-      map.set(code, {
-        code,
-        name: s.name ?? code,
-        theme: "-",         // 필요시 나중에 수동 보강
-        brief: "-",
-        yahooSymbol,
-      });
+  // 3) 중복 제거: 같은 code 중 우선순위
+  //    .T 포함, type 우선순위(Common Stock > ETF > REIT > 기타), exchange=TSE 선호
+  const typeRank = (t?: string) =>
+    t === "Common Stock" ? 3 : t === "ETF" ? 2 : t === "REIT" ? 1 : 0;
+
+  const bestByCode = new Map<string, Picked>();
+  for (const x of picked) {
+    const prev = bestByCode.get(x._code);
+    if (!prev) {
+      bestByCode.set(x._code, x);
+      continue;
+    }
+    const score = (a: Picked) =>
+      (a._yahoo.endsWith(".T") ? 10 : 0) +
+      (typeRank(a.type) * 2) +
+      ((a.exchange?.toUpperCase() === "TSE") ? 1 : 0);
+    if (score(x) > score(prev)) {
+      bestByCode.set(x._code, x);
     }
   }
 
-  // 4) 정렬 및 LIMIT 적용
-  const rows = [...map.values()].sort((a, b) => Number(a.code) - Number(b.code)).slice(0, LIMIT);
+  let uniq = Array.from(bestByCode.values());
+  // 4) LIMIT 적용
+  if (uniq.length > LIMIT) uniq = uniq.slice(0, LIMIT);
 
-  console.log(`[info] final rows: ${rows.length}`);
+  // 5) 정렬(코드 숫자 오름차순)
+  uniq.sort((a, b) => Number(a._code) - Number(b._code));
 
-  // 5) CSV 저장
+  // 6) CSV 행 매핑
+  const rows: CSVRow[] = uniq.map(x => ({
+    code: x._code,
+    name: x.name ?? x._code,
+    theme: "-",
+    brief: "-",
+    yahooSymbol: x._yahoo,
+  }));
+
+  // 7) 쓰기
+  const OUTPUT = "public/jpx_universe.csv";
+  await mkdir(dirname(OUTPUT), { recursive: true });
   const csv = toCSV(rows);
-  await writeFile("public/jpx_universe.csv", csv, "utf8");
-  console.log(`[done] wrote public/jpx_universe.csv (${rows.length} rows)`);
+  await writeFile(OUTPUT, csv, "utf8");
+
+  console.log(`[info] wrote CSV: ${OUTPUT}, rows=${rows.length}`);
+  if (rows.length > 0) {
+    console.log("[info] head:");
+    console.log(csv.split("\n").slice(0, 5).join("\n"));
+    console.log("[info] tail:");
+    console.log(csv.split("\n").slice(-5).join("\n"));
+  }
 }
 
-main().catch((e) => {
-  console.error("[fatal] fetch_jpx_full failed:", e);
-  process.exit(1);
+main().catch(err => {
+  console.error("[error] fetch failed:", err);
+  process.exitCode = 1;
 });
