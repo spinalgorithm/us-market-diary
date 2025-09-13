@@ -1,0 +1,41 @@
+# .github/workflows/fetch-jpx.yml
+name: Fetch JPX Universe CSV
+
+on:
+  # 수동 실행 버튼
+  workflow_dispatch: {}
+  # 평일마다 자동 실행 (UTC 기준 07:20 → JST 16:20)
+  schedule:
+    - cron: "20 7 * * 1-5"
+
+permissions:
+  contents: write  # CSV 커밋하려면 필요
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Generate CSV (up to 5000 rows)
+        # package.json에 스크립트 만들었으면: npm run fetch:jpx 로 바꿔도 OK
+        run: npx ts-node --esm scripts/fetch_jpx_full.ts --limit=5000
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+
+      - name: Commit & push CSV if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): update JPX universe CSV"
+          file_pattern: public/jpx_universe.csv
