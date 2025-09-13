@@ -2,12 +2,10 @@
 import { NextRequest } from "next/server";
 
 /**
- * 환경변수
- * - TWELVEDATA_API_KEY: Twelve Data API Key (필수 권장)
- * - JPX_UNIVERSE_URL: 유니버스 JSON URL (선택) 例) raw gist 등
- *   형식: [{ code:"8035", name:"東京エレクトロン", theme:"半導体製造装置", brief:"製造装置大手", yahooSymbol:"8035.T" }, ...]
- *   필드는 code/name 최소 필요. yahooSymbol 없으면 `${code}.T`로 생성.
- * - JPX_HOLIDAYS_URL: 일본 휴장일(YYYY-MM-DD[]) JSON URL (선택)
+ * ENV
+ * - TWELVEDATA_API_KEY: Twelve Data API Key (optional but recommended)
+ * - JPX_UNIVERSE_URL: 유니버스 CSV/JSON URL (optional)
+ * - JPX_HOLIDAYS_URL: 일본 휴장일(YYYY-MM-DD[]) JSON URL (optional)
  */
 
 type UniverseItem = {
@@ -68,7 +66,6 @@ function addDays(d: Date, n: number): Date {
   return nd;
 }
 function prevBizDay(d: Date, holidays: Set<string>): Date {
-  // 주말 & (선택)공휴일을 피해 직전 영업일 반환
   let cur = addDays(d, -1);
   while (isWeekend(cur) || holidays.has(formatYmd(cur))) {
     cur = addDays(cur, -1);
@@ -106,7 +103,6 @@ async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | n
     return null;
   }
 }
-
 async function safeText(url: string, init?: RequestInit): Promise<string | null> {
   try {
     const r = await fetch(url, { ...init, cache: "no-store" });
@@ -116,25 +112,21 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
     return null;
   }
 }
-
 function csvToUniverse(csv: string): UniverseItem[] {
   // 기대 헤더: code,name,theme,brief,yahooSymbol
   const lines = csv.trim().split(/\r?\n/);
   if (lines.length <= 1) return [];
   const header = lines[0].split(",").map(s => s.trim());
   const idx = (k: string) => header.findIndex(h => h.toLowerCase() === k.toLowerCase());
-
   const iCode = idx("code");
   const iName = idx("name");
   const iTheme = idx("theme");
   const iBrief = idx("brief");
   const iY = idx("yahoosymbol");
-
   const out: UniverseItem[] = [];
   for (let i = 1; i < lines.length; i++) {
     const raw = lines[i];
     if (!raw) continue;
-    // 아주 단순한 CSV 파서 (쉼표+따옴표 복잡 케이스는 피한다는 가정)
     const cols = raw.split(",").map(s => s.trim());
     const code = cols[iCode]?.replace(/"/g, "");
     if (!code) continue;
@@ -148,7 +140,6 @@ function csvToUniverse(csv: string): UniverseItem[] {
   }
   return out;
 }
-
 
 // ---------- 유니버스 (기본 + 커스텀 URL) ----------
 const DEFAULT_UNIVERSE: UniverseItem[] = [
@@ -166,7 +157,7 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "8316", name: "三井住友フィナンシャルG", theme: "金融", brief: "メガバンク" },
   { code: "9984", name: "ソフトバンクグループ", theme: "投資/テック", brief: "投資持株/通信" },
   { code: "9983", name: "ファーストリテイリング", theme: "アパレル/SPA", brief: "ユニクロ" },
-  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト" },
+  { code: "7974", name: "任天堂", theme: "ゲーム", brief: "게임機/ソフト" },
   { code: "9433", name: "KDDI", theme: "通信", brief: "au/通信" },
   { code: "9434", name: "ソフトバンク", theme: "通信", brief: "携帯通信" },
   { code: "6594", name: "日本電産", theme: "電機/モーター", brief: "小型モーター/EV" },
@@ -219,18 +210,6 @@ async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
     yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
   }));
 }
-  const data = await safeJson<UniverseItem[]>(url);
-  if (!Array.isArray(data) || data.length === 0) {
-    return DEFAULT_UNIVERSE.map(u => ({
-      ...u,
-      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
-    }));
-  }
-  return data.map(u => ({
-    ...u,
-    yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
-  }));
-}
 
 async function loadJpxHolidays(): Promise<Set<string>> {
   const url = process.env.JPX_HOLIDAYS_URL;
@@ -244,14 +223,11 @@ async function loadJpxHolidays(): Promise<Set<string>> {
 const TD_ENDPOINT = "https://api.twelvedata.com/quote";
 
 async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quote | null> {
-  // Twelve Data는 보통 야후형 심볼(예: 8035.T)도 지원.
   const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
   const r = await safeJson<any>(url);
   if (!r) return null;
-  // 에러 케이스
   if (r.status === "error" || r.code || r.message) return null;
 
-  // 단일 quote 형태일 때
   const open = num(r.open);
   const close = num(r.close);
   const prev = num(r.previous_close ?? r.previousClose);
@@ -259,7 +235,6 @@ async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quo
   const currency = r.currency ?? "JPY";
   const name = r.name;
 
-  // 일부 케이스에서 "close"가 null인 경우 있음 → null이면 실패로 간주하여 fallback로
   if (close == null && prev == null && volume == null) return null;
 
   return {
@@ -275,7 +250,6 @@ async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quo
 
 // ---------- Yahoo Chart (fallback) ----------
 async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
-  // 5일/1일간격으로 불러 마지막 2개 캔들에서 종가/이전종가 추정
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
   const j = await safeJson<any>(url);
   try {
@@ -293,7 +267,6 @@ async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
     const close = num(closes[n - 1]);
     const open = num(opens[n - 1]);
     const volume = num(vols[n - 1]);
-    // 이전종가는 meta.regularMarketPreviousClose 또는 마지막 직전 close
     const prev = meta.regularMarketPreviousClose != null
       ? num(meta.regularMarketPreviousClose)
       : (n >= 2 ? num(closes[n - 2]) : undefined);
@@ -324,24 +297,19 @@ async function fetchQuoteFor(symbol: string, apiKey?: string): Promise<Quote | n
     const td = await fetchTwelveDataQuote(symbol, apiKey);
     if (td) return td;
   }
-  // fallback
   const yh = await fetchYahooChartQuote(symbol);
   if (yh) return yh;
   return null;
 }
-
 async function fetchAllQuotes(symbols: string[], apiKey?: string): Promise<Map<string, Quote>> {
-  // 무료 플랜 고려: 순차 + 약간의 지연 (서버리스 타임아웃 대비 40~80ms 수준)
   const out = new Map<string, Quote>();
   for (const s of symbols) {
     const q = await fetchQuoteFor(s, apiKey);
     if (q) out.set(s, q);
-    // 소량 딜레이
     await delay(60);
   }
   return out;
 }
-
 function delay(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
 }
@@ -369,7 +337,6 @@ function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
     return row;
   });
 }
-
 function buildRankings(rows: Row[]) {
   const byValue = [...rows]
     .filter(r => r.yenVolM != null)
@@ -404,43 +371,35 @@ export async function GET(req: NextRequest) {
     const apikey = process.env.TWELVEDATA_API_KEY || "";
     const holidays = await loadJpxHolidays();
 
-    // 기준 날짜: ?date=YYYY-MM-DD가 있으면 그 날짜,
-    // 없으면 JST 시각이 15:35 이전이면 전 영업일, 이후면 오늘
+    // 기준 날짜
     const jstNow = toJstDate();
     let baseDate: Date;
     const dateParam = searchParams.get("date");
     if (dateParam) {
       baseDate = new Date(dateParam + "T00:00:00+09:00");
     } else {
-      // 15:35 이전 → 전 영업일
       const hh = jstNow.getHours();
       const mm = jstNow.getMinutes();
       const before1535 = hh < 15 || (hh === 15 && mm < 35);
       baseDate = before1535 ? prevBizDay(jstNow, holidays) : jstNow;
-      // 주말/휴일 당일 접근도 전 영업일로 보정
       const ymdToday = formatYmd(baseDate);
       if (isWeekend(baseDate) || holidays.has(ymdToday)) {
         baseDate = prevBizDay(baseDate, holidays);
       }
     }
-
     const baseYmd = formatYmd(baseDate);
 
+    // 현재 배포 도메인 기준 fallback CSV
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") || "https";
+    const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
+    const urlFromReq = `${origin}/jpx_universe.csv`;
 
-// --- 여기 추가 ---
-const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-const proto = req.headers.get('x-forwarded-proto') || 'https';
-const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
-const urlFromReq = `${origin}/jpx_universe.csv`;
-// --- 여기까지 ---
-
-// 유니버스 로딩
-const universe = await loadUniverse(urlFromReq); // <- 이렇게 변경
-
-    
+    // 유니버스 로딩
+    const universe = await loadUniverse(urlFromReq);
     const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
 
-    // 시세 취득 (현재/최근 데이터 기반)
+    // 시세 취득
     const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
     // 행/랭킹 구성
@@ -459,7 +418,10 @@ const universe = await loadUniverse(urlFromReq); // <- 이렇게 변경
 
     return new Response(JSON.stringify(body), {
       status: 200,
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
     });
   } catch (err: any) {
     const body = { ok: false, error: "backend_failure", message: err?.message ?? "unknown" };
