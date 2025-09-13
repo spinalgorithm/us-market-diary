@@ -107,6 +107,49 @@ async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | n
   }
 }
 
+async function safeText(url: string, init?: RequestInit): Promise<string | null> {
+  try {
+    const r = await fetch(url, { ...init, cache: "no-store" });
+    if (!r.ok) return null;
+    return await r.text();
+  } catch {
+    return null;
+  }
+}
+
+function csvToUniverse(csv: string): UniverseItem[] {
+  // 기대 헤더: code,name,theme,brief,yahooSymbol
+  const lines = csv.trim().split(/\r?\n/);
+  if (lines.length <= 1) return [];
+  const header = lines[0].split(",").map(s => s.trim());
+  const idx = (k: string) => header.findIndex(h => h.toLowerCase() === k.toLowerCase());
+
+  const iCode = idx("code");
+  const iName = idx("name");
+  const iTheme = idx("theme");
+  const iBrief = idx("brief");
+  const iY = idx("yahoosymbol");
+
+  const out: UniverseItem[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw) continue;
+    // 아주 단순한 CSV 파서 (쉼표+따옴표 복잡 케이스는 피한다는 가정)
+    const cols = raw.split(",").map(s => s.trim());
+    const code = cols[iCode]?.replace(/"/g, "");
+    if (!code) continue;
+    out.push({
+      code,
+      name: cols[iName]?.replace(/"/g, ""),
+      theme: cols[iTheme]?.replace(/"/g, ""),
+      brief: cols[iBrief]?.replace(/"/g, ""),
+      yahooSymbol: cols[iY]?.replace(/"/g, ""),
+    });
+  }
+  return out;
+}
+
+
 // ---------- 유니버스 (기본 + 커스텀 URL) ----------
 const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
@@ -139,14 +182,43 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社" },
 ];
 
-async function loadUniverse(): Promise<UniverseItem[]> {
-  const url = process.env.JPX_UNIVERSE_URL;
+async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
+  // 우선순위: ENV > fallbackUrl > DEFAULT
+  const url = process.env.JPX_UNIVERSE_URL ?? fallbackUrl;
+
   if (!url) {
     return DEFAULT_UNIVERSE.map(u => ({
       ...u,
       yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
     }));
   }
+
+  // CSV 지원
+  if (url.endsWith(".csv")) {
+    const text = await safeText(url);
+    const parsed = text ? csvToUniverse(text) : [];
+    if (parsed.length > 0) {
+      return parsed.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
+    }
+    // CSV 파싱 실패 → DEFAULT
+    return DEFAULT_UNIVERSE.map(u => ({
+      ...u,
+      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+    }));
+  }
+
+  // JSON (기존 포맷)
+  const data = await safeJson<UniverseItem[]>(url);
+  if (Array.isArray(data) && data.length > 0) {
+    return data.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
+  }
+
+  // 실패 시 기본값
+  return DEFAULT_UNIVERSE.map(u => ({
+    ...u,
+    yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+  }));
+}
   const data = await safeJson<UniverseItem[]>(url);
   if (!Array.isArray(data) || data.length === 0) {
     return DEFAULT_UNIVERSE.map(u => ({
@@ -354,8 +426,18 @@ export async function GET(req: NextRequest) {
 
     const baseYmd = formatYmd(baseDate);
 
-    // 유니버스 로딩
-    const universe = await loadUniverse();
+
+// --- 여기 추가 ---
+const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+const proto = req.headers.get('x-forwarded-proto') || 'https';
+const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
+const urlFromReq = `${origin}/jpx_universe.csv`;
+// --- 여기까지 ---
+
+// 유니버스 로딩
+const universe = await loadUniverse(urlFromReq); // <- 이렇게 변경
+
+    
     const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
 
     // 시세 취득 (현재/최근 데이터 기반)
