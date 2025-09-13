@@ -9,11 +9,11 @@ import { NextRequest } from "next/server";
  */
 
 type UniverseItem = {
-  code: string;          // 8035
-  name?: string;         // 東京エレクトロン
-  theme?: string;        // 半導体製造装置
-  brief?: string;        // 製造装置大手
-  yahooSymbol?: string;  // 8035.T
+  code: string;
+  name?: string;
+  theme?: string;
+  brief?: string;
+  yahooSymbol?: string;
 };
 
 type Quote = {
@@ -30,17 +30,17 @@ type Quote = {
 
 type Row = {
   code: string;
-  ticker: string;        // yahooSymbol
+  ticker: string;
   name: string;
   theme: string;
   brief: string;
   open: number | null;
   close: number | null;
   previousClose: number | null;
-  chgPctPrev: number | null;      // (close / previousClose - 1) * 100
-  chgPctIntraday: number | null;  // (close / open - 1) * 100
+  chgPctPrev: number | null;
+  chgPctIntraday: number | null;
   volume: number | null;
-  yenVolM: number | null;         // close * volume / 1e6
+  yenVolM: number | null;
   currency: string;
 };
 
@@ -57,7 +57,7 @@ function formatYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 function isWeekend(d: Date): boolean {
-  const wd = d.getDay(); // 0 Sun, 6 Sat
+  const wd = d.getDay();
   return wd === 0 || wd === 6;
 }
 function addDays(d: Date, n: number): Date {
@@ -73,7 +73,7 @@ function prevBizDay(d: Date, holidays: Set<string>): Date {
   return cur;
 }
 
-// ---------- 데이터 계산 유틸 ----------
+// ---------- 계산 유틸 ----------
 function chgPctPrev(q: Quote | undefined): number | undefined {
   if (!q) return undefined;
   if (q.close != null && q.previousClose != null && q.previousClose > 0) {
@@ -93,7 +93,7 @@ function yenMillions(q: Quote | undefined): number | undefined {
   return (q.close * q.volume) / 1_000_000;
 }
 
-// ---------- 외부 fetch ----------
+// ---------- fetch 유틸 ----------
 async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
   try {
     const r = await fetch(url, { ...init, cache: "no-store" });
@@ -112,6 +112,8 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
     return null;
   }
 }
+
+// ---------- CSV 파서 ----------
 function csvToUniverse(csv: string): UniverseItem[] {
   // 기대 헤더: code,name,theme,brief,yahooSymbol
   const lines = csv.trim().split(/\r?\n/);
@@ -123,6 +125,7 @@ function csvToUniverse(csv: string): UniverseItem[] {
   const iTheme = idx("theme");
   const iBrief = idx("brief");
   const iY = idx("yahoosymbol");
+
   const out: UniverseItem[] = [];
   for (let i = 1; i < lines.length; i++) {
     const raw = lines[i];
@@ -141,7 +144,7 @@ function csvToUniverse(csv: string): UniverseItem[] {
   return out;
 }
 
-// ---------- 유니버스 (기본 + 커스텀 URL) ----------
+// ---------- 유니버스 ----------
 const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
   { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF" },
@@ -201,85 +204,70 @@ async function loadJpxHolidays(): Promise<Set<string>> {
   return new Set(data);
 }
 
-// ---------- Twelve Data (primary) ----------
+// ---------- Twelve Data (보완용) ----------
 const TD_ENDPOINT = "https://api.twelvedata.com/quote";
-
 async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quote | null> {
   const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
   const r = await safeJson<any>(url);
   if (!r) return null;
-  if ((r as any).status === "error" || (r as any).code || (r as any).message) return null;
-
-  const open = num((r as any).open);
-  const close = num((r as any).close);
-  const prev = num((r as any).previous_close ?? (r as any).previousClose);
-  const volume = num((r as any).volume);
-  const currency = (r as any).currency ?? "JPY";
-  const name = (r as any).name;
-
+  if (r.status === "error" || r.code || r.message) return null;
+  const open = num(r.open);
+  const close = num(r.close);
+  const prev = num(r.previous_close ?? r.previousClose);
+  const volume = num(r.volume);
+  const currency = r.currency ?? "JPY";
+  const name = r.name;
   if (close == null && prev == null && volume == null) return null;
-
   return { symbol, open: open ?? undefined, close: close ?? undefined, previousClose: prev ?? undefined,
            volume: volume ?? undefined, currency, name };
 }
 
-// ---------- Yahoo Chart (fallback) ----------
-async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
-  const j = await safeJson<any>(url);
-  try {
-    const res = j?.chart?.result?.[0];
-    if (!res) return null;
-    const meta = res.meta ?? {};
-    const ind = res.indicators?.quote?.[0] ?? {};
-    const closes: number[] = ind.close ?? [];
-    const opens: number[] = ind.open ?? [];
-    const vols: number[] = ind.volume ?? [];
-
-    const n = closes.length;
-    if (n === 0) return null;
-
-    const close = num(closes[n - 1]);
-    const open = num(opens[n - 1]);
-    const volume = num(vols[n - 1]);
-    const prev = meta.regularMarketPreviousClose != null
-      ? num(meta.regularMarketPreviousClose)
-      : (n >= 2 ? num(closes[n - 2]) : undefined);
-
-    return { symbol, open: open ?? undefined, close: close ?? undefined, previousClose: prev ?? undefined,
-             volume: volume ?? undefined, currency: meta.currency ?? "JPY", name: meta.symbol ?? symbol };
-  } catch {
-    return null;
-  }
-}
-
-// ---------- 숫자 변환 ----------
+// ---------- Yahoo v7 quote (배치 멀티심볼) ----------
 function num(x: any): number | undefined {
   const n = Number(x);
   return Number.isFinite(n) ? n : undefined;
 }
 
-// ---------- 배치 로직 ----------
-async function fetchQuoteFor(symbol: string, apiKey?: string): Promise<Quote | null> {
-  if (apiKey) {
-    const td = await fetchTwelveDataQuote(symbol, apiKey);
-    if (td) return td;
+async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const map = new Map<string, Quote>();
+  const chunkSize = 100;                // 한번에 100개
+  const pauseMs = 120;                  // 청크 사이 살짝 대기
+  for (let i = 0; i < symbols.length; i += chunkSize) {
+    const chunk = symbols.slice(i, i + chunkSize);
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
+    const j = await safeJson<any>(url);
+    const res: any[] = j?.quoteResponse?.result ?? [];
+    for (const r of res) {
+      const sym = r.symbol as string;
+      const q: Quote = {
+        symbol: sym,
+        open: num(r.regularMarketOpen),
+        close: num(r.regularMarketPrice),
+        previousClose: num(r.regularMarketPreviousClose),
+        volume: num(r.regularMarketVolume),
+        currency: r.currency ?? "JPY",
+        name: r.shortName ?? r.longName ?? sym,
+      };
+      if (q.close != null || q.previousClose != null || q.volume != null) {
+        map.set(sym, q);
+      }
+    }
+    await new Promise(res => setTimeout(res, pauseMs));
   }
-  const yh = await fetchYahooChartQuote(symbol);
-  if (yh) return yh;
-  return null;
+  return map;
 }
-async function fetchAllQuotes(symbols: string[], apiKey?: string): Promise<Map<string, Quote>> {
-  const out = new Map<string, Quote>();
-  for (const s of symbols) {
-    const q = await fetchQuoteFor(s, apiKey);
-    if (q) out.set(s, q);
-    await delay(60); // 무료 소스 배려 딜레이
+
+async function fetchAllQuotesBatch(symbols: string[], apiKey?: string): Promise<Map<string, Quote>> {
+  const batch = await fetchYahooBatchQuotes(symbols);
+  if (!apiKey) return batch;
+  // 야후에서 누락된 소수만 TwelveData로 보완 (과도 방지)
+  const missing = symbols.filter(s => !batch.has(s)).slice(0, 50);
+  for (const s of missing) {
+    const td = await fetchTwelveDataQuote(s, apiKey);
+    if (td) batch.set(s, td);
+    await new Promise(res => setTimeout(res, 80));
   }
-  return out;
-}
-function delay(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
+  return batch;
 }
 
 // ---------- 응답 빌드 ----------
@@ -339,11 +327,12 @@ export async function GET(req: NextRequest) {
     const apikey = process.env.TWELVEDATA_API_KEY || "";
     const holidays = await loadJpxHolidays();
 
-    // 페이징 파라미터 (여기! 핸들러 내부)
+    // full=1 이면 전체, 아니면 start/count 슬라이스
+    const requestAll = searchParams.get("full") === "1";
     const start = Math.max(0, Number(searchParams.get("start") ?? "0"));
-    const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "120")), 300);
+    const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "300")), 500);
 
-    // 기준 날짜
+    // 기준 날짜 보정
     const jstNow = toJstDate();
     let baseDate: Date;
     const dateParam = searchParams.get("date");
@@ -367,24 +356,24 @@ export async function GET(req: NextRequest) {
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
     const urlFromReq = `${origin}/jpx_universe.csv`;
 
-    // 유니버스 로딩 + 슬라이스
+    // 유니버스 로딩
     const universeAll = await loadUniverse(urlFromReq);
-    const universe = universeAll.slice(start, start + count);
+    const universe = requestAll ? universeAll : universeAll.slice(start, start + count);
     const symbols = universe.map(u => u.yahooSymbol ?? `${u.code}.T`);
 
-    // 시세 취득
-    const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
+    // 멀티심볼 배치로 시세 취득 (+TD 보완)
+    const quoteMap = await fetchAllQuotesBatch(symbols, apikey || undefined);
 
-    // 행/랭킹 구성(슬라이스 범위 내)
+    // 행/랭킹 구성(현재 범위 내 계산)
     const rows = buildRows(universe, quoteMap);
     const rankings = buildRankings(rows);
 
     const body = {
       ok: true,
       date: baseYmd,
-      source: apikey ? "TwelveData(primary)->YahooChart(fallback)" : "YahooChart(only)",
-      universeCount: universeAll.length,     // 전체 개수
-      page: { start, count, returned: rows.length },
+      source: apikey ? "YahooBatch(primary)+TwelveData(missing-fallback)" : "YahooBatch(only)",
+      universeCount: universeAll.length,
+      page: requestAll ? { full: true, returned: rows.length } : { start, count, returned: rows.length },
       quotes: rows,
       rankings,
       note: "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
