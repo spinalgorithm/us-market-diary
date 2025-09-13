@@ -12,43 +12,61 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Touch fetch.log early (always have artifact)
+      - name: Start log
         run: |
           set -eux
-          : > fetch.log
+          echo "=== FETCH RUN START === $(date -u)" | tee -a fetch.log
 
       - name: Debug repo state
         run: |
           set -euxo pipefail
-          echo "== PWD =="; pwd
-          echo "== BRANCH =="; git rev-parse --abbrev-ref HEAD || true
-          echo "== TREE (top) =="; ls -la
-          echo "== TREE (.github/workflows) =="; ls -la .github/workflows || true
-          echo "== TREE (scripts) =="; ls -la scripts || true
-          echo "== TREE (public) =="; ls -la public || true
-          echo "== SHOW package.json =="; cat package.json || true
-          echo "== SHOW scripts/fetch_jpx_full.ts (first 50 lines) =="; sed -n '1,50p' scripts/fetch_jpx_full.ts || true
-          echo "== SHOW scripts/fetch_jpx_full.mjs (first 50 lines) =="; sed -n '1,50p' scripts/fetch_jpx_full.mjs || true >> fetch.log
+          {
+            echo "== PWD =="; pwd
+            echo "== BRANCH =="; git rev-parse --abbrev-ref HEAD || true
+            echo "== TREE (top) =="; ls -la
+            echo "== TREE (.github/workflows) =="; ls -la .github/workflows || true
+            echo "== TREE (scripts) =="; ls -la scripts || true
+            echo "== TREE (public) =="; ls -la public || true
+            echo "== SHOW package.json =="; cat package.json || true
+            echo "== SHOW scripts/fetch_jpx_full.ts (1..60) =="; sed -n '1,60p' scripts/fetch_jpx_full.ts 2>&1 || echo "NO TS SCRIPT"
+            echo "== SHOW scripts/fetch_jpx_full.mjs (1..60) =="; sed -n '1,60p' scripts/fetch_jpx_full.mjs 2>&1 || echo "NO MJS SCRIPT"
+          } | tee -a fetch.log
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install tsx (for TS runner)
+      - name: Node info
         run: |
           set -euxo pipefail
-          npm i -D tsx
-          node -v; npm -v; npx tsx --version
+          {
+            node -v
+            npm -v
+          } | tee -a fetch.log
+
+      - name: Install tsx (optional for TS)
+        run: |
+          set -euxo pipefail
+          {
+            npm i -D tsx
+            npx tsx --version
+          } | tee -a fetch.log
 
       - name: Ensure public dir
-        run: mkdir -p public
+        run: |
+          set -euxo pipefail
+          {
+            mkdir -p public
+            echo "public ensured"
+          } | tee -a fetch.log
 
-      - name: Run fetch script (TS first, then JS fallback)
+      - name: Run fetch script (TS first, then MJS fallback)
         id: runfetch
         continue-on-error: true
         run: |
@@ -57,16 +75,18 @@ jobs:
             echo "[run] TS script" | tee -a fetch.log
             npx tsx scripts/fetch_jpx_full.ts --limit=5000 2>&1 | tee -a fetch.log
           elif [ -f scripts/fetch_jpx_full.mjs ]; then
-            echo "[run] JS fallback" | tee -a fetch.log
+            echo "[run] MJS script" | tee -a fetch.log
             node scripts/fetch_jpx_full.mjs --limit=5000 2>&1 | tee -a fetch.log
           else
-            echo "ERROR: No fetch script found at scripts/fetch_jpx_full.ts or .mjs" | tee -a fetch.log
+            echo "ERROR: No fetch script at scripts/fetch_jpx_full.ts or .mjs" | tee -a fetch.log
             exit 1
           fi
           echo "---- HEAD of CSV ----" | tee -a fetch.log
-          head -n 5 public/jpx_universe.csv | tee -a fetch.log || true
+          head -n 10 public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
+          echo "---- TAIL of CSV ----" | tee -a fetch.log
+          tail -n 10 public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
           echo "---- LINE COUNT ----" | tee -a fetch.log
-          wc -l public/jpx_universe.csv | tee -a fetch.log || true
+          wc -l public/jpx_universe.csv 2>&1 | tee -a fetch.log || true
 
       - name: Upload fetch log (always)
         if: always()
@@ -78,10 +98,10 @@ jobs:
       - name: Fail job if fetch failed
         if: steps.runfetch.outcome != 'success'
         run: |
-          echo "Fetch step failed. See 'fetch-log' artifact and logs."
+          echo "Fetch step failed. See 'fetch-log' artifact and step logs." | tee -a fetch.log
           exit 1
 
-      - name: Commit on branch
+      - name: Commit to branch
         run: |
           set -euxo pipefail
           git config user.name "github-actions[bot]"
