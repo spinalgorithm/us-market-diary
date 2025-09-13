@@ -17,18 +17,28 @@ type Quote = {
   symbol: string;
   shortName?: string;
   open?: number;
-  price?: number;
-  previousClose?: number;
+  high?: number;
+  low?: number;
+  price?: number;          // regularMarketPrice (종가에 가까운 최신가)
+  previousClose?: number;  // 전일 종가
   volume?: number;
-  currency?: string; // 보통 "JPY"
+  currency?: string;       // 대부분 "JPY"
 };
 
 /** ---------- Config ---------- */
 const JST_TZ = "Asia/Tokyo";
-const CLOSE_CUTOFF_MIN = 15 * 60 + 35; // 15:35
+const CLOSE_CUTOFF_MIN = 15 * 60 + 35; // 15:35 (동시호가 + 마무리 여유)
 const MAX_YH_SYMBOLS = 20;
 
-/** ---------- Utils: time & date ---------- */
+const UA_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+  "Accept": "application/json,text/plain,*/*",
+  "Accept-Language": "ja,en;q=0.9",
+};
+
+/** ---------- Time utils ---------- */
 function nowInJST(): Date {
   return new Date(new Date().toLocaleString("en-US", { timeZone: JST_TZ }));
 }
@@ -47,13 +57,16 @@ function isWeekend(d: Date): boolean {
 }
 function prevBusinessDay(base: Date): Date {
   const d = new Date(base);
-  do {
-    d.setDate(d.getDate() - 1);
-  } while (isWeekend(d));
+  do d.setDate(d.getDate() - 1);
+  while (isWeekend(d));
   return d;
 }
 
-/** ---------- Utils: number formatting ---------- */
+/** ---------- Number utils ---------- */
+function safeNum(v: any): number | undefined {
+  const n = Number(v);
+  return isFinite(n) ? n : undefined;
+}
 function fmtInt(n?: number): string {
   if (n == null || !isFinite(n)) return "-";
   return Math.round(n).toLocaleString("ja-JP");
@@ -65,20 +78,15 @@ function fmtDec(n?: number, digits = 2): string {
     maximumFractionDigits: digits,
   });
 }
-function safeNum(v: any): number | undefined {
-  const n = Number(v);
-  return isFinite(n) ? n : undefined;
-}
 
-/** ---------- Data: load universe ---------- */
+/** ---------- Universe ---------- */
 async function loadUniverse(): Promise<Uni[]> {
   const url = process.env.JPX_UNIVERSE_URL;
   if (url) {
     try {
-      const r = await fetch(url, { cache: "no-store" });
+      const r = await fetch(url, { cache: "no-store", headers: UA_HEADERS });
       if (r.ok) {
         const j = (await r.json()) as Uni[];
-        // 기본 검증 및 정규화
         return j
           .filter((x) => x && x.yahooSymbol)
           .map((x) => ({
@@ -90,10 +98,10 @@ async function loadUniverse(): Promise<Uni[]> {
           }));
       }
     } catch {
-      // fall through to default
+      /* fall back below */
     }
   }
-  // 기본(미니) 유니버스
+  // 내장(미니) 유니버스
   return [
     { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF", yahooSymbol: "1321.T" },
     { code: "1306", name: "TOPIX連動型上場投信", theme: "インデックス/ETF", brief: "TOPIX連動ETF", yahooSymbol: "1306.T" },
@@ -121,98 +129,167 @@ async function loadUniverse(): Promise<Uni[]> {
     { code: "8001", name: "伊藤忠商事", theme: "商社", brief: "総合商社", yahooSymbol: "8001.T" },
     { code: "7735", name: "SCREEN HD", theme: "半導体製造装置", brief: "洗浄/成膜等", yahooSymbol: "7735.T" },
     { code: "7974", name: "任天堂", theme: "ゲーム", brief: "ゲーム機/ソフト", yahooSymbol: "7974.T" },
-    { code: "7752", name: "リコー", theme: "OA・光学", brief: "OA/画像機器", yahooSymbol: "7752.T" }
+    { code: "7752", name: "リコー", theme: "OA・光学", brief: "OA/画像機器", yahooSymbol: "7752.T" },
   ];
 }
 
-/** ---------- Yahoo Finance fetch ---------- */
+/** ---------- Stooq fallback ---------- */
+function toStooqSymbol(yahooSymbol: string): string {
+  // "7203.T" -> "7203.jp"
+  const base = yahooSymbol.replace(/\.T$/i, "");
+  return `${base}.jp`;
+}
+async function fetchFromStooq(symYahoo: string): Promise<Quote | undefined> {
+  try {
+    const s = toStooqSymbol(symYahoo);
+    const url = `https://stooq.com/q/l/?s=${encodeURIComponent(s)}&i=d`;
+    const r = await fetch(url, { headers: UA_HEADERS, cache: "no-store" });
+    if (!r.ok) return;
+    const txt = await r.text();
+    // CSV: Symbol,Date,Time,Open,High,Low,Close,Volume
+    const lines = txt.trim().split(/\r?\n/);
+    if (lines.length < 2) return;
+    const row = lines[1].split(",");
+    const open = safeNum(row[3]);
+    const high = safeNum(row[4]);
+    const low = safeNum(row[5]);
+    const close = safeNum(row[6]);
+    const volume = safeNum(row[7]);
+    return {
+      symbol: symYahoo,
+      open,
+      high,
+      low,
+      price: close,
+      previousClose: undefined, // stooq는 prevClose 제공X
+      volume,
+      currency: "JPY",
+    };
+  } catch {
+    return;
+  }
+}
+
+/** ---------- Yahoo Finance fetch with retries & query2 fallback ---------- */
+async function fetchYahooQuoteBatch(symbols: string[]): Promise<Quote[]> {
+  const endpoints = [
+    "https://query1.finance.yahoo.com/v7/finance/quote?symbols=",
+    "https://query2.finance.yahoo.com/v7/finance/quote?symbols=",
+  ];
+  for (const base of endpoints) {
+    try {
+      const url = base + encodeURIComponent(symbols.join(","));
+      const r = await fetch(url, { cache: "no-store", headers: UA_HEADERS });
+      if (!r.ok) continue;
+      const j = (await r.json()) as any;
+      const arr: any[] = j?.quoteResponse?.result ?? [];
+      if (arr.length === 0) continue;
+      return arr.map((q) => ({
+        symbol: q.symbol,
+        shortName: q.shortName,
+        open: safeNum(q.regularMarketOpen),
+        high: safeNum(q.regularMarketDayHigh),
+        low: safeNum(q.regularMarketDayLow),
+        price: safeNum(q.regularMarketPrice),
+        previousClose: safeNum(q.regularMarketPreviousClose ?? q.previousClose),
+        volume: safeNum(q.regularMarketVolume ?? q.volume),
+        currency: q.currency ?? "JPY",
+      }));
+    } catch {
+      /* try next endpoint */
+    }
+  }
+  return [];
+}
+
+async function fetchYahooChart(sym: string): Promise<Quote | undefined> {
+  const bases = [
+    "https://query1.finance.yahoo.com/v8/chart/",
+    "https://query2.finance.yahoo.com/v8/chart/",
+  ];
+  for (const base of bases) {
+    try {
+      const url = `${base}${encodeURIComponent(sym)}?interval=1d&range=5d`;
+      const r = await fetch(url, { cache: "no-store", headers: UA_HEADERS });
+      if (!r.ok) continue;
+      const j = (await r.json()) as any;
+      const res = j?.chart?.result?.[0];
+      if (!res) continue;
+      const meta = res.meta ?? {};
+      const q0 = res.indicators?.quote?.[0] ?? {};
+      const closes: number[] = res.indicators?.adjclose?.[0]?.adjclose ?? [];
+      const price = safeNum(meta?.regularMarketPrice ?? closes?.at(-1));
+      const previousClose =
+        safeNum(meta?.previousClose) ??
+        safeNum(closes?.length >= 2 ? closes[closes.length - 2] : undefined);
+      const open = safeNum(q0?.open?.at(-1));
+      const high = safeNum(q0?.high?.at(-1));
+      const low = safeNum(q0?.low?.at(-1));
+      const volume = safeNum(q0?.volume?.at(-1));
+      return {
+        symbol: sym,
+        open,
+        high,
+        low,
+        price,
+        previousClose,
+        volume,
+        currency: meta?.currency ?? "JPY",
+        shortName: meta?.symbol ?? sym,
+      };
+    } catch {
+      /* try next base */
+    }
+  }
+  return;
+}
+
 async function fetchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
-  const chunks: string[][] = [];
+  // 1) quote API (query1 → query2)
   for (let i = 0; i < symbols.length; i += MAX_YH_SYMBOLS) {
-    chunks.push(symbols.slice(i, i + MAX_YH_SYMBOLS));
+    const chunk = symbols.slice(i, i + MAX_YH_SYMBOLS);
+    const arr = await fetchYahooQuoteBatch(chunk);
+    for (const q of arr) out.set(q.symbol, q);
+    // 살짝 간격
+    if (arr.length === 0) await new Promise((r) => setTimeout(r, 200));
   }
-
-  for (const c of chunks) {
-    const url =
-      "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" +
-      encodeURIComponent(c.join(","));
-    try {
-      const r = await fetch(url, { cache: "no-store" });
-      if (!r.ok) throw new Error(`quote ${r.status}`);
-      const j = (await r.json()) as any;
-      const arr = j?.quoteResponse?.result ?? [];
-      for (const q of arr) {
-        const rec: Quote = {
-          symbol: q.symbol,
-          shortName: q.shortName,
-          open: safeNum(q.regularMarketOpen),
-          price: safeNum(q.regularMarketPrice),
-          previousClose: safeNum(q.regularMarketPreviousClose ?? q.previousClose),
-          volume: safeNum(q.regularMarketVolume ?? q.volume),
-          currency: q.currency,
-        };
-        out.set(rec.symbol, rec);
-      }
-    } catch {
-      // chunk 실패 -> chart 폴백(간단)
-      for (const sym of c) {
-        try {
-          const urlChart =
-            "https://query1.finance.yahoo.com/v8/chart/" +
-            encodeURIComponent(sym) +
-            "?interval=1d&range=5d";
-          const r2 = await fetch(urlChart, { cache: "no-store" });
-          if (!r2.ok) continue;
-          const j2 = (await r2.json()) as any;
-          const res = j2?.chart?.result?.[0];
-          if (!res) continue;
-          const meta = res.meta ?? {};
-          const ind = res.indicators?.quote?.[0] ?? {};
-          const closes: number[] = res.indicators?.adjclose?.[0]?.adjclose ?? [];
-          const price = safeNum(meta?.regularMarketPrice ?? closes?.at(-1));
-          const previousClose =
-            safeNum(meta?.previousClose) ??
-            safeNum(closes?.length >= 2 ? closes[closes.length - 2] : undefined);
-          const volume = safeNum(ind?.volume?.at(-1));
-          const open = safeNum(ind?.open?.at(-1));
-          out.set(sym, {
-            symbol: sym,
-            open,
-            price,
-            previousClose,
-            volume,
-            shortName: meta?.symbol ?? sym,
-            currency: meta?.currency ?? "JPY",
-          });
-        } catch {
-          // ignore
-        }
-      }
-    }
+  // 2) 비어있는 심볼은 chart 폴백
+  const missing1 = symbols.filter((s) => !out.has(s));
+  for (const sym of missing1) {
+    const q = await fetchYahooChart(sym);
+    if (q) out.set(sym, q);
+  }
+  // 3) 그래도 비면 Stooq 폴백
+  const missing2 = symbols.filter((s) => !out.has(s));
+  for (const sym of missing2) {
+    const q = await fetchFromStooq(sym);
+    if (q) out.set(sym, q);
   }
   return out;
 }
 
-/** ---------- Build markdown blocks ---------- */
+/** ---------- Markdown blocks ---------- */
 function headerBlock(dateLabel: string, uniCount: number): string {
   return `# 日本株 夜間警備員 日誌 | ${dateLabel}
 
-> ソース: Yahoo Finance (quote → fallback chart) / ユニバース: ${uniCount}銘柄
+> ソース: Yahoo Finance (quote → fallback chart → stooq) / ユニバース: ${uniCount}銘柄
 > 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。
 > ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。
 
 `;
 }
 
-function narrativeBlock(topSoldM: any[], sectors: Record<string, { sum: number; n: number }>) {
-  const top1 = topSoldM[0];
-  const tl = `## ナラティブ
+function narrativeBlock(topYenVol: any[]) {
+  const top = topYenVol?.[0];
+  const topLabel =
+    top && top.code && top.name ? `${top.code}（${top.name}）` : "主力";
+  return `## ナラティブ
 ### TL;DR
 装置/半導体が相対強く、銀行・通信は重さが残存。主力は小幅レンジで往来。
 
 ### 本日のストーリー
-- 売買代金首位は ${top1?.code ?? "-"}（${top1?.name ?? "-"}）。装置・一部グロースに資金が寄り、指数は方向感に乏しい。
+- 売買代金首位は ${topLabel}。装置・一部グロースに資金が寄り、指数は方向感に乏しい。
 - 半導体製造装置は買い優勢。銀行は戻り鈍く、通信も上値は重め。
 - 値がさの押し目は拾われやすいが、広がりは限定。
 
@@ -231,8 +308,8 @@ function narrativeBlock(topSoldM: any[], sectors: Record<string, { sum: number; 
 - 値がさの押し目吸収力（トヨタ/任天堂/ソニー）。
 - 売買代金の分散/集中バランス。
 - 先物主導の振れとVWAP攻防。
+
 `;
-  return tl + "\n";
 }
 
 function cardsBlock(rows: any[]): string {
@@ -288,24 +365,20 @@ function tableBlock(
 
 /** ---------- Main ---------- */
 export async function GET(req: NextRequest) {
-  // 날짜 라벨 (EOD 절체)
   const url = new URL(req.url);
-  const dateParam = url.searchParams.get("date"); // YYYY-MM-DD (선택)
+  const dateParam = url.searchParams.get("date"); // YYYY-MM-DD (옵션)
   const nowJ = nowInJST();
-
   let target = nowJ;
+
+  // 15:35 이전엔 전영업일로 자동 회귀
   if (!dateParam) {
-    // 15:35 이전엔 전영업일로 자동 회귀(주말만 제외)
-    if (minutesOf(nowJ) < CLOSE_CUTOFF_MIN) {
-      target = prevBusinessDay(nowJ);
-    }
+    if (minutesOf(nowJ) < CLOSE_CUTOFF_MIN) target = prevBusinessDay(nowJ);
   } else {
     const d = new Date(dateParam + "T00:00:00+09:00");
     if (!isNaN(d.getTime())) target = d;
   }
   const dateLabel = ymd(target);
 
-  // 유니버스 로드
   const uni = await loadUniverse();
   if (uni.length === 0) {
     return new Response("# データなし（ユニバース空）", {
@@ -314,21 +387,26 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 시세 조회
+  // 시세 조회(다중 폴백)
   const quotes = await fetchQuotes(uni.map((u) => u.yahooSymbol));
-  // 머지 & 계산
+
+  // 병합/계산
   const merged = uni.map((u) => {
     const q = quotes.get(u.yahooSymbol) ?? ({} as Quote);
     const open = safeNum(q.open);
     const close = safeNum(q.price);
     const prev = safeNum(q.previousClose);
     const vol = safeNum(q.volume);
-    const chgPct =
-      close != null && prev != null && prev !== 0
-        ? ((close - prev) / prev) * 100
-        : undefined;
+    // 전일비 % 우선, 없으면 일중(임시)라도 채움
+    let chgPct: number | undefined = undefined;
+    if (close != null && prev != null && prev !== 0) {
+      chgPct = ((close - prev) / prev) * 100;
+    } else if (close != null && open != null && open !== 0) {
+      chgPct = ((close - open) / open) * 100;
+    }
     const yenVolM =
       close != null && vol != null ? Math.round((close * vol) / 1_000_000) : undefined;
+
     return {
       code: u.code,
       name: u.name ?? q.shortName ?? u.code,
@@ -343,10 +421,23 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // 카드용(주요 12개만, 유니버스의 앞쪽 12개 사용)
+  // 데이터가 하나도 안 들어오면 안내
+  const anyData =
+    merged.some((x) => x.close != null) || merged.some((x) => x.vol != null);
+  if (!anyData) {
+    return new Response(
+      `# 日本株 夜間警備員 日誌 | ${dateLabel}
+
+> データ取得に失敗しました（無料ソースの一時ブロック/ネットワーク）。数分後に再試行してください。
+`,
+      { headers: { "content-type": "text/plain; charset=utf-8" }, status: 200 }
+    );
+  }
+
+  // 카드(유니버스 앞 12개)
   const cardRows = merged.slice(0, 12);
 
-  // 랭킹들
+  // 랭킹
   const byYenVol = merged
     .filter((x) => x.yenVolM != null)
     .sort((a, b) => (b.yenVolM ?? 0) - (a.yenVolM ?? 0))
@@ -357,7 +448,7 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => (b.vol ?? 0) - (a.vol ?? 0))
     .slice(0, 10);
 
-  // ¥1,000+ 필터 (종가 기준)
+  // ¥1,000+ (종가 기준) 상/하락
   const largeOnly = merged.filter((x) => (x.close ?? 0) >= 1000 && x.chgPct != null);
 
   const topUp = largeOnly
@@ -370,30 +461,16 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => (a.chgPct ?? 0) - (b.chgPct ?? 0))
     .slice(0, 10);
 
-  // 섹터 간단 집계(나레이티브 힌트)
-  const sectors: Record<string, { sum: number; n: number }> = {};
-  for (const r of merged) {
-    if (r.theme && r.chgPct != null) {
-      const k = r.theme.split("/")[0];
-      if (!sectors[k]) sectors[k] = { sum: 0, n: 0 };
-      sectors[k].sum += r.chgPct;
-      sectors[k].n += 1;
-    }
-  }
-
   // MD 빌드
   let md = "";
   md += headerBlock(dateLabel, uni.length);
-  md += narrativeBlock(byYenVol, sectors);
+  md += narrativeBlock(byYenVol);
   md += cardsBlock(cardRows);
   md += "## 📊 データ(Top10)\n";
-  md += tableBlock("Top 10 — 売買代金（百万円換算）", byYenVol, {
-    showYenVol: true,
-  });
+  md += tableBlock("Top 10 — 売買代金（百万円換算）", byYenVol, { showYenVol: true });
   md += tableBlock("Top 10 — 出来高（株数）", byVol);
   md += tableBlock("Top 10 — 上昇株（¥1,000+）", topUp);
   md += tableBlock("Top 10 — 下落株（¥1,000+）", topDown);
-
   md += "\n#日本株 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金 #大型株\n";
 
   return new Response(md, {
