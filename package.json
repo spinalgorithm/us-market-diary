@@ -6,9 +6,7 @@
     "build": "next build",
     "start": "next start",
     "dev": "next dev",
-
-    // ⬇️ 새로 추가: JPX CSV 자동 생성 스크립트
-    "fetch:jpx": "ts-node --esm scripts/fetch_jpx_full.ts --limit=5000"
+    "fetch:jpx": "npx -y ts-node@10.9.2 --esm scripts/fetch_jpx_full.ts --limit=5000"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -16,14 +14,5 @@
     "react-dom": "18.2.0",
     "openai": "^4.0.0",
     "luxon": "^3.4.4"
-  },
-  "devDependencies": {
-    "typescript": "^5.4.0",
-    "@types/node": "^20.11.20",
-    "@types/react": "^18.2.67",
-    "@types/react-dom": "^18.2.22",
-
-    // ⬇️ 새로 추가: ts-node (ESM 플래그와 함께 씀)
-    "ts-node": "^10.9.2"
   }
 }
