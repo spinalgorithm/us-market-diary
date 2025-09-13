@@ -1,49 +1,48 @@
-name: Fetch JPX Universe CSV
+name: Fetch JPX Universe CSV (PR)
 
 on:
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  fetch-and-commit:
+  fetch-and-pr:
     runs-on: ubuntu-latest
     env:
       TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # lockfile 없어도 됨. tsx만 dev로 설치
-      - name: Install minimal deps
-        run: |
-          npm install -D tsx
+      - run: npm install -D tsx
 
-      # public 폴더 보장
-      - name: Ensure public dir
-        run: mkdir -p public
+      - run: mkdir -p public
 
-      # 스크립트 실행 (ts-node 대신 tsx로 간단히)
       - name: Generate CSV
         run: |
           npx tsx scripts/fetch_jpx_full.ts --limit=5000
-          echo "Preview head:"
           head -n 5 public/jpx_universe.csv || true
-          echo "Total lines:"
           wc -l public/jpx_universe.csv || true
 
-      - name: Commit & Push
+      - name: Create branch, commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B update/jpx-universe
           git add public/jpx_universe.csv
           git commit -m "chore: update JPX universe CSV" || echo "no changes to commit"
-          # 원격이 앞서 있을 때를 대비해 리베이스 후 푸시
-          git pull --rebase || true
-          git push
+          git push -u origin update/jpx-universe || true
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: update/jpx-universe
+          title: "chore: update JPX universe CSV"
+          body: "Automated update of JPX universe."
+          commit-message: "chore: update JPX universe CSV"
+          labels: data
