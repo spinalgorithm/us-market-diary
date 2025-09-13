@@ -13,11 +13,19 @@
  
     "fetch+enrich:jpx": "node scripts/fetch_jpx_full.mjs --limit=5000 && node scripts/enrich_universe.mjs"
   },
-  "dependencies": {
+
+ "dependencies": {
     "next": "14.2.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "openai": "^4.0.0",
     "luxon": "^3.4.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.20",
+    "@types/react": "^18.2.67",
+    "@types/react-dom": "^18.2.22",
+    "@types/luxon": "^3.3.2"
   }
 }
