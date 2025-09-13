@@ -1,89 +1,126 @@
-import { NextRequest } from 'next/server';
+// app/api/jpx-eod/route.ts
+import { NextRequest } from 'next/server'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-async function fetchJson(url: string) {
-  const r = await fetch(url, { cache: 'no-store' });
-  if (!r.ok) throw new Error(`Fetch failed: ${r.status}`);
-  return r.json();
+type Quote = {
+  symbol: string
+  shortName?: string
+  regularMarketOpen?: number
+  regularMarketPrice?: number
+  regularMarketPreviousClose?: number
+  regularMarketChangePercent?: number
+  regularMarketVolume?: number
+  currency?: string
 }
 
-function fmtTable(title: string, rows: any[]) {
-  if (!rows || rows.length === 0) return `### ${title}\n(該当なし)\n`;
-  const header = `| Rank | Ticker | o→c | Chg% | Vol | 売買代金(百万円) | Theme | Brief |\n|---:|---|---|---:|---:|---:|---|---|`;
-  const body = rows.map((r: any, i: number) =>
-    `| ${i+1} | ${r.Ticker} | ${r.o2c} | ${r.ChgPct.toFixed(2)} | ${r.Vol.toLocaleString('ja-JP')} | ${(r.TurnoverM/1000).toFixed(1)} | ${r.Theme} | ${r.Brief} |`
-  ).join('\n');
-  return `### ${title}\n${header}\n${body}\n`;
+type Row = {
+  rank?: number
+  ticker: string
+  name: string
+  o: string
+  c: string
+  chgPct: string
+  vol: string
+  jpyValueM?: string
+  theme?: string
+  brief?: string
 }
 
-function buildIntro(dateJst: string, cards: any[]) {
-  const lines = cards.map((c: any) =>
-    `- **${c.nameJa} (${c.ticker})** — ${c.o2c} / **${c.chgPct.toFixed(2)}%** / Vol ${c.vol.toLocaleString('ja-JP')}｜${c.theme}｜${c.brief}`
-  ).join('\n');
-  return `# 日本株・夜間警備員 日誌 | ${dateJst}
+// ===== 설정 =====
+const DEFAULT_UNIVERSE = [
+  // 인덱스/ETF
+  '1321.T', // 日経225 連動型上場投信
+  '1306.T', // TOPIX 連動型上場投信
+  '1570.T', // 日経平均レバレッジ
+  // 메가캡/대표
+  '7203.T', // TOYOTA
+  '6758.T', // SONY GROUP
+  '9984.T', // SOFTBANK GROUP
+  '8035.T', // TOKYO ELECTRON
+  '6861.T', // KEYENCE
+  '6098.T', // RECRUIT
+  '9432.T', // NTT
+  '9433.T', // KDDI
+  '7974.T', // NINTENDO
+  '4502.T', // TAKEDA
+  '4063.T', // SHIN-ETSU
+  '7735.T', // SCREEN
+  '6920.T', // LASERTEC
+  '8316.T', // SUMITOMO MITSUI
+  '8306.T', // MUFG
+  '9983.T', // FAST RETAILING
+  '6752.T', // PANASONIC
+  '7267.T', // HONDA
+]
 
-**基準日 (JST)**: ${dateJst}
-
-### カード（ハイライト）
-${lines.length ? lines : '—'}
-`;
+const THEMES: Record<string, { theme: string; brief: string }> = {
+  // ETF / 인덱스
+  '1321.T': { theme: 'インデックス/ETF', brief: '日経225連動ETF' },
+  '1306.T': { theme: 'インデックス/ETF', brief: 'TOPIX連動ETF' },
+  '1570.T': { theme: 'インデックス/ETF', brief: '日経平均レバレッジETF' },
+  // 대형 섹터
+  '7203.T': { theme: '自動車/モビリティ', brief: '自動車メーカー（トヨタ）' },
+  '6758.T': { theme: 'エレクトロニクス/エンタメ', brief: 'ソニー（エレクトロニクス・ゲーム）' },
+  '9984.T': { theme: '投資持株/テック', brief: 'ソフトバンクG（投資持株）' },
+  '8035.T': { theme: '半導体/製造装置', brief: '東京エレクトロン（半導体製造装置）' },
+  '6861.T': { theme: '計測/FA', brief: 'キーエンス（センサー/FA）' },
+  '6098.T': { theme: '人材/プラットフォーム', brief: 'リクルートHD（人材/メディア）' },
+  '9432.T': { theme: '通信', brief: 'NTT（通信）' },
+  '9433.T': { theme: '通信', brief: 'KDDI（通信）' },
+  '7974.T': { theme: 'ゲーム/エンタメ', brief: '任天堂（ゲーム）' },
+  '4502.T': { theme: '製薬', brief: '武田薬品（製薬）' },
+  '4063.T': { theme: '化学/素材', brief: '信越化学工業（化学/半導体材料）' },
+  '7735.T': { theme: '半導体/製造装置', brief: 'SCREEN（半導体製造装置）' },
+  '6920.T': { theme: '半導体/検査装置', brief: 'レーザーテック（半導体検査）' },
+  '8316.T': { theme: '銀行/金融', brief: '三井住友FG（メガバンク）' },
+  '8306.T': { theme: '銀行/金融', brief: '三菱UFJ（メガバンク）' },
+  '9983.T': { theme: '小売/アパレル', brief: 'ファーストリテイリング（ユニクロ）' },
+  '6752.T': { theme: 'エレクトロニクス', brief: 'パナソニック（家電/B2B）' },
+  '7267.T': { theme: '自動車/モビリティ', brief: 'ホンダ（自動車）' },
 }
 
-function buildNarrative(json: any) {
-  // 간결 서술(숫자는 표에 있는 것만)
-  return `
-### 今夜の概況（要点）
-- 上位の売買代金は大型に集中。半導体/AIインフラと通信・プラットフォームが“土台”に。
-- 出来高はテーマ銘柄と主力の両極。指数に寄り添いながら、個別では選別色が強まる流れ。
-- 上昇側では消費・EC/小売、ゲーム・IPなど“物語性”のあるセクターにも回転。下落側は一部で利益確定の売りが先行。
+function fmt(n?: number, d = 2) {
+  if (n === undefined || n === null || Number.isNaN(n)) return ''
+  return new Intl.NumberFormat('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)
+}
+function fmtInt(n?: number) {
+  if (n === undefined || n === null || Number.isNaN(n)) return ''
+  return new Intl.NumberFormat('ja-JP').format(Math.round(n))
+}
+function jpyMillions(price?: number, vol?: number) {
+  if (!price || !vol) return ''
+  const v = (price * vol) / 1_000_000 // 百万円
+  return new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 1 }).format(v)
+}
 
-### 30分リプレイ（事実寄り）
-- 寄り：主力と半導体に素直な買い。押し目は浅めに吸収。
-- 中盤：通信・プラットフォームに資金回帰。出来高は主力・小型で二極化。
-- 引け：指数は高値圏を維持。売買代金上位は広くプラスで着地。
+async function fetchYahooQuotes(symbols: string[]): Promise<Quote[]> {
+  // Yahoo Finance quote API (非公式). サーバー側fetchはCORS影響 없음.
+  const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(symbols.join(','))
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' })
+  if (!r.ok) throw new Error(`Yahoo quote error: ${r.status}`)
+  const j = await r.json()
+  return (j?.quoteResponse?.result ?? []) as Quote[]
+}
 
-### EOD総括 + 明日のチェック
-- 総括：土台は半導体/AIインフラ、上物はメガテックと消費テック。指数連動の買いが下支え。
-- チェック：
-  1) 半導体チェーンの相対強度（**売買代金上位**の継続有無）
-  2) 通信・プラットフォームへの資金回帰が続くか
-  3) 出来高の質：主力集中か、個別分散か
-  4) 直近上昇の“物語セクター”（ゲーム/ECなど）の息切れ兆候
-  5) 下落上位のリバランス（利益確定→押し目吸収の転換）
-`;
+function toRow(q: Quote): Row {
+  const o = q.regularMarketOpen ?? q.regularMarketPreviousClose ?? q.regularMarketPrice ?? 0
+  const c = q.regularMarketPrice ?? q.regularMarketPreviousClose ?? 0
+  const chgPct = q.regularMarketChangePercent
+  const vol = q.regularMarketVolume
+  const meta = THEMES[q.symbol] ?? { theme: 'その他/テーマ不明', brief: q.shortName || '' }
+  return {
+    ticker: q.symbol,
+    name: q.shortName || q.symbol,
+    o: o ? fmt(o, 2) : '',
+    c: c ? fmt(c, 2) : '',
+    chgPct: chgPct !== undefined ? fmt(chgPct, 2) : '',
+    vol: vol !== undefined ? fmtInt(vol) : '',
+    jpyValueM: jpyMillions(c || o, vol),
+    theme: meta.theme,
+    brief: meta.brief || '',
+  }
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams, origin } = new URL(req.url);
-    const lang = (searchParams.get('lang') || process.env.DEFAULT_LANG || 'ja').toLowerCase();
-    const date = searchParams.get('date') ?? '';
-    const baseUrl = `${origin}/api/jpx-eod${date ? `?date=${date}` : ''}${lang ? `${date ? '&' : '?'}lang=${lang}` : ''}`;
-    const j = await fetchJson(baseUrl);
-    if (!j.ok) return new Response(j.error ?? 'error', { status: 500 });
-
-    const intro = buildIntro(j.dateJst, j.cards);
-    const nar = buildNarrative(j);
-    const t1 = fmtTable('Top 10 — 売買代金（円）', j.tables.turnoverTop10);
-    const t2 = fmtTable('Top 10 — 出来高（株数）', j.tables.volumeTop10);
-    const t3 = fmtTable('Top 10 — 上昇株（終値¥1,500+）', j.tables.gainers10);
-    const t4 = fmtTable('Top 10 — 下落株（終値¥1,500+）', j.tables.losers10);
-
-    const tags = `#日本株 #夜間警備員 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金`;
-
-    const md = `${intro}
-${nar}
-## 📊 データ(Top10)
-${t1}
-${t2}
-${t3}
-${t4}
-
-${tags}
-`;
-    return new Response(md, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  } catch (e: any) {
-    return new Response(e?.message ?? 'error', { status: 500 });
-  }
-}
+  try
