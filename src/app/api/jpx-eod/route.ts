@@ -14,11 +14,11 @@ export const dynamic = "force-dynamic";
  * Types
  * ──────────────────────────────────────────────────────────────────── */
 type UniverseItem = {
-  code: string;          // 8035
-  name?: string;         // 東京エレクトロン
-  theme?: string;        // 半導体製造装置
-  brief?: string;        // 製造装置大手
-  yahooSymbol?: string;  // 8035.T
+  code: string;
+  name?: string;
+  theme?: string;
+  brief?: string;
+  yahooSymbol?: string; // 8035.T
 };
 
 type Quote = {
@@ -35,22 +35,22 @@ type Quote = {
 
 type Row = {
   code: string;
-  ticker: string;        // yahooSymbol
+  ticker: string;
   name: string;
   theme: string;
   brief: string;
   open: number | null;
   close: number | null;
   previousClose: number | null;
-  chgPctPrev: number | null;      // (close / previousClose - 1) * 100
-  chgPctIntraday: number | null;  // (close / open - 1) * 100
+  chgPctPrev: number | null;
+  chgPctIntraday: number | null;
   volume: number | null;
-  yenVolM: number | null;         // close * volume / 1e6
+  yenVolM: number | null;
   currency: string;
 };
 
 /* ──────────────────────────────────────────────────────────────────────
- * JST Date Utils
+ * JST utils
  * ──────────────────────────────────────────────────────────────────── */
 const JST_OFFSET_MIN = 9 * 60;
 function toJstDate(d = new Date()): Date {
@@ -64,7 +64,7 @@ function formatYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 function isWeekend(d: Date): boolean {
-  const wd = d.getDay(); // 0 Sun, 6 Sat
+  const wd = d.getDay();
   return wd === 0 || wd === 6;
 }
 function addDays(d: Date, n: number): Date {
@@ -81,7 +81,7 @@ function prevBizDay(d: Date, holidays: Set<string>): Date {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Math/Calc
+ * math helpers
  * ──────────────────────────────────────────────────────────────────── */
 function num(x: any): number | undefined {
   const n = Number(x);
@@ -107,11 +107,16 @@ function yenMillions(q: Quote | undefined): number | undefined {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Safe fetch
+ * safe fetch
  * ──────────────────────────────────────────────────────────────────── */
+const UA = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36",
+};
+
 async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
   try {
-    const r = await fetch(url, { ...init, cache: "no-store" });
+    const r = await fetch(url, { ...init, headers: { ...(init?.headers || {}), ...UA }, cache: "no-store" });
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
@@ -120,7 +125,7 @@ async function safeJson<T = any>(url: string, init?: RequestInit): Promise<T | n
 }
 async function safeText(url: string, init?: RequestInit): Promise<string | null> {
   try {
-    const r = await fetch(url, { ...init, cache: "no-store" });
+    const r = await fetch(url, { ...init, headers: { ...(init?.headers || {}), ...UA }, cache: "no-store" });
     if (!r.ok) return null;
     return await r.text();
   } catch {
@@ -129,7 +134,7 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Robust CSV Parser (quotes, commas safe)
+ * robust CSV → universe
  * ──────────────────────────────────────────────────────────────────── */
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
@@ -138,31 +143,33 @@ function parseCsvLine(line: string): string[] {
     const ch = line[i];
     if (inQ) {
       if (ch === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = false;
-      } else {
-        cur += ch;
-      }
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else inQ = false;
+      } else cur += ch;
     } else {
       if (ch === '"') inQ = true;
-      else if (ch === ",") { out.push(cur); cur = ""; }
-      else cur += ch;
+      else if (ch === ",") {
+        out.push(cur);
+        cur = "";
+      } else cur += ch;
     }
   }
   out.push(cur);
-  return out.map(s => s.trim());
+  return out.map((s) => s.trim());
 }
 
 function csvToUniverse(csv: string): UniverseItem[] {
   const lines = csv.replace(/\r\n?/g, "\n").trim().split("\n");
   if (lines.length <= 1) return [];
-  const header = parseCsvLine(lines[0]).map(s => s.toLowerCase());
-  const idx = (k: string) => header.findIndex(h => h === k.toLowerCase());
-  const iCode  = idx("code");
-  const iName  = idx("name");
+  const header = parseCsvLine(lines[0]).map((s) => s.toLowerCase());
+  const idx = (k: string) => header.findIndex((h) => h === k.toLowerCase());
+  const iCode = idx("code");
+  const iName = idx("name");
   const iTheme = idx("theme");
   const iBrief = idx("brief");
-  const iY     = idx("yahoosymbol");
+  const iY = idx("yahoosymbol");
 
   const out: UniverseItem[] = [];
   for (let i = 1; i < lines.length; i++) {
@@ -181,7 +188,7 @@ function csvToUniverse(csv: string): UniverseItem[] {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Universe loaders
+ * universe/holidays loaders
  * ──────────────────────────────────────────────────────────────────── */
 const DEFAULT_UNIVERSE: UniverseItem[] = [
   { code: "1321", name: "日経225連動型上場投信", theme: "インデックス/ETF", brief: "日経225連動ETF" },
@@ -205,37 +212,33 @@ const DEFAULT_UNIVERSE: UniverseItem[] = [
 
 async function loadUniverse(fallbackUrl?: string): Promise<UniverseItem[]> {
   const url = process.env.JPX_UNIVERSE_URL ?? fallbackUrl;
-
-  if (!url) {
-    return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
-  }
+  if (!url) return DEFAULT_UNIVERSE.map((u) => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
 
   if (url.endsWith(".csv")) {
     const text = await safeText(url);
     const parsed = text ? csvToUniverse(text) : [];
-    if (parsed.length > 0) {
-      return parsed.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
-    }
-    return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
+    return (parsed.length ? parsed : DEFAULT_UNIVERSE).map((u) => ({
+      ...u,
+      yahooSymbol: u.yahooSymbol ?? `${u.code}.T`,
+    }));
   }
 
   const data = await safeJson<UniverseItem[]>(url);
   if (Array.isArray(data) && data.length > 0) {
-    return data.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
+    return data.map((u) => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
   }
-  return DEFAULT_UNIVERSE.map(u => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
+  return DEFAULT_UNIVERSE.map((u) => ({ ...u, yahooSymbol: u.yahooSymbol ?? `${u.code}.T` }));
 }
 
 async function loadJpxHolidays(): Promise<Set<string>> {
   const url = process.env.JPX_HOLIDAYS_URL;
   if (!url) return new Set();
   const data = await safeJson<string[]>(url);
-  if (!Array.isArray(data)) return new Set();
-  return new Set(data);
+  return Array.isArray(data) ? new Set(data) : new Set();
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Yahoo Finance Batch (primary)
+ * Yahoo Quote v7 (batch)
  * ──────────────────────────────────────────────────────────────────── */
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -245,43 +248,108 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
-  if (symbols.length === 0) return out;
+  if (!symbols.length) return out;
 
-  // 60개씩 나눠서 요청 (URL 길이/레이트 제한 여유)
+  const bases = [
+    "https://query1.finance.yahoo.com/v7/finance/quote",
+    "https://query2.finance.yahoo.com/v7/finance/quote",
+  ];
   const batches = chunk(symbols, 60);
+
   for (const b of batches) {
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(b.join(","))}`;
-    const j = await safeJson<any>(url);
-    const arr = j?.quoteResponse?.result ?? [];
-    for (const r of arr) {
-      const symbol = String(r?.symbol ?? "").toUpperCase();
-      if (!symbol) continue;
-
-      const q: Quote = {
-        symbol,
-        open: num(r?.regularMarketOpen ?? r?.open),
-        close: num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice),
-        previousClose: num(r?.regularMarketPreviousClose),
-        volume: num(r?.regularMarketVolume ?? r?.volume),
-        currency: r?.currency ?? "JPY",
-        name: r?.longName ?? r?.shortName ?? symbol,
-      };
-
-      // 최소 유효성: 가격/전일가/거래량 중 하나라도 있으면 채택
-      if (q.close != null || q.previousClose != null || q.volume != null) {
-        out.set(symbol, q);
+    let got = false;
+    for (const base of bases) {
+      const url = `${base}?symbols=${encodeURIComponent(b.join(","))}`;
+      const j = await safeJson<any>(url);
+      const arr = j?.quoteResponse?.result ?? [];
+      if (arr.length) {
+        for (const r of arr) {
+          const symbol = String(r?.symbol ?? "").toUpperCase();
+          if (!symbol) continue;
+          const q: Quote = {
+            symbol,
+            open: num(r?.regularMarketOpen ?? r?.open),
+            close: num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice),
+            previousClose: num(r?.regularMarketPreviousClose),
+            volume: num(r?.regularMarketVolume ?? r?.volume),
+            currency: r?.currency ?? "JPY",
+            name: r?.longName ?? r?.shortName ?? symbol,
+          };
+          if (q.close != null || q.previousClose != null || q.volume != null) {
+            out.set(symbol, q);
+          }
+        }
+        got = true;
+        break;
       }
     }
-    await delay(120);
+    // 살짝 텀
+    await delay(100);
+    // 둘 다 실패여도 그냥 다음 배치로 (차후 per-symbol fallback에서 메움)
   }
   return out;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Twelve Data (fallback for missing)
+ * Yahoo Chart (per-symbol fallback)
+ * ──────────────────────────────────────────────────────────────────── */
+async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?range=5d&interval=1d`;
+  const j = await safeJson<any>(url);
+  try {
+    const res = j?.chart?.result?.[0];
+    if (!res) return null;
+    const meta = res.meta ?? {};
+    const ind = res.indicators?.quote?.[0] ?? {};
+    const closes: any[] = ind.close ?? [];
+    const opens: any[] = ind.open ?? [];
+    const vols: any[] = ind.volume ?? [];
+    const n = closes.length;
+    if (!n) return null;
+
+    const close = num(closes[n - 1]);
+    const open = num(opens[n - 1]);
+    const volume = num(vols[n - 1]);
+    const prev =
+      meta.regularMarketPreviousClose != null
+        ? num(meta.regularMarketPreviousClose)
+        : n >= 2
+        ? num(closes[n - 2])
+        : undefined;
+
+    if (close == null && prev == null && volume == null) return null;
+    return {
+      symbol,
+      open: open ?? undefined,
+      close: close ?? undefined,
+      previousClose: prev ?? undefined,
+      volume: volume ?? undefined,
+      currency: meta.currency ?? "JPY",
+      name: meta.symbol ?? symbol,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Twelve Data (fallback) + 심볼 포맷 보정
  * ──────────────────────────────────────────────────────────────────── */
 const TD_ENDPOINT = "https://api.twelvedata.com/quote";
-async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quote | null> {
+
+function tdCandidatesFromYahoo(sym: string): string[] {
+  // "8035.T" → ["8035", "8035:JP", "8035:TSE"]
+  const m = sym.match(/^(\d{4,5})\.T$/i);
+  if (m) {
+    const code = m[1];
+    return [code, `${code}:JP`, `${code}:TSE`];
+  }
+  return [sym];
+}
+
+async function fetchTwelveDataOne(symbol: string, apikey: string): Promise<Quote | null> {
   const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
   const r = await safeJson<any>(url);
   if (!r || r.status === "error" || r.code || r.message) return null;
@@ -294,39 +362,56 @@ async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quo
   const name = r.name ?? symbol;
 
   if (close == null && prev == null && volume == null) return null;
-
   return { symbol, open, close, previousClose: prev, volume, currency, name };
 }
 
+async function fetchTwelveDataQuote(sym: string, apikey: string): Promise<Quote | null> {
+  for (const cand of tdCandidatesFromYahoo(sym)) {
+    const q = await fetchTwelveDataOne(cand, apikey);
+    if (q) return q;
+    await delay(60);
+  }
+  return null;
+}
+
 /* ──────────────────────────────────────────────────────────────────────
- * Batch + Fallback combiner
+ * Combiner (batch → TD → chart)
  * ──────────────────────────────────────────────────────────────────── */
 async function fetchAllQuotes(symbols: string[], apikey?: string): Promise<Map<string, Quote>> {
-  const primary = await fetchYahooBatchQuotes(symbols);
-  if (!apikey) return primary;
+  const out = await fetchYahooBatchQuotes(symbols);
 
-  // 야후에 없거나(또는 핵심필드 부족) → TwelveData로 보강
-  const out = new Map(primary);
+  // 보강 루프: TD → Yahoo Chart
   for (const s of symbols) {
-    const q = out.get(s);
+    const sym = s.toUpperCase();
+    const q = out.get(sym);
     const missing = !q || ((q.close == null || q.previousClose == null) && q.volume == null);
-    if (missing) {
-      const td = await fetchTwelveDataQuote(s, apikey);
-      if (td) out.set(s, td);
-      await delay(80);
+    if (!missing) continue;
+
+    // 1) TwelveData (있으면)
+    if (apikey) {
+      const td = await fetchTwelveDataQuote(sym, apikey);
+      if (td) {
+        out.set(sym, td);
+        await delay(60);
+        continue;
+      }
     }
+    // 2) Yahoo Chart per-symbol
+    const yc = await fetchYahooChartQuote(sym);
+    if (yc) out.set(sym, yc);
+    await delay(60);
   }
   return out;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Build rows / rankings
+ * rows/rankings
  * ──────────────────────────────────────────────────────────────────── */
 function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
   return univ.map((u) => {
     const sym = (u.yahooSymbol ?? `${u.code}.T`).toUpperCase();
     const q = by.get(sym);
-    const row: Row = {
+    return {
       code: u.code,
       ticker: sym,
       name: u.name ?? u.code,
@@ -341,32 +426,31 @@ function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
       yenVolM: yenMillions(q) ?? null,
       currency: q?.currency ?? "JPY",
     };
-    return row;
   });
 }
 
 function buildRankings(rows: Row[]) {
   const byValue = [...rows]
-    .filter(r => r.yenVolM != null)
-    .sort((a, b) => (b.yenVolM! - a.yenVolM!))
+    .filter((r) => r.yenVolM != null)
+    .sort((a, b) => b.yenVolM! - a.yenVolM!)
     .slice(0, 10);
 
   const byVolume = [...rows]
-    .filter(r => r.volume != null)
-    .sort((a, b) => (b.volume! - a.volume!))
+    .filter((r) => r.volume != null)
+    .sort((a, b) => b.volume! - a.volume!)
     .slice(0, 10);
 
-  const price = (r: Row) => (r.close ?? r.previousClose ?? r.open ?? 0);
-  const elig = rows.filter(r => price(r) >= 1000 && r.chgPctPrev != null);
+  const price = (r: Row) => r.close ?? r.previousClose ?? r.open ?? 0;
+  const elig = rows.filter((r) => price(r) >= 1000 && r.chgPctPrev != null);
 
   const topGainers = [...elig]
-    .filter(r => (r.chgPctPrev as number) > 0)
-    .sort((a, b) => (b.chgPctPrev! - a.chgPctPrev!))
+    .filter((r) => (r.chgPctPrev as number) > 0)
+    .sort((a, b) => b.chgPctPrev! - a.chgPctPrev!)
     .slice(0, 10);
 
   const topLosers = [...elig]
-    .filter(r => (r.chgPctPrev as number) < 0)
-    .sort((a, b) => (a.chgPctPrev! - b.chgPctPrev!))
+    .filter((r) => (r.chgPctPrev as number) < 0)
+    .sort((a, b) => a.chgPctPrev! - b.chgPctPrev!)
     .slice(0, 10);
 
   return { byValue, byVolume, topGainers, topLosers };
@@ -377,7 +461,7 @@ function delay(ms: number) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * GET handler
+ * GET
  * ──────────────────────────────────────────────────────────────────── */
 export async function GET(req: NextRequest) {
   try {
@@ -385,12 +469,12 @@ export async function GET(req: NextRequest) {
     const apikey = process.env.TWELVEDATA_API_KEY || "";
     const holidays = await loadJpxHolidays();
 
-    // 페이징 (?start, ?count)
+    // paging
     const start = Math.max(0, Number(searchParams.get("start") ?? "0"));
     const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "120")), 300);
-    const focusParam = searchParams.get("focus") === "1"; // 상위600 등 포커스 CSV를 쓸지
+    const focusParam = searchParams.get("focus") === "1";
 
-    // 기준 날짜: 15:35 이전이면 전 영업일, 이후면 오늘
+    // base date
     const jstNow = toJstDate();
     let baseDate: Date;
     const dateParam = searchParams.get("date");
@@ -408,23 +492,22 @@ export async function GET(req: NextRequest) {
     }
     const baseYmd = formatYmd(baseDate);
 
-    // 현재 배포 도메인 기준 파일 경로
+    // origin + universe URLs
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
 
-    // focus=1이면 jpx_focus.csv, 아니면 jpx_universe.csv
     const universeUrl = focusParam ? `${origin}/jpx_focus.csv` : `${origin}/jpx_universe.csv`;
 
-    // 유니버스 로드 + 슬라이스
+    // load + slice
     const universeAll = await loadUniverse(universeUrl);
     const universe = universeAll.slice(start, start + count);
-    const symbols = universe.map(u => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
+    const symbols = universe.map((u) => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
-    // 시세 취득: Yahoo 배치 + (있으면) TwelveData 보강
+    // quotes (batch → TD → chart)
     const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
-    // 행/랭킹 구성(슬라이스 범위 내)
+    // rows/rankings
     const rows = buildRows(universe, quoteMap);
     const rankings = buildRankings(rows);
 
@@ -432,13 +515,14 @@ export async function GET(req: NextRequest) {
       ok: true,
       date: baseYmd,
       source: apikey
-        ? "YahooBatch(primary)+TwelveData(missing-fallback)"
-        : "YahooBatch(only)",
+        ? "YahooBatch+YahooChart+TwelveData"
+        : "YahooBatch+YahooChart",
       universeCount: universeAll.length,
       page: { start, count, returned: rows.length },
       quotes: rows,
       rankings,
-      note: "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
+      note:
+        "chgPctPrev=前日比, chgPctIntraday=日中変動。Top10は前日比(終値/前日終値)のみで作成、価格>=1,000円フィルタ。",
     };
 
     return new Response(JSON.stringify(body), {
