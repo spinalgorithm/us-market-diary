@@ -31,6 +31,11 @@ type Quote = {
   volume?: number;
   currency?: string;
   name?: string;
+  // ⬇️ 추가
+  sector?: string;
+  industry?: string;
+  longName?: string;
+  shortName?: string;
 };
 
 type Row = {
@@ -102,8 +107,10 @@ function chgPctIntraday(q: Quote | undefined): number | undefined {
   return undefined;
 }
 function yenMillions(q: Quote | undefined): number | undefined {
-  if (!q?.close || !q?.volume) return undefined;
-  return (q.close * q.volume) / 1_000_000;
+  if (!q?.volume) return undefined;
+  const price = q.close ?? q.previousClose ?? q.open;
+  if (!price) return undefined;
+  return (price * q.volume) / 1_000_000;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -248,47 +255,36 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
-  if (!symbols.length) return out;
-
-  const bases = [
-    "https://query1.finance.yahoo.com/v7/finance/quote",
-    "https://query2.finance.yahoo.com/v7/finance/quote",
-  ];
+  if (symbols.length === 0) return out;
   const batches = chunk(symbols, 60);
-
   for (const b of batches) {
-    let got = false;
-    for (const base of bases) {
-      const url = `${base}?symbols=${encodeURIComponent(b.join(","))}`;
-      const j = await safeJson<any>(url);
-      const arr = j?.quoteResponse?.result ?? [];
-      if (arr.length) {
-        for (const r of arr) {
-          const symbol = String(r?.symbol ?? "").toUpperCase();
-          if (!symbol) continue;
-          const q: Quote = {
-            symbol,
-            open: num(r?.regularMarketOpen ?? r?.open),
-            close: num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice),
-            previousClose: num(r?.regularMarketPreviousClose),
-            volume: num(r?.regularMarketVolume ?? r?.volume),
-            currency: r?.currency ?? "JPY",
-            name: r?.longName ?? r?.shortName ?? symbol,
-          };
-          if (q.close != null || q.previousClose != null || q.volume != null) {
-            out.set(symbol, q);
-          }
-        }
-        got = true;
-        break;
-      }
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(b.join(","))}`;
+    const j = await safeJson<any>(url);
+    const arr = j?.quoteResponse?.result ?? [];
+    for (const r of arr) {
+      const symbol = String(r?.symbol ?? "");
+      if (!symbol) continue;
+      const open   = num(r?.regularMarketOpen ?? r?.open);
+      const close  = num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice);
+      const prev   = num(r?.regularMarketPreviousClose);
+      const volume = num(r?.regularMarketVolume ?? r?.volume);
+      const currency  = r?.currency ?? "JPY";
+      const longName  = r?.longName;
+      const shortName = r?.shortName;
+      const name      = longName ?? shortName ?? symbol;
+      const sector    = r?.sector;
+      const industry  = r?.industry;
+
+      out.set(symbol.toUpperCase(), {
+        symbol, open, close, previousClose: prev, volume, currency,
+        name, longName, shortName, sector, industry,
+      });
     }
-    // 살짝 텀
-    await delay(100);
-    // 둘 다 실패여도 그냥 다음 배치로 (차후 per-symbol fallback에서 메움)
+    await delay(120);
   }
   return out;
 }
+
 
 /* ──────────────────────────────────────────────────────────────────────
  * Yahoo Chart (per-symbol fallback)
@@ -410,13 +406,21 @@ async function fetchAllQuotes(symbols: string[], apikey?: string): Promise<Map<s
 function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
   return univ.map((u) => {
     const sym = (u.yahooSymbol ?? `${u.code}.T`).toUpperCase();
-    const q = by.get(sym);
-    return {
+    const q   = by.get(sym);
+
+    const name = u.name ?? q?.longName ?? q?.shortName ?? q?.name ?? u.code;
+
+    let theme = (u.theme && u.theme !== "-") ? u.theme : (q?.industry || q?.sector || "-");
+    let brief = (u.brief && u.brief !== "-")
+      ? u.brief
+      : (q?.sector && q?.industry) ? `${q.sector}/${q.industry}` : (q?.sector || q?.industry || "-");
+
+    const row: Row = {
       code: u.code,
       ticker: sym,
-      name: u.name ?? u.code,
-      theme: u.theme ?? "-",
-      brief: u.brief ?? "-",
+      name,
+      theme,
+      brief,
       open: q?.open ?? null,
       close: q?.close ?? null,
       previousClose: q?.previousClose ?? null,
@@ -426,8 +430,10 @@ function buildRows(univ: UniverseItem[], by: Map<string, Quote>): Row[] {
       yenVolM: yenMillions(q) ?? null,
       currency: q?.currency ?? "JPY",
     };
+    return row;
   });
 }
+
 
 function buildRankings(rows: Row[]) {
   const byValue = [...rows]
