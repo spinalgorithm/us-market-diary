@@ -70,13 +70,14 @@ function take<T>(arr: T[] | undefined, n: number): T[] {
  * ───────────────────────────── */
 function tableByValue(rows: Row[]): string {
   const head =
-    "| Rank | Ticker | o→c | Chg% | Vol | ¥Vol(M) | Theme | Brief |\n" +
-    "|---:|---:|---:|---:|---:|---:|---|---|\n";
+    "| Rank | Ticker | Name | o→c | Chg% | Vol | ¥Vol(M) | Theme | Brief |\n" +
+    "|---:|---:|---|---:|---:|---:|---:|---|---|\n";
   const body = take(rows, 10)
     .map((r, i) =>
       [
         i + 1,
         r.code,
+        r.name || "-",
         fmtO2C(r.open, r.close),
         fmtPct(r.chgPctPrev),
         fmtNum(r.volume),
@@ -84,68 +85,67 @@ function tableByValue(rows: Row[]): string {
         r.theme || "-",
         r.brief || "-",
       ].join(" | ")
-    )
-    .join("\n");
+    ).join("\n");
   return head + body + (body ? "\n" : "");
 }
 
 function tableByVolume(rows: Row[]): string {
   const head =
-    "| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n" +
-    "|---:|---:|---:|---:|---:|---|---|\n";
+    "| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |\n" +
+    "|---:|---:|---|---:|---:|---:|---|---|\n";
   const body = take(rows, 10)
     .map((r, i) =>
       [
         i + 1,
         r.code,
+        r.name || "-",
         fmtO2C(r.open, r.close),
         fmtPct(r.chgPctPrev),
         fmtNum(r.volume),
         r.theme || "-",
         r.brief || "-",
       ].join(" | ")
-    )
-    .join("\n");
+    ).join("\n");
   return head + body + (body ? "\n" : "");
 }
 
 function tableGainers(rows: Row[]): string {
   const head =
-    "| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n" +
-    "|---:|---:|---:|---:|---:|---|---|\n";
+    "| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |\n" +
+    "|---:|---:|---|---:|---:|---:|---|---|\n";
   const body = take(rows, 10)
     .map((r, i) =>
       [
         i + 1,
         r.code,
+        r.name || "-",
         fmtO2C(r.open, r.close),
         fmtPct(r.chgPctPrev),
         fmtNum(r.volume),
         r.theme || "-",
         r.brief || "-",
       ].join(" | ")
-    )
-    .join("\n");
+    ).join("\n");
   return head + body + (body ? "\n" : "");
 }
 
 function tableLosers(rows: Row[]): string {
   const head =
-    "| Rank | Ticker | o→c | Chg% | Vol | Theme | Brief |\n" +
-    "|---:|---:|---:|---:|---:|---|---|\n";
+    "| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |\n" +
+    "|---:|---:|---|---:|---:|---:|---|---|\n";
   const body = take(rows, 10)
     .map((r, i) =>
       [
         i + 1,
         r.code,
+        r.name || "-",
         fmtO2C(r.open, r.close),
         fmtPct(r.chgPctPrev),
         fmtNum(r.volume),
         r.theme || "-",
         r.brief || "-",
       ].join(" | ")
-    )
-    .join("\n");
+    ).join("\n");
   return head + body + (body ? "\n" : "");
 }
 
