@@ -439,10 +439,19 @@ export async function GET(req: NextRequest) {
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
+
+
+    
     const urlFromReq = `${origin}/jpx_universe.csv`;
 
     // 유니버스 로드 + 슬라이스
-    const universeAll = await loadUniverse(urlFromReq);
+// GET 핸들러 내부, origin 계산 뒤에 ↓ 추가
+const focusParam = searchParams.get("focus"); // "1"이면 포커스 사용
+const focusUrl = `${origin}/jpx_focus.csv`;
+const universeUrl = `${origin}/jpx_universe.csv`;
+
+// 유니버스 로드 부분을 아래처럼 교체
+const universeAll = await loadUniverse(focusParam === "1" ? focusUrl : universeUrl);
     const universe = universeAll.slice(start, start + count);
     const symbols = universe.map(u => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
