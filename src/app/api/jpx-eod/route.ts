@@ -134,70 +134,47 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
  * ──────────────────────────────────────────────────────────────────── */
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
+  let cur = "", inQ = false;
+  for (let i=0;i<line.length;i++){
     const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"'; i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
+    if (inQ){
+      if (ch === '"'){
+        if (line[i+1] === '"'){ cur += '"'; i++; }
+        else inQ = false;
+      } else cur += ch;
     } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        out.push(cur); cur = "";
-      } else {
-        cur += ch;
-      }
+      if (ch === '"') inQ = true;
+      else if (ch === ","){ out.push(cur); cur = ""; }
+      else cur += ch;
     }
   }
   out.push(cur);
-  return out.map(s => s.trim());
+  return out.map(s=>s.trim());
 }
 
 function csvToUniverse(csv: string): UniverseItem[] {
-  const lines = csv.replace(/\r\n?/g, "\n").trim().split("\n");
+  const lines = csv.replace(/\r\n?/g,"\n").trim().split("\n");
   if (lines.length <= 1) return [];
-  const header = parseCsvLine(lines[0]);
-  const findIdx = (keys: string[]) => {
-    const lower = header.map(h => h.toLowerCase());
-    for (const k of keys) {
-      const idx = lower.indexOf(k.toLowerCase());
-      if (idx >= 0) return idx;
-    }
-    return -1;
-  };
-
-  const iCode  = findIdx(["code"]);
-  const iName  = findIdx(["name"]);
-  const iTheme = findIdx(["theme"]);
-  const iBrief = findIdx(["brief"]);
-  const iYsym  = findIdx(["yahooSymbol", "yahoosymbol"]);
+  const header = parseCsvLine(lines[0]).map(s=>s.toLowerCase());
+  const idx = (k: string) => header.findIndex(h => h === k.toLowerCase());
+  const iCode  = idx("code");
+  const iName  = idx("name");
+  const iTheme = idx("theme");
+  const iBrief = idx("brief");
+  const iY     = idx("yahoosymbol");
 
   const out: UniverseItem[] = [];
-  for (let i = 1; i < lines.length; i++) {
+  for (let i=1;i<lines.length;i++){
     const cols = parseCsvLine(lines[i]);
-    const code = cols[iCode] ?? "";
-    if (!/^\d{4,5}$/.test(code)) continue;
-
-    const name = cols[iName] && cols[iName] !== "-" ? cols[iName] : code;
-    const theme = cols[iTheme] && cols[iTheme] !== "-" ? cols[iTheme] : "-";
-    const brief = cols[iBrief] && cols[iBrief] !== "-" ? cols[iBrief] : "-";
-    let yahooSymbol = cols[iYsym];
-
-    if (!yahooSymbol || yahooSymbol === "-") {
-      yahooSymbol = `${code}.T`;
-    }
-
-    out.push({ code, name, theme, brief, yahooSymbol });
+    const code = cols[iCode];
+    if (!code) continue;
+    out.push({
+      code,
+      name: cols[iName],
+      theme: cols[iTheme],
+      brief: cols[iBrief],
+      yahooSymbol: cols[iY] && cols[iY] !== "-" ? cols[iY].toUpperCase() : `${code}.T`,
+    });
   }
   return out;
 }
