@@ -1,13 +1,14 @@
 // src/app/api/jpx-eod-md/route.ts
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 /** ─────────────────────────────
- * 런타임/캐시
+ * 런타임/캐시/타임리밋
  * ───────────────────────────── */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Vercel 플랜이 허용하면 약간 여유를 줍니다.
+export const maxDuration = 30;
 
 /** ─────────────────────────────
  * 타입 ( /api/jpx-eod 응답과 일치 )
@@ -45,15 +46,11 @@ type EodJson = {
   note?: string;
   error?: string;
   message?: string;
-  page?: { start: number; count: number; returned: number };
 };
 
 /** ─────────────────────────────
- * 유틸 (숫자/포맷)
+ * 유틸 (포맷)
  * ───────────────────────────── */
-const N = (x: any) => (Number.isFinite(Number(x)) ? Number(x) : undefined);
-const n0 = (x: any) => (Number.isFinite(Number(x)) ? Number(x) : 0);
-
 function fmtNum(x: number | null | undefined): string {
   if (x == null || !Number.isFinite(Number(x))) return "-";
   return Number(x).toLocaleString("ja-JP");
@@ -72,7 +69,7 @@ function take<T>(arr: T[] | undefined, n: number): T[] {
 }
 
 /** ─────────────────────────────
- * 표(테이블) 빌더 — Name/Theme 포함
+ * 표(테이블) 빌더
  * ───────────────────────────── */
 function tableByValue(rows: Row[]): string {
   const head =
@@ -159,12 +156,44 @@ function tableLosers(rows: Row[]): string {
   return head + body + (body ? "\n" : "");
 }
 
-/** 카드(상단) */
+/** ─────────────────────────────
+ * 랭킹 재계산 (여러 페이지 합친 뒤)
+ * ───────────────────────────── */
+function buildRankings(rows: Row[]): Rankings {
+  const byValue = [...rows]
+    .filter(r => r.yenVolM != null)
+    .sort((a, b) => (b.yenVolM! - a.yenVolM!))
+    .slice(0, 10);
+
+  const byVolume = [...rows]
+    .filter(r => r.volume != null)
+    .sort((a, b) => (b.volume! - a.volume!))
+    .slice(0, 10);
+
+  const price = (r: Row) => (r.close ?? r.previousClose ?? r.open ?? 0);
+  const elig = rows.filter(r => price(r) >= 1000 && r.chgPctPrev != null);
+
+  const topGainers = [...elig]
+    .filter(r => (r.chgPctPrev as number) > 0)
+    .sort((a, b) => (b.chgPctPrev! - a.chgPctPrev!))
+    .slice(0, 10);
+
+  const topLosers = [...elig]
+    .filter(r => (r.chgPctPrev as number) < 0)
+    .sort((a, b) => (a.chgPctPrev! - b.chgPctPrev!))
+    .slice(0, 10);
+
+  return { byValue, byVolume, topGainers, topLosers };
+}
+
+/** ─────────────────────────────
+ * 카드(상단)
+ * ───────────────────────────── */
 function cardsBlock(core: Row[]): string {
   if (!core.length) return "（データを取得できませんでした）\n";
   const lines: string[] = [];
   for (const r of core) {
-    lines.push(`- ${r.code} — ${r.name}`);
+    lines.push(`- ${r.code} — ${r.name || "-"}`);
     lines.push(
       `  - o→c: ${fmtO2C(r.open, r.close)} / Chg%: ${fmtPct(
         r.chgPctPrev
@@ -175,206 +204,105 @@ function cardsBlock(core: Row[]): string {
 }
 
 /** ─────────────────────────────
- * 랭킹 재계산 (600개 합산 기준)
+ * 규칙 기반 서술(폴백)
  * ───────────────────────────── */
-function buildRankings(rows: Row[]): Rankings {
-  // yenVolM 누락은 price*vol 로 보정
-  const withY = rows.map((r) => {
-    const price = n0(r.close ?? r.previousClose ?? r.open ?? 0);
-    const vol = n0(r.volume ?? 0);
-    const y = Number.isFinite(Number(r.yenVolM)) && r.yenVolM != null ? Number(r.yenVolM) : (price * vol) / 1e6;
-    return { ...r, _price: price, _yenVolM: y };
-  });
+function ruleNarrative(date: string, rows: Row[], rnk: Rankings): string {
+  const adv = rows.filter(r => (r.chgPctPrev ?? 0) > 0).length;
+  const dec = rows.filter(r => (r.chgPctPrev ?? 0) < 0).length;
 
-  const byValue = [...withY]
-    .filter(r => r._yenVolM > 0)
-    .sort((a, b) => (b._yenVolM - a._yenVolM))
-    .slice(0, 10)
-    .map(({ _price, _yenVolM, ...rest }) => ({ ...rest, yenVolM: _yenVolM }));
+  const sumAll = rows.reduce((s, r) => s + (r.yenVolM ?? 0), 0);
+  const sumTop10 = rnk.byValue.reduce((s, r) => s + (r.yenVolM ?? 0), 0);
+  const conc = sumAll > 0 ? (sumTop10 / sumAll) * 100 : 0;
 
-  const byVolume = [...withY]
-    .filter(r => (r.volume ?? 0) > 0)
-    .sort((a, b) => (n0(b.volume) - n0(a.volume)))
-    .slice(0, 10)
-    .map(({ _price, _yenVolM, ...rest }) => ({ ...rest, yenVolM: _yenVolM }));
+  const topThemes = Object.entries(
+    rnk.byValue.slice(0, 20).reduce<Record<string, number>>((m, r) => {
+      const t = r.theme && r.theme !== "-" ? r.theme : "その他";
+      m[t] = (m[t] ?? 0) + 1;
+      return m;
+    }, {})
+  ).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k);
 
-  const priceOf = (r: any) => (r.close ?? r.previousClose ?? r.open ?? 0);
-  const elig = withY.filter(r => priceOf(r) >= 1000 && r.chgPctPrev != null);
-
-  const topGainers = [...elig]
-    .filter(r => (r.chgPctPrev as number) > 0)
-    .sort((a, b) => (n0(b.chgPctPrev) - n0(a.chgPctPrev)))
-    .slice(0, 10)
-    .map(({ _price, _yenVolM, ...rest }) => ({ ...rest, yenVolM: _yenVolM }));
-
-  const topLosers = [...elig]
-    .filter(r => (r.chgPctPrev as number) < 0)
-    .sort((a, b) => (n0(a.chgPctPrev) - n0(b.chgPctPrev)))
-    .slice(0, 10)
-    .map(({ _price, _yenVolM, ...rest }) => ({ ...rest, yenVolM: _yenVolM }));
-
-  return { byValue, byVolume, topGainers, topLosers };
-}
-
-/** ─────────────────────────────
- * 규칙 기반 간단 나레이티브 (LLM 실패시 fallback)
- * ───────────────────────────── */
-function narrativeBlock(date: string, rnk: Rankings | undefined, quotes: Row[] | undefined): string {
-  const r = rnk;
-  const byVal = r?.byValue ?? [];
-  const up = byVal.filter(x => (x.chgPctPrev ?? 0) > 0).length;
-  const dn = byVal.filter(x => (x.chgPctPrev ?? 0) < 0).length;
-
-  const tl = `### TL;DR\n主力は小幅レンジ、方向感は限定。 装置/半導体が相対強く、ディフェンシブは重い。 売買代金上位の上げ下げは **${up}:${dn}**。`;
+  const tl = `### TL;DR
+市場のムードは**${adv >= dec ? "買い優勢" : "売り優勢"}**。売買代金Top10集中度 **${conc.toFixed(1)}%**、上げ下げ **${adv}:${dec}**。`;
 
   const story = `### 本日のストーリー
-- 売買代金上位は装置/大型に資金集中、指数は方向感に乏しいが下値は限定。
-- 半導体製造装置の買い優勢が続き、押し目は浅め。
-- 銀行・通信は戻り鈍く、板の上では重さが残存。
-- 値がさの押し目は拾われやすい一方、広がりは限定。`;
+- Top10/全体の集中度は **${conc.toFixed(1)}%**。主力周辺にフロー${conc >= 40 ? "集中" : "分散"}。
+- ブレッドス **${adv}:${dec}**、広範は${adv >= dec ? "堅調" : "軟調"}。
+- テーマは ${topThemes.join(" / ")} に回遊。`;
 
   const replay = `### 30分リプレイ
-- 寄り：指数連動に静かな売り先行、装置に先回りの買い。
-- 前場：電機/部品へ循環、ディフェンシブは弱含み。
-- 後場：装置の強さ継続、押し目は浅い。
-- 引け：指数は小幅安圏でクローズ、翌日に宿題を残す。`;
+- 寄り：様子見/指標待ち。
+- 前場：主力に資金回帰、二番手は選別。
+- 後場：方向感鈍化、値がさは押し目拾い優勢。
+- 引け：上下に往来しつつ日中レンジ内でクローズ。`;
 
   const eod = `### EOD総括
-装置/選別グロースの下支えと、ディフェンシブの重さが相殺。指数は崩れず、流動性は主力周辺に集中。`;
+主力集中とブレッドスのバランスで指数は持ち合い気味。翌日は集中の解消/継続が焦点。`;
 
   const checklist = `### 明日のチェック
-- 装置の強さ継続（8035/6920/6857）か循環一服か
-- 銀行・通信の重さに変化（フロー反転/ニュース）有無
-- 値がさの押し目吸収力（トヨタ/任天堂/ソニー）
-- 売買代金の分散/集中バランス
-- 先物主導の振れとVWAP攻防`;
+- Top10集中度の変化（分散→広がり/継続）
+- ブレッドス改善/悪化
+- 上下位テーマの入れ替わり`;
 
   const scenarios = `### シナリオ（反発継続/もみ合い/反落）
-- 反発継続：装置強、指数はVWAP上を維持
-- もみ合い：業種間の循環が速く、値幅は縮小
-- 反落：ディフェンシブ重く、戻り売り優勢`;
+- 反発継続：ブレッドス改善、主力外へ回遊
+- もみ合い：集中継続、値幅縮小
+- 反落：ディフェンシブ主導で戻り売り`;
 
   return `${tl}\n\n${story}\n\n${replay}\n\n${eod}\n\n${checklist}\n\n${scenarios}`;
 }
 
 /** ─────────────────────────────
- * LLM 서술 보강 (600개 풀셋 통계 기반)
- * OPENAI_API_KEY 필요, OPENAI_MODEL_MD 지정 가능(없으면 gpt-4o)
+ * LLM 서술 (2.5s 타임아웃, 실패 시 null)
  * ───────────────────────────── */
-const f1 = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : "-");
-const f2 = (x: number) => (Number.isFinite(x) ? x.toFixed(2) : "-");
-
-function makeContext(date: string, rows: Row[], rnk: Rankings) {
-  const withP = rows.map(r => {
-    const price = n0(r.close ?? r.previousClose ?? r.open ?? 0);
-    const vol = n0(r.volume ?? 0);
-    const yv = Number.isFinite(n0(r.yenVolM)) && n0(r.yenVolM) > 0 ? n0(r.yenVolM) : (price * vol) / 1e6;
-    const chg = Number.isFinite(n0(r.chgPctPrev)) ? n0(r.chgPctPrev) : 0;
-    return { ...r, _price: price, _yv: yv, _chg: chg };
-  });
-  const valid = withP.filter(r => r._price > 0);
-  const total = valid.length;
-  const adv = valid.filter(r => r._chg > 0).length;
-  const dec = valid.filter(r => r._chg < 0).length;
-
-  const yvAll = valid.reduce((s, r) => s + r._yv, 0);
-  const byVal = [...valid].sort((a, b) => b._yv - a._yv);
-  const top10 = byVal.slice(0, 10).reduce((s, r) => s + r._yv, 0);
-  const top10Pct = yvAll > 0 ? (top10 / yvAll) * 100 : 0;
-
-  const norm = (s: string) => (s && s !== "-" ? s : "その他");
-  const themeMap = new Map<
-    string,
-    { yv: number; adv: number; dec: number; items: { code: string; name: string; chg: number; yv: number }[] }
-  >();
-  for (const r of valid) {
-    const t = norm(r.theme);
-    const g = themeMap.get(t) ?? { yv: 0, adv: 0, dec: 0, items: [] };
-    g.yv += r._yv;
-    if (r._chg > 0) g.adv++; else if (r._chg < 0) g.dec++;
-    g.items.push({ code: r.code, name: r.name, chg: r._chg, yv: r._yv });
-    themeMap.set(t, g);
-  }
-  const themesSorted = [...themeMap.entries()]
-    .sort((a, b) => b[1].yv - a[1].yv)
-    .slice(0, 8)
-    .map(([t, v]) => `${t} ${f1(v.yv)}M (↑${v.adv}/↓${v.dec})`);
-
-  const up2 = valid.filter(r => r._chg >= 2).length;
-  const up3 = valid.filter(r => r._chg >= 3).length;
-  const dn2 = valid.filter(r => r._chg <= -2).length;
-  const dn3 = valid.filter(r => r._chg <= -3).length;
-
-  const topValueList = byVal.slice(0, 10).map(r =>
-    `${r.code} ${r.name} (${r.theme || "-"}) Chg:${f2(r._chg)} YV:${f1(r._yv)}M`
-  );
-  const topVolumeList = (rnk.byVolume ?? []).slice(0, 10).map(r =>
-    `${r.code} ${r.name} (${r.theme || "-"}) Chg:${f2(n0(r.chgPctPrev ?? 0))} Vol:${(n0(r.volume)/1_000_000).toFixed(2)}M`
-  );
-  const gainers = (rnk.topGainers ?? []).slice(0, 10).map(r =>
-    `${r.code} ${r.name} (${r.theme || "-"}) ${f2(n0(r.chgPctPrev ?? 0))}%`
-  );
-  const losers = (rnk.topLosers ?? []).slice(0, 10).map(r =>
-    `${r.code} ${r.name} (${r.theme || "-"}) ${f2(n0(r.chgPctPrev ?? 0))}%`
-  );
-
-  const wchg = yvAll > 0 ? valid.reduce((s, r) => s + r._chg * (r._yv / yvAll), 0) : 0;
-
-  return {
-    date,
-    breadth: { adv, dec, total },
-    concentrationPct: Number.isFinite(top10Pct) ? f1(top10Pct) : "-",
-    themesTop: themesSorted,
-    buckets: { up2, up3, dn2, dn3 },
-    weightedChg: f2(wchg),
-    topValue: topValueList,
-    topVolume: topVolumeList,
-    gainers,
-    losers,
-  };
-}
-
-async function llmNarrative(eod: { date?: string; quotes?: Row[]; rankings?: Rankings; }): Promise<string | null> {
+async function llmNarrative(date: string, rows: Row[], rnk: Rankings): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
   const client = new OpenAI({ apiKey });
-  const rows = Array.isArray(eod.quotes) ? eod.quotes : [];
-  const rnk = eod.rankings ?? { byValue: [], byVolume: [], topGainers: [], topLosers: [] };
-  const ctx = makeContext(eod.date || "", rows, rnk);
 
-  const messages: ChatCompletionMessageParam[] = [
-    {
-      role: "system",
-      content:
-        "あなたは日本株の市況コメント記者。与えられた統計値を必ず引用し、抽象語の多用は禁止。事実→解釈→示唆を短く鋭く。Markdown章立て固定。",
-    },
-    {
-      role: "user",
-      content:
-        `対象は「売買代金上位600銘柄」。以下の数字を本文に埋め込むこと。\n` +
-        `- 日付: ${ctx.date}\n` +
-        `- ブレッドス(上昇/下落/総数): ${ctx.breadth.adv}/${ctx.breadth.dec}/${ctx.breadth.total}\n` +
-        `- Top10集中度(売買代金): ${ctx.concentrationPct}%\n` +
-        `- 値幅バケット: +3%以上=${ctx.buckets.up3}, +2%以上=${ctx.buckets.up2}, -2%以下=${ctx.buckets.dn2}, -3%以下=${ctx.buckets.dn3}\n` +
-        `- 売買代金加重 前日比: ${ctx.weightedChg}%\n` +
-        `- 上位テーマ: ${ctx.themesTop.join(" / ")}\n` +
-        `- 売買代金上位(Top10):\n  - ${ctx.topValue.join("\n  - ")}\n` +
-        `- 出来高上位(Top10):\n  - ${ctx.topVolume.join("\n  - ")}\n` +
-        `- 上昇(Top10):\n  - ${ctx.gainers.join("\n  - ")}\n` +
-        `- 下落(Top10):\n  - ${ctx.losers.join("\n  - ")}\n\n` +
-        `出力は日本語Markdownで以下の章立てのみ：\n` +
-        `### TL;DR\n### 本日のストーリー\n### 30分リプレイ\n### EOD総括\n### 明日のチェック\n### シナリオ（反発継続/もみ合い/反落）\n\n` +
-        `ルール：TL;DRに「ブレッドス(${ctx.breadth.adv}:${ctx.breadth.dec})」「集中度(${ctx.concentrationPct}%)」「加重前日比(${ctx.weightedChg}%)」を必ず入れる。テーマは上位の値動きとAdv/Decの偏りから“流入/逆風/中立”を判定し具体銘柄(コード)を2〜3個添える。曖昧語禁止。`,
-    },
+  // 집계 메트릭
+  const adv = rows.filter(r => (r.chgPctPrev ?? 0) > 0).length;
+  const dec = rows.filter(r => (r.chgPctPrev ?? 0) < 0).length;
+  const sumAll = rows.reduce((s, r) => s + (r.yenVolM ?? 0), 0);
+  const sumTop10 = rnk.byValue.reduce((s, r) => s + (r.yenVolM ?? 0), 0);
+  const conc = sumAll > 0 ? (sumTop10 / sumAll) * 100 : 0;
+
+  const themeTop = rnk.byValue.slice(0, 20)
+    .map(r => r.theme && r.theme !== "-" ? r.theme : "その他");
+
+  const prompt =
+`データ(日付: ${date})
+- 上げ下げ: ${adv}:${dec}
+- Top10集中度: ${conc.toFixed(1)}%
+- 売買代金上位(抜粋): ${rnk.byValue.slice(0,10).map(r=>`${r.code} ${r.name}(${r.theme||"-"}) Chg%:${r.chgPctPrev==null?"-":r.chgPctPrev.toFixed(2)}`).join(", ")}
+- テーマ頻出: ${themeTop.join("/")}
+
+以下の見出しで、日本株の市況コメントをMarkdownで簡潔に。定量の数字は上記を使い、断定は避けつつ具体的に。
+### TL;DR
+### 本日のストーリー
+### 30分リプレイ
+### EOD総括
+### 明日のチェック
+### シナリオ（反発継続/もみ合い/反落)`;
+
+  // 타입 오류 회피를 위해 any 캐스팅 (openai v4의 union 타입 회피)
+  const messages: any = [
+    { role: "system", content: "あなたは日本株の市況コメント記者。短文で歯切れよく、過度な断定は避けるが指摘は具体的に。" },
+    { role: "user", content: prompt },
   ];
 
   try {
-    const resp = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL_MD || "gpt-4o",
+    const p = client.chat.completions.create({
+      model: process.env.OPENAI_MODEL_MD || "gpt-4o-mini",
       temperature: 0.2,
       messages,
     });
+
+    // 2.5초 타임아웃
+    const timeout = new Promise<null>(res => setTimeout(() => res(null), 2500));
+    const resp: any = await Promise.race([p, timeout]);
+    if (!resp || !resp.choices) return null;
     return resp.choices[0]?.message?.content ?? null;
   } catch {
     return null;
@@ -394,24 +322,29 @@ export async function GET(req: NextRequest) {
       (req as any).nextUrl?.origin ??
       `${url.protocol}//${url.host}`;
 
-    // /api/jpx-eod 페이지 가져오기 (focus=1, 두 페이지로 600개 집계)
+    // /api/jpx-eod 페이지 가져오기 (focus=1, quick=1)
     async function fetchPage(start: number, count: number): Promise<EodJson | null> {
       const qs = new URLSearchParams();
       qs.set("focus", "1");
+      qs.set("quick", "1"); // 빠른 모드
       qs.set("start", String(start));
       qs.set("count", String(count));
       if (date) qs.set("date", date);
       const resp = await fetch(`${origin}/api/jpx-eod?${qs.toString()}`, { cache: "no-store" });
-      try { return (await resp.json()) as EodJson; } catch { return null; }
+      try {
+        return (await resp.json()) as EodJson;
+      } catch {
+        return null;
+      }
     }
 
+    // 600개를 두 구간으로 병렬 수집
+    const [p1, p2] = await Promise.all([ fetchPage(0, 300), fetchPage(300, 300) ]);
     const pages: EodJson[] = [];
-    const p1 = await fetchPage(0, 300);
-    if (p1?.ok) pages.push(p1);
-    const p2 = await fetchPage(300, 300);
-    if (p2?.ok) pages.push(p2);
+    if (p1?.ok && Array.isArray(p1.quotes)) pages.push(p1);
+    if (p2?.ok && Array.isArray(p2.quotes)) pages.push(p2);
 
-    if (pages.length === 0) {
+    if (!pages.length) {
       const md =
         `# 日本株 夜間警備員 日誌 | ${date ?? "N/A"}\n\n` +
         `> データ取得に失敗しました（無料ソースの一時ブロック/ネットワーク）。数分後に再試行してください。\n`;
@@ -433,8 +366,8 @@ export async function GET(req: NextRequest) {
     // 소스/유니버스 카운트는 첫 페이지 기준 표기(없으면 계산값)
     const first = pages[0];
     const dateStr = first.date ?? (date ?? "");
-    const source = (first.source ? first.source + "+YahooChart" : "YahooBatch+YahooChart") + (process.env.TWELVEDATA_API_KEY ? "+TwelveData" : "");
-    const universeCount = 600; // focus=1 집계 의도 명시
+    const source = first.source ?? "YahooBatch";
+    const universeCount = first.universeCount ?? allRows.length;
 
     // 카드(대표 코드 추출)
     const CARD_CODES = new Set([
@@ -443,7 +376,7 @@ export async function GET(req: NextRequest) {
     ]);
     const cards = allRows.filter(r => CARD_CODES.has(r.code));
 
-    // 랭킹 재계산(600개 전체 기준)
+    // 랭킹 재계산(전 구간 기준)
     const rankings = buildRankings(allRows);
 
     // 헤더/주석
@@ -454,9 +387,9 @@ export async function GET(req: NextRequest) {
       `> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。\n` +
       `> ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。\n\n`;
 
-    // LLM 서술 (실패 시 규칙기반)
-    const llm = await llmNarrative({ date: dateStr, quotes: allRows, rankings });
-    const narrative = llm ?? narrativeBlock(dateStr, rankings, allRows);
+    // 서술: LLM 시도 → 실패시 규칙 기반
+    const llm = await llmNarrative(dateStr, allRows, rankings);
+    const narrative = llm ?? ruleNarrative(dateStr, allRows, rankings);
 
     // 카드
     const cardsSec = `## カード（主要ETF・大型）\n${cardsBlock(cards)}\n---\n`;
@@ -471,7 +404,7 @@ export async function GET(req: NextRequest) {
     const losersTable =
       "### Top 10 — 下落株（¥1,000+）\n" + tableLosers(rankings.topLosers) + "\n";
 
-    const tags = "\n#日本株 #日経平均 #TOPIX #半導体 #AI #出来高 #売買代金 #大型株\n";
+    const tags = "\n#日本株 #日経平均 #TOPIX #半導体 #出来高 #売買代金 #大型株\n";
 
     const md = [
       header,
