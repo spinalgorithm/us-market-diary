@@ -1,6 +1,7 @@
 // src/app/api/jpx-eod-md/route.ts
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -242,7 +243,10 @@ async function llmNarrative(eod: Required<EodJson>): Promise<string | null> {
   const rnk = eod.rankings!;
   const ctx = makeContext(eod.date || "", rows, rnk);
 
-  const messages = [
+  // ⬇️ 타입을 명시 (둘 중 하나 택1)
+
+  // 방법 A: 명시적 타입 주석
+  const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
       content:
@@ -260,28 +264,27 @@ async function llmNarrative(eod: Required<EodJson>): Promise<string | null> {
         `出来高上位(Top10):\n- ${ctx.topVolume.join("\n- ")}\n\n` +
         `上昇(Top10):\n- ${ctx.gainers.join("\n- ")}\n\n` +
         `下落(Top10):\n- ${ctx.losers.join("\n- ")}\n\n` +
-        `以上をもとに、以下の見出しで日本語Markdownを生成してください。\n` +
-        `### TL;DR\n` +
-        `### 本日のストーリー\n` +
-        `### 30分リプレイ\n` +
-        `### EOD総括\n` +
-        `### 明日のチェック\n` +
-        `### シナリオ（反発継続/もみ合い/反落）\n` +
-        `- 数字や固有名詞は可能な範囲で具体的に。\n` +
-        `- ブレッドス/集中度/テーマの示唆を必ず含める。\n` +
-        `- 過度な断定NG。`,
+        `以下の見出しで日本語Markdownを生成してください。\n` +
+        `### TL;DR\n### 本日のストーリー\n### 30分リプレイ\n### EOD総括\n### 明日のチェック\n### シナリオ（反発継続/もみ合い/反落）\n` +
+        `- ブレッドス/集中度/テーマの示唆を必ず含める。\n- 過度な断定NG。`,
     },
   ];
 
+  // // 방법 B: TS 4.9+라면 satisfies 사용도 가능
+  // const messages = [
+  //   { role: "system", content: "..." },
+  //   { role: "user", content: "..." },
+  // ] satisfies ChatCompletionMessageParam[];
+
   try {
     const resp = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL_MD || "gpt-4o-mini", // 여기로 모델 바꿔도 됨
       temperature: 0.4,
       messages,
     });
     return resp.choices[0]?.message?.content ?? null;
   } catch {
-    return null;
+    return null; // 실패 시 규칙 기반 폴백으로 내려감
   }
 }
 
