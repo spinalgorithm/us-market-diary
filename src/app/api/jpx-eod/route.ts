@@ -329,7 +329,22 @@ async function fetchYahooChartQuote(symbol: string): Promise<Quote | null> {
     return null;
   }
 }
+async function fetchYahooChartClosePrev(symbol: string): Promise<Partial<Quote> | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d&includePrePost=false`;
+  const j = await safeJson<any>(url);
+  const res = j?.chart?.result?.[0];
+  const closes: number[] = res?.indicators?.quote?.[0]?.close ?? [];
+  if (!Array.isArray(closes) || closes.length === 0) return null;
 
+  // 뒤에서부터 null 아닌 값 2개 잡기
+  const valid = closes.filter((v) => Number.isFinite(v));
+  if (valid.length === 0) return null;
+  const close = valid[valid.length - 1];
+  const prev  = valid.length >= 2 ? valid[valid.length - 2] : undefined;
+
+  if (close == null && prev == null) return null;
+  return { close, previousClose: prev };
+}
 /* ──────────────────────────────────────────────────────────────────────
  * Twelve Data (fallback) + 심볼 포맷 보정
  * ──────────────────────────────────────────────────────────────────── */
@@ -376,41 +391,52 @@ async function fetchTwelveDataQuote(sym: string, apikey: string): Promise<Quote 
 async function fetchAllQuotes(
   symbols: string[],
   apikey?: string,
-  fallbackMax: number = 0, // 0이면 폴백 끔
+  fallbackTdMax: number = 0,   // TwelveData 보강 상한
+  chartMax: number = 0,        // Yahoo-Chart 보강 상한
 ): Promise<Map<string, Quote>> {
-  // 1) 1차: Yahoo batch
   const primary = await fetchYahooBatchQuotes(symbols);
 
-  // 2) 폴백 조건 미충족이면 그대로 반환
-  if (!apikey || fallbackMax <= 0) return primary;
-
-  // 3) 부족분만 TwelveData로 최대 fallbackMax개 보강
+  // TwelveData 보강
   const out = new Map(primary);
-  let used = 0;
-
-  for (const s of symbols) {
-    if (used >= fallbackMax) break;
-
-    const q = out.get(s);
-    const missing =
-      !q ||
-      (
-        // 가격(종가/전일종가) 둘 중 하나라도 없고
+  let usedTd = 0;
+  if (apikey && fallbackTdMax > 0) {
+    for (const s of symbols) {
+      if (usedTd >= fallbackTdMax) break;
+      const q = out.get(s);
+      const missing = !q || (
         (q.close == null || q.previousClose == null) &&
-        // 거래량도 없으면 → “정보가 거의 없음”으로 간주
         (q.volume == null)
       );
+      if (missing) {
+        const td = await fetchTwelveDataQuote(s, apikey);
+        if (td) out.set(s, { ...(out.get(s) || { symbol: s }), ...td });
+        usedTd++;
+        await delay(40);
+      }
+    }
+  }
 
-    if (missing) {
-      const td = await fetchTwelveDataQuote(s, apikey);
-      if (td) out.set(s, td);
-      used++;
-      await delay(40); // API 예의상 살짝 텀
+  // Yahoo-Chart 보강(종가/전일종가만)
+  let usedChart = 0;
+  if (chartMax > 0) {
+    for (const s of symbols) {
+      if (usedChart >= chartMax) break;
+      const q = out.get(s) || { symbol: s } as Quote;
+      const needClose = (q.close == null || q.previousClose == null);
+      if (needClose) {
+        const cp = await fetchYahooChartClosePrev(s);
+        if (cp) {
+          out.set(s, { ...q, ...cp });
+        }
+        usedChart++;
+        await delay(30);
+      }
     }
   }
 
   return out;
 }
+
 /* ──────────────────────────────────────────────────────────────────────
  * rows/rankings
  * ──────────────────────────────────────────────────────────────────── */
@@ -522,9 +548,10 @@ export async function GET(req: NextRequest) {
     const symbols = universe.map((u) => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
     // quotes (batch → TD → chart)
-const fallbackMax = Math.max(0, Number(searchParams.get("fallbackMax") ?? "0"));
-// ...
-const quoteMap = await fetchAllQuotes(symbols, apikey || undefined, fallbackMax);
+const fallbackTdMax = Math.max(0, Number(searchParams.get("fallbackMax") ?? "0"));
+const chartMax = Math.max(0, Number(searchParams.get("chartMax") ?? "0"));
+
+const quoteMap = await fetchAllQuotes(symbols, apikey || undefined, fallbackTdMax, chartMax);
 
     // rows/rankings
     const rows = buildRows(universe, quoteMap);
