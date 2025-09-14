@@ -19,7 +19,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Build focus CSV (TOP600)
+      - name: Build focus CSV (TOP600, with LLM fallback)
+        env:
+          # 레포 Settings > Secrets and variables > Actions > New repository secret 로 등록
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # 하루 예산 관리 (LLM 보강 최대 N개)
+          LLM_MAX: "150"
         run: |
           node -v
           npm -v
