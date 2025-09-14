@@ -261,23 +261,26 @@ export async function GET(req: NextRequest) {
       `${url.protocol}//${url.host}`;
 
     // /api/jpx-eod 페이지 가져오기 헬퍼
-    async function fetchPage(start: number, count: number): Promise<EodJson | null> {
-      const qs = new URLSearchParams();
-      if (date) qs.set("date", date);
-      qs.set("start", String(start));
-      qs.set("count", String(count));
-      const resp = await fetch(`${origin}/api/jpx-eod?${qs.toString()}`, { cache: "no-store" });
-      try {
-        return (await resp.json()) as EodJson;
-      } catch {
-        return null;
-      }
-    }
+// ── /src/app/api/jpx-eod-md/route.ts ──
 
-    // ── 멀티페이지 샘플링 전략 ──
-    // 유니버스가 코드순이라고 가정하고, 여러 구간을 넓게 샘플링 후 합칩니다.
-    const COUNT = 400;                 // 한 구간 폭 (환경 따라 300~500 조절)
-    const STARTS = [0, 1200, 2400];    // 구간 시작점(필요시 0, 1000, 2000, 3000 처럼 조절)
+// 1) fetchPage 안에 focus=1 추가
+async function fetchPage(start: number, count: number): Promise<EodJson | null> {
+  const qs = new URLSearchParams();
+  if (date) qs.set("date", date);
+  qs.set("focus", "1");            // ★ 여기 추가!
+  qs.set("start", String(start));
+  qs.set("count", String(count));
+  const resp = await fetch(`${origin}/api/jpx-eod?${qs.toString()}`, { cache: "no-store" });
+  try {
+    return (await resp.json()) as EodJson;
+  } catch {
+    return null;
+  }
+}
+
+// 2) 멀티샘플링 → 포커스 600 한 번만
+const COUNT = 600;
+const STARTS = [0];
 
     const pages: EodJson[] = [];
     for (const s of STARTS) {
@@ -321,11 +324,12 @@ export async function GET(req: NextRequest) {
     const rankings = buildRankings(allRows);
 
     // 헤더/주석
-    const header =
-      `# 日本株 夜間警備員 日誌 | ${dateStr}\n\n` +
-      `> ソース: ${source} / ユニバース: ${universeCount}銘柄\n` +
-      `> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。\n` +
-      `> ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。\n\n`;
+const header =
+  `# 日本株 夜間警備員 日誌 | ${dateStr}\n\n` +
+  `> ソース: ${source} / ユニバース: ${universeCount}銘柄\n` +
+  `> 集計対象: 売買代金 **上位600銘柄** のみ（事前集計CSV）。\n` +   // ★ 이 줄 추가
+  `> 注記: JST **15:35**以前のアクセスは前営業日に自動回帰。無料ソース特性上、厳密なEODと微差が出る場合があります。\n` +
+  `> ※ ランキングは**前日比(終値/前日終値)**を優先、表の o→c は日中の値動きです。\n\n`;
 
     // 나레이티브
     const narrative = narrativeBlock(dateStr, rankings, allRows);
