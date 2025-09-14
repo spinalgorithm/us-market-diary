@@ -16,25 +16,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'              # 있으면 캐시도 사용
-          # cache-dependency-path: 'package-lock.json'  # lock 파일 있으면 활성화
+          node-version: 20     # ❌ cache 옵션 제거
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build focus CSV (TOP600, with LLM fallback)
+      - name: Build focus CSV (TOP600, with LLM)
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}   # 선택: 없으면 LLM 스킵
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 없으면 LLM 스킵됨
           LLM_MAX: "150"
         run: |
           node -v
           npm -v
           node scripts/build_jpx_focus.mjs --top=600 || exit 1
-          echo "== HEAD =="
-          head -n 5 public/jpx_focus.csv || true
-          echo "== COUNT =="
-          wc -l public/jpx_focus.csv || true
+          echo "== HEAD ==" && head -n 5 public/jpx_focus.csv || true
+          echo "== COUNT ==" && wc -l public/jpx_focus.csv || true
 
       - name: Commit & Push if changed
         run: |
