@@ -373,33 +373,44 @@ async function fetchTwelveDataQuote(sym: string, apikey: string): Promise<Quote 
 /* ──────────────────────────────────────────────────────────────────────
  * Combiner (batch → TD → chart)
  * ──────────────────────────────────────────────────────────────────── */
-async function fetchAllQuotes(symbols: string[], apikey?: string): Promise<Map<string, Quote>> {
-  const out = await fetchYahooBatchQuotes(symbols);
+async function fetchAllQuotes(
+  symbols: string[],
+  apikey?: string,
+  fallbackMax: number = 0, // 0이면 폴백 끔
+): Promise<Map<string, Quote>> {
+  // 1) 1차: Yahoo batch
+  const primary = await fetchYahooBatchQuotes(symbols);
 
-  // 보강 루프: TD → Yahoo Chart
+  // 2) 폴백 조건 미충족이면 그대로 반환
+  if (!apikey || fallbackMax <= 0) return primary;
+
+  // 3) 부족분만 TwelveData로 최대 fallbackMax개 보강
+  const out = new Map(primary);
+  let used = 0;
+
   for (const s of symbols) {
-    const sym = s.toUpperCase();
-    const q = out.get(sym);
-    const missing = !q || ((q.close == null || q.previousClose == null) && q.volume == null);
-    if (!missing) continue;
+    if (used >= fallbackMax) break;
 
-    // 1) TwelveData (있으면)
-    if (apikey) {
-      const td = await fetchTwelveDataQuote(sym, apikey);
-      if (td) {
-        out.set(sym, td);
-        await delay(60);
-        continue;
-      }
+    const q = out.get(s);
+    const missing =
+      !q ||
+      (
+        // 가격(종가/전일종가) 둘 중 하나라도 없고
+        (q.close == null || q.previousClose == null) &&
+        // 거래량도 없으면 → “정보가 거의 없음”으로 간주
+        (q.volume == null)
+      );
+
+    if (missing) {
+      const td = await fetchTwelveDataQuote(s, apikey);
+      if (td) out.set(s, td);
+      used++;
+      await delay(40); // API 예의상 살짝 텀
     }
-    // 2) Yahoo Chart per-symbol
-    const yc = await fetchYahooChartQuote(sym);
-    if (yc) out.set(sym, yc);
-    await delay(60);
   }
+
   return out;
 }
-
 /* ──────────────────────────────────────────────────────────────────────
  * rows/rankings
  * ──────────────────────────────────────────────────────────────────── */
@@ -511,7 +522,9 @@ export async function GET(req: NextRequest) {
     const symbols = universe.map((u) => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
     // quotes (batch → TD → chart)
-    const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
+const fallbackMax = Math.max(0, Number(searchParams.get("fallbackMax") ?? "0"));
+// ...
+const quoteMap = await fetchAllQuotes(symbols, apikey || undefined, fallbackMax);
 
     // rows/rankings
     const rows = buildRows(universe, quoteMap);
