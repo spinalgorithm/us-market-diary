@@ -99,7 +99,10 @@ async function fetchYahooBatch(symbols){
       const vol   = Number(r?.regularMarketVolume ?? r?.volume ?? 0);
       const name  = r?.shortName ?? r?.longName ?? sym;
       const currency = r?.currency ?? "JPY";
-      map.set(sym.toUpperCase(), { price, prev, vol, name, currency });
+ const sector = r?.sector || "";
+const industry = r?.industry || "";
+
+map.set(sym.toUpperCase(), { price, prev, vol, name, currency, sector, industry });
     }
     await new Promise(res=>setTimeout(res,120));
   }
@@ -128,19 +131,27 @@ async function main(){
     return { ...x, _yenVolM: yenVolM };
   }).sort((a,b)=> (b._yenVolM - a._yenVolM));
 
-  const pick = scored.slice(0, TOP).map(x=>{
-    let theme = x.theme, brief = x.brief;
-    if (!theme || theme === "-" || !brief || brief === "-") {
-      const [t,b] = inferThemeBrief(x.name);
-      theme = theme && theme !== "-" ? theme : t;
-      brief = brief && brief !== "-" ? brief : b;
-    }
-    return { code:x.code, name:x.name, theme, brief, yahooSymbol:x.yahooSymbol };
-  });
+ const pick = scored.slice(0, TOP).map(x=>{
+  const q = qmap.get(x.yahooSymbol) || {};
+  let theme = x.theme, brief = x.brief, name = x.name;
+  if (!theme || theme === "-") theme = q.industry || q.sector || theme;
+  if (!brief || brief === "-") brief = (q.sector && q.industry) ? `${q.sector}/${q.industry}` : (q.sector || q.industry || brief);
+  if (!name || name === "-" ) name = q.name || name;
+  // inferThemeBrief는 최후 보완용
+  if ((!theme || theme === "-") || (!brief || brief === "-")) {
+    const [t,b] = inferThemeBrief(name);
+    if (!theme || theme === "-") theme = t;
+    if (!brief || brief === "-") brief = b;
+  }
+  return { code:x.code, name, theme, brief, yahooSymbol:x.yahooSymbol };
+});
 
   await mkdir(dirname(dst), { recursive: true });
   await writeFile(dst, toCSV(pick), "utf8");
   console.log(`[ok] focus written: ${dst} (rows=${pick.length})`);
 }
+
+
+
 
 main().catch(e=>{ console.error(e); process.exit(1); });
