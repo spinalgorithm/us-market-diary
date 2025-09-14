@@ -1,0 +1,42 @@
+name: Build JPX Focus CSV
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # JST(UTC+9) 15:50 -> UTC 06:50
+    - cron: "50 6 * * 1-5"
+
+jobs:
+  build-focus:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build focus CSV (TOP600)
+        run: |
+          node -v
+          npm -v
+          node scripts/build_jpx_focus.mjs --top=600 || exit 1
+          echo "== HEAD =="
+          head -n 5 public/jpx_focus.csv || true
+          echo "== COUNT =="
+          wc -l public/jpx_focus.csv || true
+
+      - name: Commit & Push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain public/jpx_focus.csv)" ]; then
+            git add public/jpx_focus.csv
+            git commit -m "chore: update JPX focus (top600)"
+            git push
+          else
+            echo "No changes to commit."
+          fi
