@@ -3,11 +3,10 @@ import { NextRequest } from "next/server";
 
 /**
  * ENV
- * - TWELVEDATA_API_KEY: Twelve Data API Key (optional but recommended)
+ * - TWELVEDATA_API_KEY: Twelve Data API Key (optional)
  * - JPX_UNIVERSE_URL: 유니버스 CSV/JSON URL (optional)
  * - JPX_HOLIDAYS_URL: 일본 휴장일(YYYY-MM-DD[]) JSON URL (optional)
  */
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -135,27 +134,29 @@ async function safeText(url: string, init?: RequestInit): Promise<string | null>
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
   let cur = "", inQ = false;
-  for (let i=0;i<line.length;i++){
+  for (let i = 0; i < line.length; i++) {
     const ch = line[i];
-    if (inQ){
-      if (ch === '"'){
-        if (line[i+1] === '"'){ cur += '"'; i++; }
+    if (inQ) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
         else inQ = false;
-      } else cur += ch;
+      } else {
+        cur += ch;
+      }
     } else {
       if (ch === '"') inQ = true;
-      else if (ch === ","){ out.push(cur); cur = ""; }
+      else if (ch === ",") { out.push(cur); cur = ""; }
       else cur += ch;
     }
   }
   out.push(cur);
-  return out.map(s=>s.trim());
+  return out.map(s => s.trim());
 }
 
 function csvToUniverse(csv: string): UniverseItem[] {
-  const lines = csv.replace(/\r\n?/g,"\n").trim().split("\n");
+  const lines = csv.replace(/\r\n?/g, "\n").trim().split("\n");
   if (lines.length <= 1) return [];
-  const header = parseCsvLine(lines[0]).map(s=>s.toLowerCase());
+  const header = parseCsvLine(lines[0]).map(s => s.toLowerCase());
   const idx = (k: string) => header.findIndex(h => h === k.toLowerCase());
   const iCode  = idx("code");
   const iName  = idx("name");
@@ -164,7 +165,7 @@ function csvToUniverse(csv: string): UniverseItem[] {
   const iY     = idx("yahoosymbol");
 
   const out: UniverseItem[] = [];
-  for (let i=1;i<lines.length;i++){
+  for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
     const code = cols[iCode];
     if (!code) continue;
@@ -246,33 +247,31 @@ async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quo
   const out = new Map<string, Quote>();
   if (symbols.length === 0) return out;
 
-  // 야후 v7 quote는 심볼을 , 로 연결해 한 번에 요청 (URL 길이 고려해서 60개씩)
+  // 60개씩 나눠서 요청 (URL 길이/레이트 제한 여유)
   const batches = chunk(symbols, 60);
   for (const b of batches) {
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(b.join(","))}`;
     const j = await safeJson<any>(url);
     const arr = j?.quoteResponse?.result ?? [];
     for (const r of arr) {
-      const symbol = String(r?.symbol ?? "");
+      const symbol = String(r?.symbol ?? "").toUpperCase();
       if (!symbol) continue;
-      const open = num(r?.regularMarketOpen ?? r?.open);
-      const close = num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice);
-      const prev = num(r?.regularMarketPreviousClose);
-      const volume = num(r?.regularMarketVolume ?? r?.volume);
-      const currency = r?.currency ?? "JPY";
-      const name = r?.shortName ?? r?.longName ?? symbol;
 
-      out.set(symbol, {
+      const q: Quote = {
         symbol,
-        open: open ?? undefined,
-        close: close ?? undefined,
-        previousClose: prev ?? undefined,
-        volume: volume ?? undefined,
-        currency,
-        name,
-      });
+        open: num(r?.regularMarketOpen ?? r?.open),
+        close: num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice),
+        previousClose: num(r?.regularMarketPreviousClose),
+        volume: num(r?.regularMarketVolume ?? r?.volume),
+        currency: r?.currency ?? "JPY",
+        name: r?.longName ?? r?.shortName ?? symbol,
+      };
+
+      // 최소 유효성: 가격/전일가/거래량 중 하나라도 있으면 채택
+      if (q.close != null || q.previousClose != null || q.volume != null) {
+        out.set(symbol, q);
+      }
     }
-    // 살짝 텀
     await delay(120);
   }
   return out;
@@ -294,7 +293,6 @@ async function fetchTwelveDataQuote(symbol: string, apikey: string): Promise<Quo
   const currency = r.currency ?? "JPY";
   const name = r.name ?? symbol;
 
-  // 필드가 전부 비어 있으면 무시
   if (close == null && prev == null && volume == null) return null;
 
   return { symbol, open, close, previousClose: prev, volume, currency, name };
@@ -307,14 +305,11 @@ async function fetchAllQuotes(symbols: string[], apikey?: string): Promise<Map<s
   const primary = await fetchYahooBatchQuotes(symbols);
   if (!apikey) return primary;
 
-  // 보강: 야후에서 비어 있는(없거나 close/vol 전무) 심볼만 TwelveData로 채움
+  // 야후에 없거나(또는 핵심필드 부족) → TwelveData로 보강
   const out = new Map(primary);
   for (const s of symbols) {
     const q = out.get(s);
-    const missing = !q || (
-      (q.close == null || q.previousClose == null) &&
-      (q.volume == null)
-    );
+    const missing = !q || ((q.close == null || q.previousClose == null) && q.volume == null);
     if (missing) {
       const td = await fetchTwelveDataQuote(s, apikey);
       if (td) out.set(s, td);
@@ -393,6 +388,7 @@ export async function GET(req: NextRequest) {
     // 페이징 (?start, ?count)
     const start = Math.max(0, Number(searchParams.get("start") ?? "0"));
     const count = Math.min(Math.max(1, Number(searchParams.get("count") ?? "120")), 300);
+    const focusParam = searchParams.get("focus") === "1"; // 상위600 등 포커스 CSV를 쓸지
 
     // 기준 날짜: 15:35 이전이면 전 영업일, 이후면 오늘
     const jstNow = toJstDate();
@@ -412,27 +408,20 @@ export async function GET(req: NextRequest) {
     }
     const baseYmd = formatYmd(baseDate);
 
-    // 현재 배포 도메인 기준 fallback CSV
+    // 현재 배포 도메인 기준 파일 경로
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const origin = host ? `${proto}://${host}` : new URL(req.url).origin;
 
-
-    
-    const urlFromReq = `${origin}/jpx_universe.csv`;
+    // focus=1이면 jpx_focus.csv, 아니면 jpx_universe.csv
+    const universeUrl = focusParam ? `${origin}/jpx_focus.csv` : `${origin}/jpx_universe.csv`;
 
     // 유니버스 로드 + 슬라이스
-// GET 핸들러 내부, origin 계산 뒤에 ↓ 추가
-const focusParam = searchParams.get("focus"); // "1"이면 포커스 사용
-const focusUrl = `${origin}/jpx_focus.csv`;
-const universeUrl = `${origin}/jpx_universe.csv`;
-
-// 유니버스 로드 부분을 아래처럼 교체
-const universeAll = await loadUniverse(focusParam === "1" ? focusUrl : universeUrl);
+    const universeAll = await loadUniverse(universeUrl);
     const universe = universeAll.slice(start, start + count);
     const symbols = universe.map(u => (u.yahooSymbol ?? `${u.code}.T`).toUpperCase());
 
-    // 시세 취득
+    // 시세 취득: Yahoo 배치 + (있으면) TwelveData 보강
     const quoteMap = await fetchAllQuotes(symbols, apikey || undefined);
 
     // 행/랭킹 구성(슬라이스 범위 내)
