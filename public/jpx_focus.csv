@@ -1,40 +1,40 @@
 code,name,theme,brief,yahooSymbol
-1301,"Kyokuyo Co., Ltd.",水産業,魚介類の加工/販売,1301.T
+1301,"Kyokuyo Co., Ltd.",水産業,魚介類/加工,1301.T
 1332,Nissui Corporation,水産業,水産物/加工,1332.T
 1333,Maruha Nichiro Corporation,食品,水産物/加工,1333.T
 1375,"Yukiguni Maitake Co., Ltd.",itサービス,ソフト/クラウド,1375.T
-1376,"Kaneko Seeds Co., Ltd.",農業,種子/生産,1376.T
+1376,"Kaneko Seeds Co., Ltd.",農業,種子/育成,1376.T
 1377,Sakata Seed Corporation,農業,種子/育種,1377.T
-1379,Hokuto Corporation,農業,農業機械/肥料,1379.T
+1379,Hokuto Corporation,農業,農業/肥料,1379.T
 1380,Akikawa Foods & Farms Co. Ltd.,食品,加工/飲料,1380.T
 1381,Axyz Co. Ltd.,-,-,1381.T
 1382,Hob Company Ltd.,-,-,1382.T
-1383,Berg Earth Co. Ltd.,環境技術,土壌改良/再生可能エネルギー,1383.T
-1384,"Hokuryo Co., Ltd.",農業,農業/肥料,1384.T
+1383,Berg Earth Co. Ltd.,環境技術,土壌改良/持続可能性,1383.T
+1384,"Hokuryo Co., Ltd.",農業,農業機械/肥料,1384.T
 1401,MBS Inc.,建設,土木/建設業,1401.T
 1407,West Holdings Corporation,建設,建設/不動産,1407.T
-1414,"Sho-Bond Holdings Co., Ltd.",建設,土木工事/施工,1414.T
+1414,"Sho-Bond Holdings Co., Ltd.",建設,土木/施工,1414.T
 1417,Mirait One Corporation,itサービス,ソフト/クラウド,1417.T
 1418,"Interlife Holdings Co., Ltd.",保険,損保/生保,1418.T
 1419,"Tama Home Co., Ltd.",住宅,住宅/建設,1419.T
 1420,Sanyo Homes Corporation,不動産,不動産/開発,1420.T
-1429,"Nippon Aqua Co., Ltd.",水産業,水産物/養殖,1429.T
-1430,First Corp Inc.,不動産,開発/管理,1430.T
+1429,"Nippon Aqua Co., Ltd.",水産業,水産/養殖,1429.T
+1430,First Corp Inc.,-,-,1430.T
 1431,"Lib Work Co., Ltd.",不動産,賃貸/管理,1431.T
-1433,Besterra Co. Ltd.,再生可能エネルギー,太陽光発電/環境技術,1433.T
+1433,Besterra Co. Ltd.,再生可能エネルギー,太陽光発電/環境,1433.T
 1434,Jesco Holdings Inc.,建設,土木/建設業,1434.T
 1435,Robot Home Inc.,機械/産業,FA/自動化,1435.T
 1436,GreenEnergy & Company Inc.,エネルギー,原油/ガス/電力,1436.T
 1438,"Gifu Landscape Architect Co., Ltd.",itサービス,ソフト/クラウド,1438.T
-1443,"Giken Holdings Co., Ltd.",建設,土木/施工技術,1443.T
+1443,"Giken Holdings Co., Ltd.",建設,地盤改良/工法,1443.T
 1444,Nissou Co. Ltd.,建設,土木/建設業,1444.T
-1445,"Hikari Holdings Co., Ltd.",情報通信,光通信/サービス,1445.T
+1445,"Hikari Holdings Co., Ltd.",不動産,不動産/開発,1445.T
 1446,Candeal Co. Ltd.,不動産,不動産開発/管理,1446.T
 1447,Saaf Holdings Co. Ltd.,-,-,1447.T
-1449,"Fuji Japan Co., Ltd.",建設,建設/土木工事,1449.T
+1449,"Fuji Japan Co., Ltd.",建設,建設/土木事業,1449.T
 1450,"Tanaken Co., Ltd.",航空,運輸/エアライン,1450.T
 1491,"Chugai Mining Co., Ltd.",鉱業,資源/鉱山,1491.T
-1514,Sumiseki Holdings Inc.,商社,資源/エネルギー,1514.T
+1514,Sumiseki Holdings Inc.,商社,資源/貿易,1514.T
 1515,"Nittetsu Mining Co., Ltd.",itサービス,ソフト/クラウド,1515.T
 1518,"Mitsui Matsushima Holdings Co., Ltd.",itサービス,ソフト/クラウド,1518.T
 1605,Inpex Corporation,エネルギー,原油/ガス/電力,1605.T
@@ -42,16 +42,16 @@ code,name,theme,brief,yahooSymbol
 1663,K&O Energy Group Inc.,エネルギー,原油/ガス/電力,1663.T
 1711,"SDS Holdings Co., Ltd.",建設,建設/土木事業,1711.T
 1712,"Daiseki Eco. Solution Co., Ltd.",環境ビジネス,廃棄物処理/リサイクル,1712.T
-1716,"Dai-Ichi Cutter Kogyo Co., Ltd.",切削工具,工具/製造,1716.T
+1716,"Dai-Ichi Cutter Kogyo Co., Ltd.",建設,切削工具/製造,1716.T
 1717,Meiho Facility Works Ltd.,itサービス,ソフト/クラウド,1717.T
 1718,"Mikikogyo Co., Ltd.",建設,土木/建設業,1718.T
 1719,Hazama Ando Corporation,建設,土木/建設業,1719.T
 1720,"Tokyu Construction Co., Ltd.",建設,ゼネコン/施工,1720.T
 1721,Comsys Holdings Corporation,通信,通信インフラ/工事,1721.T
-1723,"Nihon Dengi Co., Ltd.",電子機器,電子部品/製造,1723.T
-1724,Synclayer Inc.,ITサービス,クラウド/データ管理,1724.T
-1726,BR Holdings Corp,不動産,不動産開発/管理,1726.T
-1736,Otec Corp,環境技術,水処理/廃棄物管理,1736.T
+1723,"Nihon Dengi Co., Ltd.",電子部品,電気機器/製造,1723.T
+1724,Synclayer Inc.,ITサービス,データ分析/クラウド,1724.T
+1726,BR Holdings Corp,再生可能エネルギー,太陽光発電/エネルギー管理,1726.T
+1736,Otec Corp,環境技術,水処理/再生可能エネルギー,1736.T
 1743,Koatsu Kogyo Co. Ltd.,建設,土木/建設業,1743.T
 1757,"Souken Ace Co., Ltd.",建設,土木/建設業,1757.T
 1758,"Taiyo Kisokogyo Co., Ltd.",建設,土木/建設業,1758.T
@@ -64,13 +64,13 @@ code,name,theme,brief,yahooSymbol
 1773,YTL Corporation Berhad,ネットサービス,プラットフォーム/広告,1773.T
 1776,"Sumiken Mitsui Road Co., Ltd.",itサービス,ソフト/クラウド,1776.T
 1780,Yamaura Corporation,建設,土木/建設業,1780.T
-1783,"Fantasista Co., Ltd.",ITサービス,ソフトウェア/開発,1783.T
+1783,"Fantasista Co., Ltd.",ITサービス,デジタルコンテンツ/エンターテインメント,1783.T
 1786,Oriental Shiraishi Corporation,建設,土木/建設業,1786.T
-1787,Nakabohtec Corrosion Protect Co. Ltd.,防食技術,防食/コーティング,1787.T
+1787,Nakabohtec Corrosion Protect Co. Ltd.,防食技術,コーティング/保護,1787.T
 1788,Santo Corp,建設,土木/建設業,1788.T
 1789,"ETS Holdings Co.,Ltd.",不動産,不動産開発/管理,1789.T
 1793,"Ohmoto Gumi Co., Ltd.",建設,土木/建設業,1793.T
-1795,Masaru Corporation,建設,土木/建設業,1795.T
+1795,Masaru Corporation,建設,土木工事/建設業,1795.T
 1798,Moriya Corporation,建設,土木/建設業,1798.T
 1799,Daiichi Kensetsu Corporation,建設,土木/建設業,1799.T
 1801,Taisei Corporation,建設,ゼネコン/建設,1801.T
@@ -94,11 +94,11 @@ code,name,theme,brief,yahooSymbol
 1832,"Hokkaido Electric Power Co., Inc.",電機,エレクトロニクス,1832.T
 1833,Okumura Corporation,建設,総合建設業,1833.T
 1835,"Totetsu Kogyo Co., Ltd.",建設,土木/建設業,1835.T
-1840,"Tsuchiya Holdings Co., Ltd.",建設,建設/土木,1840.T
+1840,"Tsuchiya Holdings Co., Ltd.",建設,建設/不動産,1840.T
 1841,"Sanyu Construction Co., Ltd.",建設,ゼネコン/施工,1841.T
 1844,"Ohmori Co., Ltd.",建設,土木/建設業,1844.T
-1847,"Ichiken Co., Ltd.",建設,建設/土木工事,1847.T
-1848,Fuji PS Corporation,建設,土木/建設業,1848.T
+1847,"Ichiken Co., Ltd.",建設,建設業/土木工事,1847.T
+1848,Fuji PS Corporation,建設,建設/土木,1848.T
 1850,"Nankai Tatsumura Construction Co., Ltd.",建設,ゼネコン/施工,1850.T
 1852,Asanuma Corporation,建設,土木/建設業,1852.T
 1853,"Mori-Gumi Co., Ltd.",建設,土木/建設業,1853.T
@@ -122,7 +122,7 @@ code,name,theme,brief,yahooSymbol
 1898,"Seikitokyu Kogyo Co., Ltd.",itサービス,ソフト/クラウド,1898.T
 1899,Fukuda Corporation,建設,土木/建設業,1899.T
 1904,"Taisei Oncho Co., Ltd.",建設,ゼネコン/建設,1904.T
-1905,Tenox Corp,建設,建設/土木,1905.T
+1905,Tenox Corp,建設,建設/土木工事,1905.T
 1909,"Nippon Dry-Chemical Co., Ltd.",化学,素材/化学,1909.T
 1911,"Sumitomo Forestry Co., Ltd.",itサービス,ソフト/クラウド,1911.T
 1914,"Japan Foundation Engineering Co., Ltd.",建設,建設/エンジニアリング,1914.T
@@ -133,32 +133,32 @@ code,name,theme,brief,yahooSymbol
 1929,"Nittoc Construction Co., Ltd.",itサービス,ソフト/クラウド,1929.T
 1930,Hokuriku Electrical Construction Co. Ltd.,電機,エレクトロニクス,1930.T
 1934,Yurtec Corporation,建設,土木/建設業,1934.T
-1938,"Nippon Rietec Co., Ltd.",不動産,リート/投資信託,1938.T
-1939,Yondenko Corporation,電力,電力供給/エネルギー,1939.T
-1941,Chudenko Corporation,建設,電力関連工事,1941.T
+1938,"Nippon Rietec Co., Ltd.",建設,リート/不動産管理,1938.T
+1939,Yondenko Corporation,電力,電力供給/再生可能エネルギー,1939.T
+1941,Chudenko Corporation,建設,電気工事/設備,1941.T
 1942,"Kandenko Co., Ltd.",電気工事,電気/設備工事,1942.T
 1944,Kinden Corporation,電気工事,電気/設備工事,1944.T
 1945,Tokyo Energy & Systems Inc.,エネルギー,原油/ガス/電力,1945.T
 1946,Toenec Corporation,電機,エレクトロニクス,1946.T
-1948,"Kodensha Co., Ltd.",建設,土木/建設業,1948.T
+1948,"Kodensha Co., Ltd.",建設,建設/土木工事,1948.T
 1949,"Sumitomo Densetsu Co., Ltd.",itサービス,ソフト/クラウド,1949.T
 1950,"Nippon Densetsu Kogyo Co., Ltd.",建設,電気工事/設備,1950.T
 1951,Exeo Group Inc.,ITサービス,システム開発/運用,1951.T
 1952,"Shin Nippon Air Technologies Co., Ltd.",空調設備,空調/冷暖房システム,1952.T
-1959,Kyudenko Corporation,電力,電気/エネルギー,1959.T
+1959,Kyudenko Corporation,電力,電力/エネルギー,1959.T
 1960,Sanyo Engineering & Construction Inc.,建設,ゼネコン/施工,1960.T
 1961,"Sanki Engineering Co., Ltd.",機械/産業,機械/FA/空調,1961.T
 1963,JGC Holdings Corporation,エンジニアリング,プラント/建設,1963.T
 1964,"Chugai Ro Co., Ltd.",製薬,医薬品/研究開発,1964.T
-1965,Techno Ryowa Ltd.,建設,土木/建設機械,1965.T
+1965,Techno Ryowa Ltd.,建設,土木/建設業,1965.T
 1966,Takada Corporation,ネットサービス,プラットフォーム/広告,1966.T
-1967,Yamato Corporation,物流,宅配/運送サービス,1967.T
-1968,Taihei Dengyo Kaisha Ltd.,建設,土木/建設業,1968.T
+1967,Yamato Corporation,物流,宅配/運送,1967.T
+1968,Taihei Dengyo Kaisha Ltd.,建設,土木/工事,1968.T
 1969,"Takasago Thermal Engineering Co., Ltd.",建設,建設/エンジニアリング,1969.T
 1972,"Sanko Metal Industrial Co., Ltd.",機械/産業,産業機械/装置,1972.T
 1975,"Asahi Kogyosha Co., Ltd.",建設,建設/土木工事,1975.T
 1976,"Meisei Industrial Co., Ltd.",機械/産業,産業機械/装置,1976.T
-1979,Taikisha Ltd.,空調設備,空調/換気システム,1979.T
+1979,Taikisha Ltd.,空調設備,空調/換気システムの設計・施工,1979.T
 1980,"Dai-Dan Co., Ltd.",建設,土木/建設業,1980.T
 1981,"Kyowa Nissei Co., Ltd.",建設,土木/建設業,1981.T
 1982,Hibiya Engineering Ltd.,建設,建設/エンジニアリング,1982.T
@@ -166,72 +166,72 @@ code,name,theme,brief,yahooSymbol
 1994,Takahashi Curtain Wall Corp,建材,カーテンウォール/建築資材,1994.T
 1997,"Akatsuki Eazima Co., Ltd.",ITサービス,ソフトウェア/開発,1997.T
 1999,SAITA HOLDINGS,itサービス,ソフト/クラウド,1999.T
-2000,2000,食品,飲料/水産,2000.T
-2001,Nippn Corporation,食品,小麦粉/製粉,2001.T
+2000,2000,食品,製粉/穀物,2000.T
+2001,Nippn Corporation,食品,製粉/製品,2001.T
 2002,Nisshin Seifun Group Inc.,食品,小麦粉/製粉,2002.T
 2003,"Nitto Fuji Flour Milling Co., Ltd.",itサービス,ソフト/クラウド,2003.T
-2004,"Showa Sangyo Co., Ltd.",食品,食品/製造,2004.T
+2004,"Showa Sangyo Co., Ltd.",食品,卸売/食品,2004.T
 2009,"Torigoe Co., Ltd.",食品,製造/販売,2009.T
-2053,"Chubu Shiryo Co., Ltd.",食品,食品製造/販売,2053.T
+2053,"Chubu Shiryo Co., Ltd.",食品,農産物/加工,2053.T
 2055,Nichiwa Sangyo Co. Ltd.,食品,農産物/加工,2055.T
 2058,HIGASHIMARU CO LTD,エネルギー,原油/ガス/電力,2058.T
-2060,"Feed One Co., Ltd.",飼料,畜産用飼料の製造・販売,2060.T
+2060,"Feed One Co., Ltd.",飼料,飼料/製造,2060.T
 2093,Listed Tracers U.S. Government Bonds 0-2 Year Fund,債券,米国政府短期債券,2093.T
-2108,"Nippon Beet Sugar Manufacturing Co., Ltd.",食品,砂糖製造,2108.T
+2108,"Nippon Beet Sugar Manufacturing Co., Ltd.",食品,砂糖/製造,2108.T
 2109,"Mitsui DM Sugar Holdings Co., Ltd.",itサービス,ソフト/クラウド,2109.T
-2112,"Ensuiko Sugar Refining Co., Ltd.",製糖,砂糖/精製,2112.T
+2112,"Ensuiko Sugar Refining Co., Ltd.",砂糖製造,砂糖/精製,2112.T
 2114,Fuji Nihon Corporation,食品,製造/販売,2114.T
 2117,Wellneo Sugar Co. Ltd.,食品,砂糖/甘味料,2117.T
 2120,"Lifull Co., Ltd.",不動産,情報サービス/マッチング,2120.T
 2121,Mixi Inc.,ネットサービス,プラットフォーム/広告,2121.T
-2122,"Interspace Co., Ltd.",デジタルマーケティング,広告/プロモーション,2122.T
+2122,"Interspace Co., Ltd.",デジタルマーケティング,広告/メディア,2122.T
 2124,"Jac Recruitment Co., Ltd.",itサービス,ソフト/クラウド,2124.T
-2127,Nihon M&A Center Holdings Inc.,M&A,仲介/コンサルティング,2127.T
-2130,Members Co. Ltd.,人材サービス,人材派遣/紹介,2130.T
+2127,Nihon M&A Center Holdings Inc.,M&A,企業買収/合併,2127.T
+2130,Members Co. Ltd.,人材派遣,人材/サービス,2130.T
 2134,"Kitahama Capital Partners Co., Ltd.",itサービス,ソフト/クラウド,2134.T
-2136,Hip Corp.,人材サービス,人材派遣/教育,2136.T
+2136,Hip Corp.,ITサービス,人材派遣/IT関連,2136.T
 2137,"Hikari Heights-Varus Co., Ltd.",不動産,開発/管理,2137.T
 2138,Crooz Inc.,ITサービス,EC/プラットフォーム,2138.T
 2139,ChuCo Co. Ltd.,-,-,2139.T
 2146,"UT Group Co., Ltd.",人材派遣,人材/アウトソーシング,2146.T
 2148,Itmedia Inc.,itサービス,ソフト/クラウド,2148.T
 2150,Carenet Inc.,ヘルスケア,医療/サービス,2150.T
-2152,Youji Corp.,人材派遣,人材/サービス,2152.T
-2153,Ej Holdings Inc.,ヘルスケア,医療/サービス,2153.T
-2154,Open Up Group Inc.,教育,オンライン学習/プラットフォーム,2154.T
+2152,Youji Corp.,医療,医療/介護サービス,2152.T
+2153,Ej Holdings Inc.,ヘルスケア,医療/健康管理,2153.T
+2154,Open Up Group Inc.,教育,オンライン教育/プラットフォーム,2154.T
 2156,Saylor Advertising Inc.,ネットサービス,プラットフォーム/広告,2156.T
-2157,"Koshidaka Holdings Co., Ltd.",飲食,カラオケ/エンターテインメント,2157.T
+2157,"Koshidaka Holdings Co., Ltd.",飲食,居酒屋/外食,2157.T
 2158,Fronteo Inc.,AI,データ解析/人工知能,2158.T
-2160,GNI Group Ltd.,バイオテクノロジー,医薬品/治療開発,2160.T
+2160,GNI Group Ltd.,バイオテクノロジー,医薬品/研究開発,2160.T
 2162,NMS Holdings Co. Ltd.,医療,医療/サービス,2162.T
-2163,"Artner Co., Ltd.",ITサービス,ソフトウェア/システム開発,2163.T
-2164,"Chiikishinbunsha Co., Ltd.",メディア,地域新聞/出版,2164.T
+2163,"Artner Co., Ltd.",人材派遣,人材/サービス,2163.T
+2164,"Chiikishinbunsha Co., Ltd.",メディア,新聞/出版,2164.T
 2168,Pasona Group Inc.,人材派遣,人材/サービス,2168.T
 2169,"Cds Co., Ltd.",人材派遣,人材/サービス,2169.T
-2170,Link and Motivation Inc.,人材育成,教育/コンサルティング,2170.T
+2170,Link and Motivation Inc.,人材育成,コンサルティング/教育,2170.T
 2172,Insight Inc.,ITサービス,データ分析/コンサルティング,2172.T
 2173,Hakuten Corporation,ITサービス,システム開発/運用,2173.T
 2175,SMS Co. Ltd.,ITサービス,メッセージング/コミュニケーション,2175.T
 2179,"Seigakusya Co., Ltd.",教育,学習支援/サービス,2179.T
-2180,Sunny Side Up Group Inc.,広告,デジタルマーケティング,2180.T
+2180,Sunny Side Up Group Inc.,広告,デジタルマーケティング/プロモーション,2180.T
 2181,"Persol Holdings Co., Ltd.",人材派遣,人材/サービス,2181.T
-2183,"Linical Co., Ltd.",医療,臨床試験/サービス,2183.T
+2183,"Linical Co., Ltd.",医療,臨床試験/コンサルティング,2183.T
 2185,CMC Corporation,ITサービス,システム開発/運用,2185.T
 2186,Sobal Corporation,-,-,2186.T
 2193,Cookpad Inc.,ネットサービス,プラットフォーム/広告,2193.T
 2195,"Amita Holdings Co., Ltd.",itサービス,ソフト/クラウド,2195.T
 2196,Escrit Inc.,itサービス,ソフト/クラウド,2196.T
-2198,I K K Holdings Inc.,ITサービス,システム開発/運用,2198.T
+2198,I K K Holdings Inc.,人材派遣,人材/サービス,2198.T
 2201,"Morinaga & Co., Ltd.",食品,加工/飲料,2201.T
 2204,"Nakamuraya Co., Ltd.",食品,和菓子/製造,2204.T
-2206,"Ezaki Glico Co., Ltd.",食品,菓子/製造,2206.T
+2206,"Ezaki Glico Co., Ltd.",食品,菓子/スナック,2206.T
 2207,"Meito Sangyo Co., Ltd.",itサービス,ソフト/クラウド,2207.T
-2208,Bourbon Corporation,食品,菓子/製造,2208.T
+2208,Bourbon Corporation,食品,菓子/スナック,2208.T
 2209,"Imuraya Group Co., Ltd.",食品,和菓子/製造,2209.T
 2211,"Fujiya Co., Ltd.",食品,洋菓子/製造,2211.T
 2212,"Yamazaki Baking Co., Ltd.",食品,加工/飲料,2212.T
-2215,"First Baking Co., Ltd.",食品,製パン/製造,2215.T
-2216,Kanro Inc.,食品,キャンディ/お菓子,2216.T
+2215,"First Baking Co., Ltd.",食品,パン製造/販売,2215.T
+2216,Kanro Inc.,食品,キャンディ/スナック,2216.T
 2217,Morozoff Ltd.,食品,洋菓子/製造,2217.T
 2218,"Nichiryo Baking Co., Ltd.",-,-,2218.T
 2220,"Kameda Seika Co., Ltd.",-,-,2220.T
