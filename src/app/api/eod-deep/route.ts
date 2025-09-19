@@ -1,388 +1,543 @@
-import { NextRequest } from 'next/server'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/app/api/eod-deep/route.ts
+import { NextRequest } from "next/server";
 
-export const dynamic = 'force-dynamic'
+/** ─────────────────────────────────────────────────────────────────
+ * Runtime / Cache
+ * ──────────────────────────────────────────────────────────────── */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// ==== ENV ====
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY!
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5' // or 'gpt-5-mini'
-const POLYGON_API_KEY = process.env.POLYGON_API_KEY || ''
+/** ─────────────────────────────────────────────────────────────────
+ * Types
+ * ──────────────────────────────────────────────────────────────── */
+type Quote = {
+  symbol: string;
+  shortName?: string;
+  longName?: string;
+  currency?: string;
+  regularMarketOpen?: number;
+  regularMarketPrice?: number;
+  regularMarketPreviousClose?: number;
+  regularMarketVolume?: number;
+};
 
-// ==== tiny utils ====
-async function jfetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, { ...init, cache: 'no-store' })
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`)
-  return r.json() as Promise<T>
-}
-const safeNum = (v: any, d = 0) => (Number.isFinite(+v) ? +v : d)
-const uniq = <T,>(arr: T[]) => Array.from(new Set(arr))
-
-// ==== types ====
 type Row = {
-  Ticker: string
-  o: number
-  c: number
-  chgPct: number
-  vol: number
-  dollarVolM: number
-  theme?: string
-  brief?: string
-}
-type EOD = {
-  dateEt: string
-  mostActive: Row[]
-  topDollar: Row[]
-  topGainers10: Row[]
-  topLosers10: Row[]
-}
+  ticker: string;
+  name: string;
+  theme: string;  // 간단 태그(섹터 추정)
+  brief: string;  // 한줄 설명(룰/휴리스틱)
+  open: number | null;
+  close: number | null;
+  previousClose: number | null;
+  chgPctPrev: number | null;      // (close/prevClose -1)*100
+  chgPctIntraday: number | null;  // (close/open -1)*100
+  volume: number | null;
+  usdVolM: number | null;         // close*volume/1e6
+  currency: string;
+};
 
-// ==== Theme tag sets ====
-const ETF_INV = new Set(['SQQQ','SOXS','SPXS','TZA','FAZ','LABD','TBT','UVXY'])
-const ETF_IDX = new Set(['SPY','QQQ','DIA','IWM','VTI','VOO','XLK','XLF','XLE','XLY','XLI','XLV','XLP','XLU','XLC','SMH','SOXL','SOXS','TSLL','TQQQ'])
-const SEMIS = new Set(['NVDA','AVGO','AMD','TSM','ASML','AMAT','LRCX','MU','INTC','SOXL','SOXS','SMH'])
-const MEGA_SOFT_AI = new Set(['MSFT','GOOGL','AMZN','META','CRM','ADBE','ORCL','PLTR'])
-const EV_MOB = new Set(['TSLA','NIO','LI','RIVN','F','GM','TSLL'])
-const EC_RETAIL = new Set(['AMZN','SHOP','MELI','NEGG','AEO','DLTH','WMT','COST'])
-const BIO_HEALTH = new Set(['NVO','PFE','MRK','BMY','AZN','REGN','VRTX','NBY','IONS','RAPT','STSS'])
+type Rankings = {
+  byValue: Row[];
+  byVolume: Row[];
+  topGainers: Row[];
+  topLosers: Row[];
+};
 
-function labelTheme(t: string) {
-  if (ETF_INV.has(t)) return 'インバース/レバレッジETF'
-  if (ETF_IDX.has(t)) return 'インデックス/ETF'
-  if (SEMIS.has(t)) return '半導体/AIインフラ'
-  if (MEGA_SOFT_AI.has(t)) return 'ソフトウェア/AI'
-  if (EV_MOB.has(t)) return 'EV/モビリティ'
-  if (EC_RETAIL.has(t)) return 'EC/小売'
-  if (BIO_HEALTH.has(t)) return 'バイオ/ヘルスケア'
-  return 'その他/テーマ不明'
-}
+type EodJson = {
+  ok: boolean;
+  date: string;
+  source: string;
+  universeCount: number;
+  quotes: Row[];
+  rankings: Rankings;
+  note?: string;
+  narrative?: string;
+  error?: string;
+};
 
-// ==== Polygon grouped aggs fallback ====
-function prevWeekdayETISO(today = new Date()): string {
-  const d = new Date(today)
-  d.setUTCDate(d.getUTCDate() - 1)
-  while ([0,6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1)
-  return d.toISOString().slice(0,10)
-}
-type PolygonGrouped = {
-  results?: Array<{ T: string; v: number; o: number; c: number }>
-}
-async function pullFromPolygonOrThrow(dateEt: string): Promise<EOD> {
-  if (!POLYGON_API_KEY) throw new Error('POLYGON_API_KEY missing')
-  const url = `https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/${dateEt}?adjusted=true&apiKey=${POLYGON_API_KEY}`
-  const j = await jfetch<PolygonGrouped>(url)
-  const rows = (j.results || [])
-    .filter(r => r && r.T && Number.isFinite(r.o) && Number.isFinite(r.c) && Number.isFinite(r.v))
-    .map(r => ({
-      Ticker: r.T.toUpperCase(),
-      o: +r.o, c: +r.c,
-      chgPct: (r.c / (r.o || 1) - 1) * 100,
-      vol: +r.v,
-      dollarVolM: (+r.v * +r.c) / 1_000_000
-    }))
-
-  const byDollar = [...rows].sort((a,b)=> b.dollarVolM - a.dollarVolM).slice(0,10)
-  const byVol = [...rows].sort((a,b)=> b.vol - a.vol).slice(0,10)
-  const gainers10 = rows.filter(r => r.c >= 10).sort((a,b)=> b.chgPct - a.chgPct).slice(0,10)
-  const losers10 = rows.filter(r => r.c >= 10).sort((a,b)=> a.chgPct - b.chgPct).slice(0,10)
-
-  return { dateEt, mostActive: byVol, topDollar: byDollar, topGainers10: gainers10, topLosers10: losers10 }
+/** ─────────────────────────────────────────────────────────────────
+ * Utils
+ * ──────────────────────────────────────────────────────────────── */
+const US_TZ_OFFSET_EST = -5 * 60; // 단순 표기용(서머타임 보정 X). EOD는 날짜 문자열만 사용
+function fmtDateUTC(d = new Date()): string {
+  // UTC 기준 YYYY-MM-DD
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-// ==== Try local base endpoints first ====
-async function getBaseEOD(origin: string, date: string | null): Promise<EOD | null> {
-  const tryPaths = [
-    `${origin}/api/eod${date ? `?date=${date}` : ''}`,
-    `${origin}/api/eod-lite${date ? `?date=${date}` : ''}`,
-  ]
-  for (const u of tryPaths) {
-    try {
-      const j: any = await jfetch<any>(u)
-      const root = j?.data ? j.data : j
-      if (!root) continue
-      const dateEt = String(root.dateEt || '')
-      const mk = (arr: any[]) => (arr || []).map(r => ({
-        Ticker: String(r.Ticker || r.ticker || '').toUpperCase(),
-        o: safeNum(r.o ?? r.open, 0),
-        c: safeNum(r.c ?? r.close, 0),
-        chgPct: safeNum(r.chgPct ?? r.ChgPct ?? r.chg ?? r.Chg, 0),
-        vol: safeNum(r.vol ?? r.volume, 0),
-        dollarVolM: safeNum(r.dollarVolM ?? r.dollarVol ?? r.$VolM, 0),
-      }))
-      const eod: EOD = {
-        dateEt,
-        mostActive: mk(root.mostActive),
-        topDollar: mk(root.topDollar),
-        topGainers10: mk(root.topGainers10),
-        topLosers10: mk(root.topLosers10),
-      }
-      if (eod.topDollar?.length && eod.mostActive?.length) return eod
-    } catch { /* next */ }
-  }
-  return null
+function num(x: any): number | undefined {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : undefined;
 }
 
-// ==== Brief (one-liners) ====
-// 1) Static briefs for well-known tickers/ETFs
-const STATIC_BRIEF: Record<string,string> = {
-  // ETFs
-  SPY: 'S&P500連動ETF',
-  QQQ: 'NASDAQ100連動ETF',
-  DIA: 'ダウ平均連動ETF',
-  IWM: 'ラッセル2000連動ETF',
-  SMH: '半導体セクターETF',
-  SOXL: '半導体指数ブル3倍ETF',
-  SOXS: '半導体指数ベア3倍ETF',
-  SQQQ: 'NASDAQ100ベア3倍ETF',
-  TSLL: 'テスラ連動レバレッジETF',
-  UVXY: 'VIX先物連動レバレッジETF',
-
-  // Mega / large caps
-  NVDA: 'GPU/AI半導体大手',
-  AMD: 'CPU/GPU半導体',
-  AVGO: '半導体・通信インフラ',
-  INTC: '半導体(プロセッサ)',
-  AMZN: 'ECとクラウド(AWS)',
-  GOOGL: '検索・広告・クラウド',
-  AAPL: 'デバイスとサービス',
-  MSFT: 'OS/クラウド/AI',
-  META: 'SNSと広告',
-  CRM: '企業向けSaaS',
-  ORCL: 'エンタープライズDB/クラウド',
-  ADBE: 'クリエイティブSaaS',
-  PLTR: 'データ分析プラットフォーム',
-  TSLA: 'EVとエネルギー',
-
-  // Others seen often
-  OPEN: '不動産売買プラットフォーム',
-  NEGG: 'PC・家電EC',
-  AEO: '衣料小売',
-  RAPT: 'バイオ/ヘルスケア',
-  STSS: '医療関連',
-  SMR: '小型モジュール原子炉',
+function chgPctPrev(q: { close?: number; previousClose?: number }): number | undefined {
+  const c = num(q.close);
+  const p = num(q.previousClose);
+  if (c != null && p != null && p > 0) return ((c - p) / p) * 100;
+  return undefined;
 }
 
-// 2) Simple translation mapping for common SIC words
-function jpFromSic(sic?: string): string | null {
-  if (!sic) return null
-  const s = sic.toLowerCase()
-  if (s.includes('semiconductor')) return '半導体'
-  if (s.includes('computer') || s.includes('software') || s.includes('data')) return 'ソフトウェア/ITサービス'
-  if (s.includes('retail')) return '小売'
-  if (s.includes('wholesale') || s.includes('distribut')) return '流通/卸'
-  if (s.includes('pharma') || s.includes('biolog') || s.includes('biotech')) return '製薬/バイオ'
-  if (s.includes('aerospace') || s.includes('defense')) return '航空宇宙/防衛'
-  if (s.includes('electr') && s.includes('service')) return '電力/ユーティリティ'
-  if (s.includes('oil') || s.includes('petroleum') || s.includes('gas')) return 'エネルギー'
-  if (s.includes('bank') || s.includes('financ')) return '金融'
-  if (s.includes('telecom') || s.includes('communication')) return '通信'
-  return null
+function chgPctIntraday(q: { open?: number; close?: number }): number | undefined {
+  const o = num(q.open);
+  const c = num(q.close);
+  if (o != null && o > 0 && c != null) return ((c - o) / o) * 100;
+  return undefined;
 }
 
-// 3) Fallback brief from theme
-function briefFromTheme(theme: string): string {
-  switch (theme) {
-    case 'インデックス/ETF': return '指数連動ETF'
-    case 'インバース/レバレッジETF': return 'ベア/レバレッジETF'
-    case '半導体/AIインフラ': return '半導体/AIインフラ関連'
-    case 'ソフトウェア/AI': return 'ソフト/AI関連'
-    case 'EV/モビリティ': return 'EV/モビリティ関連'
-    case 'EC/小売': return 'EC/小売'
-    case 'バイオ/ヘルスケア': return 'バイオ/ヘルスケア'
-    default: return '—'
-  }
+function usdMillions(price?: number, vol?: number): number | undefined {
+  if (price == null || vol == null) return undefined;
+  return (price * vol) / 1_000_000;
 }
 
-// 4) Polygon reference lookup (optional)
-type PolyRef = {
-  results?: {
-    ticker: string
-    name?: string
-    type?: string // 'CS','AD','ETF'...
-    sic_description?: string
-  }
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
-async function polyBrief(ticker: string): Promise<string | null> {
-  if (!POLYGON_API_KEY) return null
+
+function delay(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+/** ─────────────────────────────────────────────────────────────────
+ * Data sources
+ *  - Yahoo Screener(사전정의): most_actives / day_gainers / day_losers
+ *  - Yahoo Batch quote: v7/finance/quote
+ *  - TwelveData(옵션): 부족 시 제한 수 내 폴백
+ * OpenAI(옵션): 내러티브 요약
+ * ──────────────────────────────────────────────────────────────── */
+
+/** Yahoo predefined screener fetcher
+ * ex) https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?count=100&scrIds=most_actives&start=0
+ */
+async function safeJson<T=any>(url: string): Promise<T|null> {
   try {
-    const url = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(ticker)}?apiKey=${POLYGON_API_KEY}`
-    const j = await jfetch<PolyRef>(url)
-    const r = j.results
-    if (!r) return null
-    if (r.type === 'ETF') {
-      // 参照名からETFっぽい一行に
-      if (ticker === 'SPY') return 'S&P500連動ETF'
-      if (ticker === 'QQQ') return 'NASDAQ100連動ETF'
-      return 'ETF'
-    }
-    const sicJp = jpFromSic(r.sic_description || '')
-    if (sicJp && r.name) return `${sicJp}（${r.name}）`
-    if (sicJp) return sicJp
-    if (r.name) return r.name
-    return null
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) return null;
+    return await r.json() as T;
   } catch {
-    return null
+    return null;
   }
 }
 
-// 5) Concurrency limiter for many lookups
-async function pMap<T, R>(list: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const ret: R[] = []
-  let idx = 0
-  const workers = Array(Math.min(limit, list.length)).fill(0).map(async () => {
-    while (idx < list.length) {
-      const i = idx++
-      ret[i] = await fn(list[i])
+async function fetchScreener(scrId: string, count: number, start = 0): Promise<string[]> {
+  const url =
+    `https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved` +
+    `?count=${count}&scrIds=${encodeURIComponent(scrId)}&start=${start}`;
+  const j = await safeJson<any>(url);
+  const arr = j?.finance?.result?.[0]?.quotes ?? [];
+  const syms: string[] = [];
+  for (const q of arr) {
+    const s = String(q?.symbol ?? "").toUpperCase();
+    if (s) syms.push(s);
+  }
+  return syms;
+}
+
+/** Batch quotes */
+async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const out = new Map<string, Quote>();
+  if (!symbols.length) return out;
+  const batches = chunk(symbols, 60);
+  for (const b of batches) {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(b.join(","))}`;
+    const j = await safeJson<any>(url);
+    const arr = j?.quoteResponse?.result ?? [];
+    for (const r of arr) {
+      const symbol = String(r?.symbol ?? "").toUpperCase();
+      if (!symbol) continue;
+      const open = num(r?.regularMarketOpen ?? r?.open);
+      const close = num(r?.regularMarketPrice ?? r?.regularMarketPreviousClose ?? r?.postMarketPrice);
+      const prev = num(r?.regularMarketPreviousClose);
+      const vol = num(r?.regularMarketVolume ?? r?.volume);
+      const currency = r?.currency ?? "USD";
+      const name = r?.shortName ?? r?.longName ?? symbol;
+      out.set(symbol, {
+        symbol, shortName: name, longName: r?.longName,
+        currency, regularMarketOpen: open, regularMarketPrice: close,
+        regularMarketPreviousClose: prev, regularMarketVolume: vol,
+      });
     }
-  })
-  await Promise.all(workers)
-  return ret
+    // 짧은 텀 (우발적 레이트 제한 방지)
+    await delay(80);
+  }
+  return out;
 }
 
-async function enrichBriefs(rows: Row[]): Promise<Record<string,string>> {
-  const tickers = uniq(rows.map(r => r.Ticker))
-  const out: Record<string,string> = {}
-  // 1) static
-  for (const t of tickers) {
-    if (STATIC_BRIEF[t]) out[t] = STATIC_BRIEF[t]
-  }
-  // 2) theme fallback (temporary placeholders)
-  for (const t of tickers) {
-    if (out[t]) continue
-    const theme = labelTheme(t)
-    out[t] = briefFromTheme(theme)
-  }
-  // 3) polygon detail to improve unknowns (only when key provided)
-  if (POLYGON_API_KEY) {
-    const fillTargets = tickers.filter(t => out[t] === '—' || out[t] === 'EC/小売' || out[t] === 'ソフト/AI関連' || out[t] === '半導体/AIインフラ関連')
-    const results = await pMap(fillTargets, 6, async (t) => {
-      const b = await polyBrief(t)
-      return { t, b }
-    })
-    for (const r of results) {
-      if (r.b) out[r.t] = r.b
+/** TwelveData fallback (optional) */
+const TD_ENDPOINT = "https://api.twelvedata.com/quote";
+async function fetchTwelveDataQuote(symbol: string, apikey: string) {
+  const url = `${TD_ENDPOINT}?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apikey)}`;
+  const j = await safeJson<any>(url);
+  if (!j || j.status === "error" || j.code || j.message) return null;
+  const open = num(j.open);
+  const close = num(j.close);
+  const prev = num(j.previous_close ?? j.previousClose);
+  const vol  = num(j.volume);
+  const name = j.name ?? symbol;
+  const currency = j.currency ?? "USD";
+  if (close == null && prev == null && vol == null) return null;
+  return {
+    symbol, shortName: name, longName: name, currency,
+    regularMarketOpen: open, regularMarketPrice: close,
+    regularMarketPreviousClose: prev, regularMarketVolume: vol,
+  } as Quote;
+}
+
+/** Combine: primary + limited fallback */
+async function fetchAllQuotes(
+  symbols: string[],
+  tdApiKey?: string,
+  fallbackMax = 50,   // TwelveData 폴백 최대 갯수(타임아웃/요금 보호)
+): Promise<Map<string, Quote>> {
+  const primary = await fetchYahooBatchQuotes(symbols);
+  if (!tdApiKey || fallbackMax <= 0) return primary;
+
+  const out = new Map(primary);
+  let used = 0;
+  for (const s of symbols) {
+    if (used >= fallbackMax) break;
+    const q = out.get(s);
+    const missing = !q || (
+      (q.regularMarketPrice == null || q.regularMarketPreviousClose == null) &&
+      (q.regularMarketVolume == null)
+    );
+    if (missing) {
+      const td = await fetchTwelveDataQuote(s, tdApiKey);
+      if (td) out.set(s, td);
+      used++;
+      await delay(40);
     }
   }
-  return out
+  return out;
 }
 
-// ==== Signals for narrative ====
-function buildSignals(eod: EOD) {
-  const find = (arr: Row[], t: string) => arr.find(x => x.Ticker === t)
-  const td = eod.topDollar, tv = eod.mostActive
-  const spy = find(td, 'SPY') || find(tv, 'SPY')
-  const qqq = find(td, 'QQQ') || find(tv, 'QQQ')
-  const soxs = find(tv, 'SOXS') || find(td, 'SOXS')
-  const nvda = find(td, 'NVDA') || find(tv, 'NVDA')
-  const riskOn = (spy?.chgPct ?? 0) > 0 && (qqq?.chgPct ?? 0) > 0 && (soxs?.chgPct ?? 0) < 0
-  const semiStrong = (nvda?.chgPct ?? 0) >= 0 && (nvda?.vol ?? 0) > 5e7
-  const adv = td.filter(x => x.chgPct > 0).length
-  const dec = td.length - adv
-  return { riskOn, semiStrong, adv, dec }
+/** ─────────────────────────────────────────────────────────────────
+ * Light theming (US): 심플 휴리스틱 태깅
+ * ──────────────────────────────────────────────────────────────── */
+function inferThemeBrief(name?: string, symbol?: string): { theme: string; brief: string } {
+  const n = (name ?? "").toLowerCase();
+  const s = (symbol ?? "").toUpperCase();
+  const hit = (...ws: string[]) => ws.some(w => n.includes(w));
+  // 초간단 룰 (확장 원하면 여기에 추가)
+  if (hit("semiconductor","foundry","chips","nvidia","amd","intel","broadcom","qualcomm")) return { theme:"半導体", brief:"半導体/設計・製造" };
+  if (hit("software","cloud","saas","microsoft","salesforce","service now","workday")) return { theme:"ITサービス", brief:"ソフト/クラウド" };
+  if (hit("alphabet","google")) return { theme:"ネット", brief:"検索/広告" };
+  if (hit("meta","facebook","instagram","whatsapp")) return { theme:"ネット", brief:"SNS/広告" };
+  if (hit("apple","iphon","mac","ios")) return { theme:"電子機器", brief:"端末/エコシステム" };
+  if (hit("amazon")) return { theme:"ネット", brief:"EC/クラウド" };
+  if (hit("tesla","ev","electric vehicle","motors")) return { theme:"自動車", brief:"EV/テック" };
+  if (hit("bank","financial","sachs","jp morgan","bank of america","wells fargo")) return { theme:"金融", brief:"銀行/金融" };
+  if (hit("energy","exxon","chevron","oil","petroleum","refining")) return { theme:"エネルギー", brief:"原油/ガス" };
+  if (hit("biotech","pharma","pharmaceutical","therapeutics","genomics")) return { theme:"医薬", brief:"製薬/バイオ" };
+  if (s.endsWith("-USD")) return { theme:"暗号資産", brief:"USDペア" };
+  return { theme: "-", brief: "-" };
 }
 
-// ==== OpenAI (minimal params only) ====
-async function complete(model: string, system: string, user: string) {
-  const r = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
-  })
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`)
-  const j = await r.json()
-  return j.choices?.[0]?.message?.content?.trim() || ''
+/** rows / rankings */
+function buildRows(symbols: string[], qmap: Map<string, Quote>): Row[] {
+  return symbols.map((sym) => {
+    const q = qmap.get(sym);
+    const close = num(q?.regularMarketPrice);
+    const prev  = num(q?.regularMarketPreviousClose);
+    const open  = num(q?.regularMarketOpen);
+    const vol   = num(q?.regularMarketVolume);
+    const name  = (q?.shortName || q?.longName || sym).toString();
+    const { theme, brief } = inferThemeBrief(name, sym);
+    const row: Row = {
+      ticker: sym,
+      name,
+      theme,
+      brief,
+      open: open ?? null,
+      close: close ?? null,
+      previousClose: prev ?? null,
+      chgPctPrev: chgPctPrev({ close, previousClose: prev }) ?? null,
+      chgPctIntraday: chgPctIntraday({ open, close }) ?? null,
+      volume: vol ?? null,
+      usdVolM: usdMillions(close, vol) ?? null,
+      currency: q?.currency ?? "USD",
+    };
+    return row;
+  });
 }
 
-// ==== Route ====
+function buildRankings(rows: Row[]): Rankings {
+  const byValue = [...rows]
+    .filter(r => r.usdVolM != null)
+    .sort((a,b)=> (b.usdVolM! - a.usdVolM!))
+    .slice(0, 10);
+
+  const byVolume = [...rows]
+    .filter(r => r.volume != null)
+    .sort((a,b)=> (b.volume! - a.volume!))
+    .slice(0, 10);
+
+  const price = (r: Row) => (r.close ?? r.previousClose ?? r.open ?? 0);
+  const elig = rows.filter(r => price(r) >= 5 && r.chgPctPrev != null);
+
+  const topGainers = [...elig]
+    .filter(r => (r.chgPctPrev as number) > 0)
+    .sort((a,b)=> (b.chgPctPrev! - a.chgPctPrev!))
+    .slice(0, 10);
+
+  const topLosers = [...elig]
+    .filter(r => (r.chgPctPrev as number) < 0)
+    .sort((a,b)=> (a.chgPctPrev! - b.chgPctPrev!))
+    .slice(0, 10);
+
+  return { byValue, byVolume, topGainers, topLosers };
+}
+
+/** ─────────────────────────────────────────────────────────────────
+ * Markdown helpers
+ * ──────────────────────────────────────────────────────────────── */
+function n(x: number | null | undefined): string {
+  if (x == null || !Number.isFinite(Number(x))) return "-";
+  return Number(x).toLocaleString("en-US");
+}
+function p(x: number | null | undefined, digits=2): string {
+  if (x == null || !Number.isFinite(Number(x))) return "-";
+  return Number(x).toFixed(digits);
+}
+function oc(o: number | null | undefined, c: number | null | undefined): string {
+  if (o == null || c == null) return "-→-";
+  return `${n(o)}→${n(c)}`;
+}
+function take<T>(arr: T[] | undefined, k=10): T[] {
+  return Array.isArray(arr) ? arr.slice(0, k) : [];
+}
+
+function tableByValue(rows: Row[]): string {
+  const head = `| Rank | Ticker | Name | o→c | Chg% | Vol | $Vol(M) | Theme | Brief |
+|---:|---:|---|---:|---:|---:|---:|---|---|
+`;
+  const body = take(rows, 10).map((r,i)=>[
+    i+1, r.ticker, r.name, oc(r.open,r.close), p(r.chgPctPrev),
+    n(r.volume), n(r.usdVolM), r.theme||"-", r.brief||"-"
+  ].join(" | ")).join("\n");
+  return head + body + (body? "\n":"");
+}
+function tableByVolume(rows: Row[]): string {
+  const head = `| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |
+|---:|---:|---|---:|---:|---:|---|---|
+`;
+  const body = take(rows, 10).map((r,i)=>[
+    i+1, r.ticker, r.name, oc(r.open,r.close), p(r.chgPctPrev),
+    n(r.volume), r.theme||"-", r.brief||"-"
+  ].join(" | ")).join("\n");
+  return head + body + (body? "\n":"");
+}
+function tableGainers(rows: Row[]): string {
+  const head = `| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |
+|---:|---:|---|---:|---:|---:|---|---|
+`;
+  const body = take(rows, 10).map((r,i)=>[
+    i+1, r.ticker, r.name, oc(r.open,r.close), p(r.chgPctPrev),
+    n(r.volume), r.theme||"-", r.brief||"-"
+  ].join(" | ")).join("\n");
+  return head + body + (body? "\n":"");
+}
+function tableLosers(rows: Row[]): string {
+  const head = `| Rank | Ticker | Name | o→c | Chg% | Vol | Theme | Brief |
+|---:|---:|---|---:|---:|---:|---|---|
+`;
+  const body = take(rows, 10).map((r,i)=>[
+    i+1, r.ticker, r.name, oc(r.open,r.close), p(r.chgPctPrev),
+    n(r.volume), r.theme||"-", r.brief||"-"
+  ].join(" | ")).join("\n");
+  return head + body + (body? "\n":"");
+}
+
+/** ─────────────────────────────────────────────────────────────────
+ * LLM Narrative (optional, no SDK; REST only)
+ *  - Set OPENAI_API_KEY (and OPENAI_MODEL optional)
+ * ──────────────────────────────────────────────────────────────── */
+async function llmNarrative(input: {
+  date: string;
+  source: string;
+  universeCount: number;
+  rows: Row[];
+  rankings: Rankings;
+}): Promise<string | null> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+  // 집계 숫자(증거 기반)
+  const all = input.rows;
+  const sumAll = all.reduce((a,c)=> a + (c.usdVolM ?? 0), 0);
+  const sumTop10 = input.rankings.byValue.reduce((a,c)=> a + (c.usdVolM ?? 0), 0);
+  const breadthUp = all.filter(r => (r.chgPctPrev ?? 0) > 0).length;
+  const breadthDn = all.filter(r => (r.chgPctPrev ?? 0) < 0).length;
+
+  const topThemes = (() => {
+    const m = new Map<string, number>();
+    for (const r of all) {
+      if (!r.theme || r.theme === "-") continue;
+      m.set(r.theme, (m.get(r.theme) ?? 0) + (r.usdVolM ?? 0));
+    }
+    return [...m.entries()].sort((a,b)=> b[1]-a[1]).slice(0,3).map(([k,v])=>`${k}`).join("/");
+  })();
+
+  const system = `あなたは米国市場のEODレポートを作成する敏腕アナリストです。事実は与えられた数値のみ。過度な断定・誇張を避け、簡潔明瞭に。`;
+  const user = `
+日付: ${input.date}
+ソース: ${input.source}
+ユニバース銘柄数: ${input.universeCount}
+Top10集中度(売買代金基準): ${sumAll>0 ? (sumTop10/sumAll*100).toFixed(1) : "N/A"}%
+ブレッドス(上昇/下落): ${breadthUp}:${breadthDn}
+主導テーマ(概算): ${topThemes || "-"}
+
+指示:
+- 日本語で、TL;DR・本日のストーリー(3行)・EOD総括(2行)・明日のチェック(3行)・シナリオ(3行) を、Markdownセクションで返す。
+- 確認できないこと(ニュース/決算詳細/出来高の時間配分など)は書かない。
+- TL;DRにはTop10集中度とブレッドスを必ず含める。`;
+
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.4,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    });
+    const j = await resp.json();
+    const txt: string | undefined = j?.choices?.[0]?.message?.content;
+    return txt ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ─────────────────────────────────────────────────────────────────
+ * GET handler
+ * Params:
+ *  - max: number (기본 300; 50~600)  … 스크리너에서 최대 몇 종목 수집할지
+ *  - screener: csv of scrIds (default: most_actives,day_gainers,day_losers)
+ *  - td: TwelveData fallback 사용 최대 갯수 (기본 40)
+ *  - llm: "0|1" (기본 1; OPENAI_API_KEY 없으면 자동 비활성)
+ * ──────────────────────────────────────────────────────────────── */
 export async function GET(req: NextRequest) {
   try {
-    const { origin, searchParams } = req.nextUrl
-    const lang = (searchParams.get('lang') || 'ja').toLowerCase()
-    const model = searchParams.get('model') || OPENAI_MODEL
-    const dateParam = searchParams.get('date') // YYYY-MM-DD
+    const url = new URL(req.url);
+    const max = Math.min(Math.max(Number(url.searchParams.get("max") ?? "300"), 50), 600);
+    const tdMax = Math.min(Math.max(Number(url.searchParams.get("td") ?? "40"), 0), 200);
+    const llmOn = (url.searchParams.get("llm") ?? "1") === "1";
+    const scrParam = (url.searchParams.get("screener") || "most_actives,day_gainers,day_losers")
+      .split(",").map(s=>s.trim()).filter(Boolean);
 
-    // 1) base EOD from local endpoints
-    let eod = await getBaseEOD(origin, dateParam)
-    // 2) fallback to Polygon
-    if (!eod) {
-      const dateEt = dateParam || prevWeekdayETISO()
-      eod = await pullFromPolygonOrThrow(dateEt)
+    // 1) Universe from Yahoo predefined screeners (병합/중복제거)
+    let uni: string[] = [];
+    for (const scrId of scrParam) {
+      // count는 대략 max의 1.2배로 넉넉히 가져온 후 dedup → 최종 max로 컷
+      const got = await fetchScreener(scrId, Math.round(max * 1.2), 0);
+      uni.push(...got);
+      await delay(60);
+    }
+    // 미국 외/ETF/선물 심볼 혼재 가능 → 일단 전부 유지. 이후 quote 없으면 자동 탈락.
+    uni = Array.from(new Set(uni)).slice(0, max);
+
+    // 2) Quotes (Yahoo primary + TwelveData limited fallback)
+    const tdKey = process.env.TWELVEDATA_API_KEY || "";
+    const qmap = await fetchAllQuotes(uni, tdKey || undefined, tdMax);
+
+    // 3) Build rows & drop empties
+    const rows = buildRows(uni, qmap).filter(r => r.close != null || r.previousClose != null || r.volume != null);
+    const rankings = buildRankings(rows);
+
+    // 4) Narrative (optional LLM)
+    const dateStr = fmtDateUTC();
+    const source = `YahooScreener+YahooBatch${tdKey?"+TwelveData":""}`;
+    const universeCount = rows.length;
+
+    let narrative = "";
+    if (llmOn && process.env.OPENAI_API_KEY) {
+      const nar = await llmNarrative({ date: dateStr, source, universeCount, rows, rankings });
+      if (nar) narrative = nar;
     }
 
-    // 3) theme + brief
-    const tag = (r: Row) => ({ ...r, theme: labelTheme(r.Ticker) })
-    const td0 = eod.topDollar.map(tag)
-    const tv0 = eod.mostActive.map(tag)
-    const tg0 = eod.topGainers10.map(tag)
-    const tl0 = eod.topLosers10.map(tag)
-    const briefMap = await enrichBriefs([...td0, ...tv0, ...tg0, ...tl0])
-    const td = td0.map(r => ({ ...r, brief: briefMap[r.Ticker] }))
-    const tv = tv0.map(r => ({ ...r, brief: briefMap[r.Ticker] }))
-    const tg = tg0.map(r => ({ ...r, brief: briefMap[r.Ticker] }))
-    const tl = tl0.map(r => ({ ...r, brief: briefMap[r.Ticker] }))
-
-    // 4) signals
-    const sig = buildSignals(eod)
-
-    // 5) tables with Brief column
+    // 5) Markdown compose
     const header =
-`| Rank | Ticker | o→c | Chg% | Vol | $Vol(M) | Themes | Brief |
-|---:|---|---|---:|---:|---:|---|---|`
-    const row = (r: Row & {theme:string, brief?:string}, i:number) =>
-      `| ${i+1} | ${r.Ticker} | ${r.o.toFixed(2)}→${r.c.toFixed(2)} | ${r.chgPct.toFixed(2)} | ${r.vol.toLocaleString()} | ${r.dollarVolM.toFixed(1)} | ${r.theme} | ${r.brief || '—'} |`
-    const table = (rows: (Row & {theme:string, brief?:string})[]) => rows.map(row).join('\n')
+`# US Market EOD Deep | ${dateStr}
 
-    const mdTables = `
-### Top 10 — 取引代金（ドル）
-${header}
-${table(td)}
+> ソース: ${source} / ユニバース: ${universeCount}銘柄
+> 収集: Yahooプリセットスクリーナー（${scrParam.join(", ")}）から上位 **${max}**銘柄を集約。
+> 注記: 無料ソースの性質上、厳密なEODとの微差が出る場合があります（USD）。`;
 
-### Top 10 — 出来高（株数）
-${header}
-${table(tv)}
+    const mdParts: string[] = [header, ""];
 
-### Top 10 — 上昇株（$10+）
-${header}
-${table(tg)}
+    if (narrative) {
+      mdParts.push(narrative.trim(), "---");
+    }
 
-### Top 10 — 下落株（$10+）
-${header}
-${table(tl)}
-`.trim()
-
-    // 6) narrative prompt (日本語固定)
-    const sys = `
-あなたはnote.comで毎晩配信する「夜間警備員」の筆者です。出力は必ず日本語。
-構成: 見出し1行→カード解説(主要12銘柄/各2行以内)→30分リプレイ→EOD総括→明日のチェック(5項目)→シナリオ(反発継続/もみ合い/反落 各2サイン)→テーマ・クラスター→最後に表(そのまま貼付)。
-未来予測や目標価格の断定は禁止。数値は表の o→c / Chg% / Vol / $Vol(M) のみ引用可。`.trim()
-
-    const user = `
-# 米国 夜間警備員 日誌 | ${eod.dateEt}
-
-■ 取引代金上位: ${td.slice(0,6).map(x=>`${x.Ticker}(${x.theme})`).join(', ')}
-■ 出来高上位: ${tv.slice(0,6).map(x=>`${x.Ticker}(${x.theme})`).join(', ')}
-■ 上昇($10+): ${tg.slice(0,5).map(x=>x.Ticker).join(', ')}
-■ 下落($10+): ${tl.slice(0,5).map(x=>x.Ticker).join(', ')}
-
-■ シグナル
-- リスクオン傾向: ${sig.riskOn ? 'あり' : '未確定'}
-- 半導体の下支え: ${sig.semiStrong ? '確認' : '弱め/中立'}
-- 取引代金上位の広がり: 上昇${sig.adv} / 下落${sig.dec}
-
-# 表は下へ。`.trim()
-
-    const markdownBody = await complete(model, sys, user)
-    const markdown = `${markdownBody}\n\n${mdTables}`
-
-    return Response.json({
-      ok: true,
-      dateEt: eod.dateEt,
-      markdown,
-      analyzed: {
-        model,
-        usedPolygonFallback: !await getBaseEOD(req.nextUrl.origin, dateParam),
-        tickersEnriched: Object.keys(briefMap).length
+    // Cards(대표): SPY/QQQ/AAPL/MSFT/NVDA/AMZN/GOOGL/META/TSLA/AMD
+    const CARD_SET = new Set(["SPY","QQQ","AAPL","MSFT","NVDA","AMZN","GOOGL","GOOG","META","TSLA","AMD"]);
+    const cards = rows.filter(r => CARD_SET.has(r.ticker));
+    const cardLines: string[] = [];
+    if (cards.length) {
+      cardLines.push("## カード（主要ETF・大型）");
+      for (const r of cards) {
+        cardLines.push(`- ${r.ticker} — ${r.name}`);
+        cardLines.push(`  - o→c: ${oc(r.open,r.close)} / Chg%: ${p(r.chgPctPrev)} / Vol: ${n(r.volume)} / $Vol(M): ${n(r.usdVolM)} / ${r.theme||"-"} — ${r.brief||"-"}`);
       }
-    })
-  } catch (e: any) {
-    return Response.json({ ok: false, error: String(e?.message || e) }, { status: 200 })
+      mdParts.push(cardLines.join("\n"), "\n---");
+    }
+
+    mdParts.push(
+      "## 📊 データ(Top10)",
+      "### Top 10 — 売買代金（百万USD換算）",
+      tableByValue(rankings.byValue),
+      "### Top 10 — 出来高（株数）",
+      tableByVolume(rankings.byVolume),
+      "### Top 10 — 上昇株（$5+）",
+      tableGainers(rankings.topGainers),
+      "### Top 10 — 下落株（$5+）",
+      tableLosers(rankings.topLosers),
+      "\n#米国株 #NASDAQ #NYSE #S&P500 #出来高 #売買代金 #大型株\n"
+    );
+
+    const md = mdParts.join("\n");
+
+    const out: EodJson = {
+      ok: true,
+      date: dateStr,
+      source,
+      universeCount,
+      quotes: rows,
+      rankings,
+      note: "chgPctPrev=前日比(終値/前日終値), chgPctIntraday=日中変動。Top10は$5以上のみで作成。",
+      narrative: narrative || undefined,
+    };
+
+    const want = (url.searchParams.get("format")||"md").toLowerCase();
+    if (want === "json") {
+      return new Response(JSON.stringify(out), {
+        status: 200,
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      });
+    }
+    return new Response(md, {
+      status: 200,
+      headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "no-store" },
+    });
+
+  } catch (err: any) {
+    const body: EodJson = { ok: false, date: fmtDateUTC(), source: "-", universeCount: 0, quotes: [], rankings: { byValue:[], byVolume:[], topGainers:[], topLosers:[] }, error: err?.message || "unknown" };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    });
   }
 }
