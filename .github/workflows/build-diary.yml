@@ -1,0 +1,54 @@
+name: Build JPX Diary (offline)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # JST 15:50 ~= UTC 06:50
+    - cron: "50 6 * * 1-5"
+
+jobs:
+  build-diary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: |
+          node -v
+          npm -v
+          npm install
+
+      - name: Build focus CSV (TOP600)
+        run: |
+          node scripts/build_jpx_focus.mjs --top=600
+          echo "== FOCUS HEAD =="
+          head -n 5 public/jpx_focus.csv || true
+          echo "== FOCUS COUNT =="
+          wc -l public/jpx_focus.csv || true
+
+      - name: Generate offline diary
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # 없으면 자동으로 규칙요약 사용
+        run: |
+          node scripts/generate_jpx_diary.mjs
+          echo "== DIARY HEAD =="
+          head -n 30 public/diaries/JPX-*.md || true
+
+      - name: Commit & Push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain public/jpx_focus.csv public/diaries/)" ]; then
+            git add public/jpx_focus.csv public/diaries/
+            git commit -m "chore: offline JPX diary (top600)"
+            git push
+          else
+            echo "No changes to commit."
+          fi
