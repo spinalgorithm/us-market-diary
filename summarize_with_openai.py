@@ -19,7 +19,7 @@ MAX_ITEMS = 600
 SYSTEM = (
     "You are a quantitative market writer.\n"
     "Write detailed, factual Japanese. No emojis. No hype.\n"
-    "Output Markdown only. Target 900–1500字. 見出し+箇条書きを中心に。"
+    "Output Markdown only. Target 1200–2000字. 見出し+箇条書き中心。重複回避。"
 )
 
 USER_TMPL = """以下は米国株の集計サマリー（取引代金上位600ユニバース）とトップリストです。
@@ -27,9 +27,10 @@ note.com向けに**読み応えのある**日本語マーケットダイジェ�
 
 要件:
 - 見出し: 「取引代金上位600米国株 デイリー要約 | {date}」
-- 市況ダイジェスト: 6〜9行（騰落広がり、平均/中央値、±2%/±5%比率）
+- 市況ダイジェスト: 6〜9行（騰落広がり、平均/中央値、±2%/±5%比率、分布帯の言及）
 - フロー/集中度: 売買代金Top10/Top50シェア、出来高Top10シェア、上位銘柄の寄与度
 - メガキャップ動向: AAPL, MSFT, GOOGL/GOOG, AMZN, NVDA, META, TSLA を簡潔に
+- セクターETF/指数スナップショットを1行（SPY, QQQ, IWM, DIA, XLK, XLF, XLE, XLV, XLI, XLY, XLP, XLU, XLB, XLRE, XLC）
 - テーマ/セクター: 6〜10項目。根拠ティッカー2〜5個を丸括弧
 - リスク: 4〜6項目（過熱、イベント、ボラ拡大源）
 - 下部に表4つ（売買代金Top10/出来高Top10/値上がりTop10(終値≥$10)/値下がりTop10(終値≥$10)）
@@ -42,6 +43,10 @@ note.com向けに**読み応えのある**日本語マーケットダイジェ�
 トップリスト(JSON):
 {lists_json}
 """
+
+SECTOR_ETFS = [
+    "SPY","QQQ","IWM","DIA","XLK","XLF","XLE","XLV","XLI","XLY","XLP","XLU","XLB","XLRE","XLC"
+]
 
 def pct(x):
     return f"{x*100:.2f}%" if isinstance(x, (int, float)) else ""
@@ -79,6 +84,15 @@ def safe_stats(pcts):
         "lt_-2": sum(1 for x in arr if x <= -0.02),
     }
 
+def etf_snapshot(universe):
+    m = {r.get("ticker"): r for r in universe}
+    snap = []
+    for t in SECTOR_ETFS:
+        r = m.get(t)
+        if r:
+            snap.append({"ticker": t, "pct_change": r.get("pct_change"), "dollar_volume": r.get("dollar_volume")})
+    return snap
+
 def build_summary(bundle: dict) -> dict:
     lists = bundle.get("lists", {})
     uni = lists.get("universe_top600_by_dollar", [])[:MAX_ITEMS]
@@ -88,15 +102,28 @@ def build_summary(bundle: dict) -> dict:
     flat = len(uni) - adv - dec
     pstats = safe_stats([r.get("pct_change") for r in uni])
 
+    # 분포 버킷
+    bands = {"ge_5":0,"p2_5":0,"m2_p2":0,"m5_p2":0,"le_m5":0}
+    for r in uni:
+        p = r.get("pct_change") or 0.0
+        if p >= 0.05: bands["ge_5"] += 1
+        elif p >= 0.02: bands["p2_5"] += 1
+        elif p > -0.02: bands["m2_p2"] += 1
+        elif p > -0.05: bands["m5_p2"] += 1
+        else: bands["le_m5"] += 1
+
+    # dollar_volume 집중도
     by_dv = sorted([r for r in uni if r.get("dollar_volume")], key=lambda x: x["dollar_volume"], reverse=True)
     dv_total = sum(r["dollar_volume"] for r in by_dv) or 1.0
     dv_top10 = sum(r["dollar_volume"] for r in by_dv[:10])
     dv_top50 = sum(r["dollar_volume"] for r in by_dv[:50])
 
+    # volume 집중도
     by_vol = sorted([r for r in uni if r.get("volume")], key=lambda x: x["volume"], reverse=True)
     vol_total = sum(r["volume"] for r in by_vol) or 1.0
     vol_top10 = sum(r["volume"] for r in by_vol[:10])
 
+    # 메가캡
     mega_names = {"AAPL","MSFT","GOOGL","GOOG","AMZN","NVDA","META","TSLA"}
     mega = [r for r in uni if r.get("ticker") in mega_names]
     mega_view = [
@@ -110,12 +137,14 @@ def build_summary(bundle: dict) -> dict:
         "date": bundle.get("date", ""),
         "breadth": {"adv": adv, "dec": dec, "flat": flat, "total": len(uni)},
         "pct_stats": pstats,
+        "bands": bands,
         "concentration": {
             "dv_top10_share": dv_top10 / dv_total,
             "dv_top50_share": dv_top50 / dv_total,
             "vol_top10_share": vol_top10 / vol_total,
         },
         "mega_caps": mega_view,
+        "sector_etfs": etf_snapshot(uni),
         "top10_dollar_value": lists.get("top10_dollar_value", [])[:10],
         "top10_volume": lists.get("top10_volume", [])[:10],
         "top10_gainers_ge10": lists.get("top10_gainers_ge10", [])[:10],
@@ -128,7 +157,7 @@ def call_llm(cli: OpenAI, model: str, system: str, user: str) -> str:
         try:
             resp = cli.responses.create(
                 model=model,
-                max_output_tokens=int(os.getenv("OPENAI_MAX_OUTPUT_TOKENS", "4800")),
+                max_output_tokens=int(os.getenv("OPENAI_MAX_OUTPUT_TOKENS", "6500")),
                 input=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
@@ -150,6 +179,9 @@ def fallback_md(summary: dict) -> str:
     gt5, lt5 = s.get("gt_5", 0), s.get("lt_-5", 0)
     dv10 = c.get("dv_top10_share"); dv50 = c.get("dv_top50_share"); vol10 = c.get("vol_top10_share")
 
+    etfs = ", ".join(f"{m['ticker']}({pct(m.get('pct_change'))})" for m in summary.get("sector_etfs", []))
+    mega_str = ", ".join(f"{m['ticker']}({pct(m.get('pct_change'))})" for m in summary["mega_caps"])
+
     lines = []
     lines.append("## 市況ダイジェスト")
     lines.append(f"- 銘柄騰落: 上昇 {adv} / 下落 {dec} / 変わらず {flat}（計 {total}）")
@@ -159,14 +191,17 @@ def fallback_md(summary: dict) -> str:
     if dv10 is not None and vol10 is not None:
         lines.append(f"- フロー集中度: 売買代金Top10 {dv10*100:.1f}%, Top50 {dv50*100:.1f}% / 出来高Top10 {vol10*100:.1f}%")
     lines.append("")
-    lines.append("## テーマ/セクター感（簡易）")
-    tick = ", ".join(r.get("ticker", "") for r in summary["top10_dollar_value"][:10])
-    lines.append(f"- 売買代金上位からの主役: {tick}")
+    lines.append("## セクターETF/指数スナップショット")
+    if etfs:
+        lines.append(f"- {etfs}")
     lines.append("")
-    lines.append("## メガキャップ動向（簡易）")
-    mega_str = ", ".join(f"{m['ticker']}({pct(m.get('pct_change'))})" for m in summary["mega_caps"])
+    lines.append("## メガキャップ動向")
     if mega_str:
         lines.append(f"- {mega_str}")
+    lines.append("")
+    lines.append("## テーマ/セクター（簡易）")
+    tick = ", ".join(r.get("ticker", "") for r in summary["top10_dollar_value"][:10])
+    lines.append(f"- 売買代金上位からの主役: {tick}")
     lines.append("")
     lines.append("## 需給・フロー（要点）")
     lines.append("- 売買代金上位は大型テック中心。指数連動のフロー優勢。")
@@ -204,8 +239,10 @@ def main():
                 "date": summary["date"],
                 "breadth": summary["breadth"],
                 "pct_stats": summary["pct_stats"],
+                "bands": summary["bands"],
                 "concentration": summary["concentration"],
                 "mega_caps": summary["mega_caps"],
+                "sector_etfs": summary["sector_etfs"],
                 "top40_by_dollar": summary["top40_by_dollar"],
             },
             ensure_ascii=False,
