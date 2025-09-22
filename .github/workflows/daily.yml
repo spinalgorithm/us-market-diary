@@ -31,12 +31,12 @@ jobs:
           python fetch_polygon_toplists.py
           echo "BUNDLE=$(ls -d out/* | tail -1)/bundle.json" >> $GITHUB_ENV
 
-      - name: Summarize with OpenAI
-        env:
+       - name: Summarize with OpenAI
+          env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: gpt-4.1-mini
-        run: |
-          python summarize_with_openai.py --bundle "${{ env.BUNDLE }}" --out note_post_llm.md
+          OPENAI_MODEL: gpt-5
+         run: |
+            python summarize_with_openai.py --bundle "${{ env.BUNDLE }}" --out note_post_llm.md
 
       - name: Publish to public/
         run: |
