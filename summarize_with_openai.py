@@ -91,12 +91,12 @@ def build_summary(b):
 def call_llm(cli, model, system, user):
     for k in range(3):
         try:
-            r = cli.responses.create(
-                model=model,
-                temperature=0.2,
-                max_output_tokens=2800,
-                input=[{"role":"system","content":system},{"role":"user","content":user}],
-            )
+       r = cli.responses.create(
+    model=model,
+    max_output_tokens=2800,
+    input=[{"role":"system","content":system},
+           {"role":"user","content":user}],
+)
             return r.output_text
         except Exception:
             if k==2: raise
