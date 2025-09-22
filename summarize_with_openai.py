@@ -91,16 +91,19 @@ def build_summary(b):
 def call_llm(cli, model, system, user):
     for k in range(3):
         try:
-       r = cli.responses.create(
-    model=model,
-    max_output_tokens=2800,
-    input=[{"role":"system","content":system},
-           {"role":"user","content":user}],
-)
-            return r.output_text
+            resp = cli.responses.create(
+                model=model,
+                max_output_tokens=2800,
+                input=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            )
+            return resp.output_text
         except Exception:
-            if k==2: raise
-            time.sleep(2*(k+1))
+            if k == 2:
+                raise
+            time.sleep(2 * (k + 1))
 
 def main():
     ap = argparse.ArgumentParser()
