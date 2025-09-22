@@ -2,7 +2,7 @@ name: build-daily
 
 on:
   schedule:
-    - cron: '35 20 * * 1-5'
+    - cron: '35 20 * * 1-5'   # 평일 KST 새벽 실행
   workflow_dispatch:
   push:
     branches: [main]
@@ -27,6 +27,7 @@ jobs:
         run: |
           test -n "${{ secrets.POLYGON_API_KEY }}" || (echo "MISSING POLYGON_API_KEY" && exit 1)
           test -n "${{ secrets.OPENAI_API_KEY }}"  || (echo "MISSING OPENAI_API_KEY" && exit 1)
+          ls -la
 
       - uses: actions/setup-python@v5
         with:
@@ -44,12 +45,16 @@ jobs:
           set -e
           python fetch_polygon_toplists.py
           echo "BUNDLE=$(ls -d out/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
-          echo "BUNDLE=$(cat $GITHUB_ENV | tail -1 | cut -d= -f2)"
+          echo "BUNDLE path: $BUNDLE"
+
+      - name: Syntax check
+        run: python -m py_compile summarize_with_openai.py
 
       - name: Summarize with GPT-5 (JP)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
+          OPENAI_MAX_OUTPUT_TOKENS: "6500"
         run: |
           set -e
           test -f "$BUNDLE" || (echo "Bundle not found: $BUNDLE" && exit 1)
@@ -70,9 +75,7 @@ jobs:
           set -e
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add public/daily note_post_llm.md
-          # out/는 충돌 줄이려면 커밋 생략 권장. 필요하면 아래 라인 해제.
-          # git add out
+          git add public/daily note_post_llm.md || true
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
