@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# summarize_with_openai.py — JP summary via GPT-5 with fallback and richer stats.
+# summarize_with_openai.py — JP summary via GPT-5 with fallback, richer stats, and table stripping.
 
 import os
 import sys
@@ -8,6 +8,7 @@ import time
 import argparse
 from pathlib import Path
 
+# OpenAI Python SDK (Responses API)
 try:
     from openai import OpenAI
 except Exception:
@@ -33,7 +34,7 @@ note.com向けに**読み応えのある**日本語マーケットダイジェ�
 - セクターETF/指数スナップショットを1行（SPY, QQQ, IWM, DIA, XLK, XLF, XLE, XLV, XLI, XLY, XLP, XLU, XLB, XLRE, XLC）
 - テーマ/セクター: 6〜10項目。根拠ティッカー2〜5個を丸括弧
 - リスク: 4〜6項目（過熱、イベント、ボラ拡大源）
-- 下部に表4つ（売買代金Top10/出来高Top10/値上がりTop10(終値≥$10)/値下がりTop10(終値≥$10)）
+- 本文には表を含めない。表は本文の後に付ける（下部の4表のみ）。
 - 数値は過度に細かくしない。重複表現を避ける。
 - 出力はMarkdownのみ。冒頭で見出しを繰り返さない（本文は小見出しから開始）。
 
@@ -213,6 +214,23 @@ def fallback_md(summary: dict) -> str:
     lines.append("")
     return "\n".join(lines)
 
+def strip_tables(md: str) -> str:
+    out = []
+    skip = False
+    for line in md.splitlines():
+        s = line.strip()
+        if s.startswith("|---"):
+            continue
+        if s.startswith("|"):
+            skip = True
+            continue
+        if skip and s == "":
+            skip = False
+            continue
+        if not skip:
+            out.append(line)
+    return "\n".join(out)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)
@@ -267,6 +285,8 @@ def main():
 
     if not body or not body.strip():
         body = fallback_md(summary)
+    else:
+        body = strip_tables(body)  # remove any tables in the LLM body
 
     md = []
     md.append(f"# 取引代金上位600米国株 デイリー要約 | {summary['date']}\n")
