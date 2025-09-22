@@ -2,25 +2,31 @@ name: build-daily
 
 on:
   schedule:
-    - cron: '35 20 * * 1-5'   # 평일 KST 새벽 실행
+    - cron: '35 20 * * 1-5'
   workflow_dispatch:
   push:
-    branches: [main]          # 디버그용
+    branches: [main]
 
 permissions:
   contents: write
+
+concurrency:
+  group: daily-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Preflight
         run: |
           test -n "${{ secrets.POLYGON_API_KEY }}" || (echo "MISSING POLYGON_API_KEY" && exit 1)
           test -n "${{ secrets.OPENAI_API_KEY }}"  || (echo "MISSING OPENAI_API_KEY" && exit 1)
-          echo "Repo tree (top):"; ls -la
 
       - uses: actions/setup-python@v5
         with:
@@ -38,7 +44,7 @@ jobs:
           set -e
           python fetch_polygon_toplists.py
           echo "BUNDLE=$(ls -d out/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
-          echo "BUNDLE set to: $(cat $GITHUB_ENV | tail -1 | cut -d= -f2)"
+          echo "BUNDLE=$(cat $GITHUB_ENV | tail -1 | cut -d= -f2)"
 
       - name: Summarize with GPT-5 (JP)
         env:
@@ -59,11 +65,18 @@ jobs:
           cp note_post_llm.md "public/daily/${DATE}.md"
           cp "$BUNDLE"        "public/daily/${DATE}.json"
 
-      - name: Commit and push
+      - name: Commit and push (rebase)
         run: |
           set -e
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add public/daily out note_post_llm.md || true
-          git commit -m "daily: $(date -u +'%Y-%m-%d')" || true
+          git add public/daily note_post_llm.md
+          # out/는 충돌 줄이려면 커밋 생략 권장. 필요하면 아래 라인 해제.
+          # git add out
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "daily: $(date -u +'%Y-%m-%d')"
+          git pull --rebase origin main
           git push
