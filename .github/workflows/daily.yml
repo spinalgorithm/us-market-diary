@@ -1,8 +1,10 @@
 name: build-daily
 on:
   schedule:
-    - cron: '35 20 * * 1-5'   # 미 동부 장마감 이후, KST 새벽
+    - cron: '35 20 * * 1-5'
   workflow_dispatch:
+  push:
+    branches: [main]  # 디버그용(선택). 커밋 시 즉시 실행.
 
 permissions:
   contents: write
@@ -39,13 +41,9 @@ jobs:
       - name: Publish to public/
         run: |
           mkdir -p public/daily
-          # 날짜 추출
-          DATE=$(python - <<'PY'
-import json,sys;print(json.load(open(sys.argv[1]))["date"])
-PY
-"${{ env.BUNDLE }}")
-          cp note_post_llm.md public/daily/latest.md
-          cp "${{ env.BUNDLE }}" public/daily/latest.json
+          DATE=$(python -c 'import json,sys;print(json.load(open(sys.argv[1]))["date"])' "${{ env.BUNDLE }}")
+          cp note_post_llm.md "public/daily/latest.md"
+          cp "${{ env.BUNDLE }}" "public/daily/latest.json"
           cp note_post_llm.md "public/daily/${DATE}.md"
           cp "${{ env.BUNDLE }}" "public/daily/${DATE}.json"
 
