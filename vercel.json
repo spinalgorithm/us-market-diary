@@ -1,6 +1,1 @@
-{
-  "crons": [
-    { "path": "/api/eod-deep-md", "schedule": "10 22 * * 1-5" },
-    { "path": "/api/jpx-eod-md", "schedule": "30 7 * * 1-5" }
-  ]
-}
+
