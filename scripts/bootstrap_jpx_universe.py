@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-# Robust JPX universe bootstrapper
-import os, re, io, sys, csv, time
+# scripts/bootstrap_jpx_universe.py
+# JPX銘柄ユニバースを作成（優先度: repo > JPX公式 > StockAnalysis > シード）
+import re, io, sys, csv, time
 from pathlib import Path
+
 import requests
 import pandas as pd
 
@@ -23,112 +25,114 @@ SEED = [
     ("8591","オリックス"),("8766","東京海上ホールディングス"),
     ("8316","三井住友フィナンシャルグループ"),("8411","みずほフィナンシャルグループ"),
     ("6902","デンソー"),("8031","三井物産"),("8058","三菱商事"),
-    ("2914","日本たばこ産業"),("4503","アステラス製薬"),("6861","キーエンス"),
-    ("7741","HOYA"),("4661","オリエンタルランド"),("3382","セブン&アイ・ホールディングス"),
+    ("2914","日本たばこ産業"),("4503","アステラス製薬"),("7741","HOYA"),
+    ("4661","オリエンタルランド"),("3382","セブン&アイ・ホールディングス"),
     ("9020","東日本旅客鉄道"),("9022","東海旅客鉄道"),("6869","シスメックス"),
-    ("5108","ブリヂストン"),("7205","日野自動車"),("6901","澤藤電機"),
-    ("6501","日立製作所"),("6502","東芝"),("3402","東レ")
+    ("5108","ブリヂストン"),("6501","日立製作所"),("6502","東芝"),("3402","東レ")
 ]
 
-def write_outputs(rows):
-    codes = [c for c,_ in rows]
-    TICKERS_TXT.write_text("\n".join(codes), encoding="utf-8")
+def _write(rows: list[tuple[str,str]]) -> None:
+    # 重複除去・4桁コードのみ
+    seen, cleaned = set(), []
+    for c,n in rows:
+        c = str(c).strip()
+        n = str(n).strip()
+        if not re.fullmatch(r"\d{4}", c): continue
+        if c in seen: continue
+        seen.add(c); cleaned.append((c, n))
+    if not cleaned:
+        raise RuntimeError("no rows to write")
+    # 保存
+    TICKERS_TXT.write_text("\n".join([c for c,_ in cleaned]), encoding="utf-8")
     with NAMES_CSV.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f); w.writerow(["ticker","name"])
-        for c,n in rows: w.writerow([c,n])
+        for c,n in cleaned: w.writerow([c,n])
+    print(f"OK: {len(cleaned)} tickers -> {TICKERS_TXT} / {NAMES_CSV}")
 
-def from_jpx():
+def from_repo() -> bool:
+    # public/jpx/jpx_universe.csv（任意）を最優先で読む
+    for p in [Path("public/jpx/jpx_universe.csv"), Path("public/jpx_universe.csv")]:
+        if not p.exists(): continue
+        try:
+            df = pd.read_csv(p)
+            cols = {c.lower(): c for c in df.columns}
+            c_code = cols.get("ticker") or cols.get("code")
+            c_name = cols.get("name") or cols.get("name_ja") or cols.get("jp_name")
+            if not c_code: continue
+            if not c_name:
+                df["__name"] = ""; c_name = "__name"
+            rows = [(str(x), str(y)) for x,y in zip(df[c_code], df[c_name])]
+            _write(rows); print(f"via repo: {p}")
+            return True
+        except Exception:
+            continue
+    return False
+
+def _jpx_xls_url() -> str | None:
     try:
         html = requests.get(JPX_PAGE, headers=UA, timeout=30).text
         m = re.search(r'href="([^"]+/att/[^"]+\.(?:xlsx|xls))"', html)
-        if not m: return False
-        url = "https://www.jpx.co.jp" + m.group(1)
+        return ("https://www.jpx.co.jp" + m.group(1)) if m else None
+    except Exception:
+        return None
+
+def from_jpx() -> bool:
+    url = _jpx_xls_url()
+    if not url: return False
+    try:
         bin = requests.get(url, headers=UA, timeout=60).content
         xf = pd.ExcelFile(io.BytesIO(bin))
         df = None
         for sh in xf.sheet_names:
             t = xf.parse(sh)
             cols = "".join(map(str, t.columns))
-            if re.search(r'コード', cols) and re.search(r'銘柄名', cols):
+            if re.search(r"コード", cols) and re.search(r"銘柄名", cols):
                 df = t; break
         if df is None: return False
-        col_code = next(c for c in df.columns if re.search(r'コード', str(c)))
-        col_name = next(c for c in df.columns if re.search(r'銘柄名', str(c)))
-        # ETF/REIT/ETN/インフラ 제외
-        maybe_mkt = next((c for c in df.columns if re.search(r'市場|区分', str(c))), None)
-        if maybe_mkt is not None:
-            df = df[~df[maybe_mkt].astype(str).str.contains("ETF|ETN|REIT|インフラ", regex=True, na=False)]
+        col_code = next(c for c in df.columns if re.search(r"コード", str(c)))
+        col_name = next(c for c in df.columns if re.search(r"銘柄名", str(c)))
+        # ETF/REIT/ETN/インフラ除外（列があれば）
+        mk_col = next((c for c in df.columns if re.search(r"市場|区分", str(c))), None)
+        if mk_col is not None:
+            df = df[~df[mk_col].astype(str).str.contains("ETF|ETN|REIT|インフラ", regex=True, na=False)]
         df = df[[col_code, col_name]].dropna()
-        df = df[df[col_code].astype(str).str.match(r'^\d{4}$')]
-        rows = [(str(int(c)), str(n).strip()) for c,n in df.values]
-        if not rows: return False
-        write_outputs(rows)
+        rows = [(str(int(c)), str(n)) for c,n in df.values if re.fullmatch(r"\d{4}", str(c))]
+        _write(rows); print(f"via JPX: {url}")
         return True
     except Exception:
         return False
 
-def from_stockanalysis():
+def from_stockanalysis() -> bool:
     try:
         all_rows = []
-        for page in range(1, 60):
+        for page in range(1, 80):
             url = STOCKANALYSIS + (f"?p={page}" if page > 1 else "")
             r = requests.get(url, headers=UA, timeout=30)
             if r.status_code != 200: break
-            # <a href="/stocks/7203.T/">7203</a></td><td>Company Name</td>
-            rows = re.findall(r'/stocks/(\d{4})\.T/.*?</a>\s*</td>\s*<td[^>]*>([^<]+)</td>',
-                              r.text, flags=re.S)
+            rows = re.findall(r'/stocks/(\d{4})\.T/.*?</a>\s*</td>\s*<td[^>]*>([^<]+)</td>', r.text, flags=re.S)
             if not rows: break
-            all_rows.extend((c.strip(), n.strip()) for c,n in rows)
+            all_rows += [(c.strip(), n.strip()) for c,n in rows]
             time.sleep(0.25)
         if not all_rows: return False
-        # 영어 이름만 제공 → name은 일단 영문
-        # 중복 제거
-        seen, rows = set(), []
+        # 重複除去
+        seen, uniq = set(), []
         for c,n in all_rows:
-            if c not in seen:
-                seen.add(c); rows.append((c,n))
-        write_outputs(rows)
+            if c in seen: continue
+            seen.add(c); uniq.append((c,n))
+        _write(uniq); print(f"via StockAnalysis ({len(uniq)})")
         return True
     except Exception:
         return False
 
-def from_repo():
-    # 다양한 컬럼명 대응: ticker/code, name/name_ja/jp_name
-    p = Path("public/jpx/jpx_universe.csv")
-    if not p.exists():
-        return False
-    try:
-        import pandas as pd
-        df = pd.read_csv(p)
-        cols = {c.lower(): c for c in df.columns}
-        c_code = cols.get("ticker") or cols.get("code")
-        c_name = cols.get("name") or cols.get("name_ja") or cols.get("jp_name")
-        if not c_code:
-            return False
-        if c_name is None:
-            # 이름 없으면 공란으로
-            df["__name"] = ""
-            c_name = "__name"
-        # 4자리 코드만
-        df = df[df[c_code].astype(str).str.match(r"^\d{4}$")]
-        rows = [(str(int(c)), str(n)) for c, n in zip(df[c_code], df[c_name])]
-        if not rows:
-            return False
-        write_outputs(rows)
-        return True
-    except Exception:
-        return False
-        
-def from_seed():
-    write_outputs(SEED); return True
+def from_seed() -> bool:
+    _write(SEED); print("via SEED"); return True
 
 def main():
-    for fn in (from_jpx, from_stockanalysis, from_repo, from_seed):
+    for fn in (from_repo, from_jpx, from_stockanalysis, from_seed):
         if fn():
-            print(f"OK: universe built via {fn.__name__}")
-            print(f" -> {TICKERS_TXT} / {NAMES_CSV}")
             return
-    print("ERROR: JPX/backup 소스에서 종목 리스트를取得失敗", file=sys.stderr); sys.exit(1)
+    print("ERROR: JPX universe build failed", file=sys.stderr)
+    sys.exit(1)
 
 if __name__ == "__main__":
     main()
