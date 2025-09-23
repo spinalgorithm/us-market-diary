@@ -16,14 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -52,23 +50,23 @@ jobs:
         env:
           MIN_PRICE_JPY: "1000"
         run: |
-          set -e
           python fetch_jpx_toplists.py
           echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
           echo "bundle -> $BUNDLE_JPX"
 
       - name: Preflight size guard
+        id: preflight
         run: |
-          python - <<'PY'
-import json, os
-p=os.environ["BUNDLE_JPX"]
-n=len(json.load(open(p))["lists"]["universe_top600_by_dollar"])
-print("UNIVERSE_SIZE", n)
-open(os.environ["GITHUB_ENV"], "a").write(f"SKIP_LLM={'1' if n<200 else '0'}\n")
-PY
+          N=$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(len(d['lists']['universe_top600_by_dollar']))" "$BUNDLE_JPX")
+          echo "UNIVERSE_SIZE=$N"
+          if [ "$N" -lt 200 ]; then
+            echo "skip_llm=1" >> $GITHUB_OUTPUT
+          else
+            echo "skip_llm=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Summarize with GPT-5 (JP)
-        if: env.SKIP_LLM == '0'
+        if: steps.preflight.outputs.skip_llm == '0'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
@@ -78,25 +76,14 @@ PY
           python summarize_with_openai.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
 
       - name: Fallback summary (universe small)
-        if: env.SKIP_LLM == '1'
+        if: steps.preflight.outputs.skip_llm == '1'
         run: |
-          python - <<'PY'
-import json,os
-b=os.environ["BUNDLE_JPX"]; d=json.load(open(b))
-open("note_post_llm_jpx.md","w",encoding="utf-8").write(
-  f"# 取引代金上位600日本株 デイリー要約 | {d['date']}\n\n"
-  "(ユニバース不足のため簡易出力)\n"
-)
-PY
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); open('note_post_llm_jpx.md','w',encoding='utf-8').write('# 取引代金上位600日本株 デイリー要約 | '+d['date']+'\n\n(ユニバース不足のため簡易出力)\n')" "$BUNDLE_JPX"
 
       - name: Publish to public/jpx/
         run: |
-          set -e
           mkdir -p public/jpx
-          DATE=$(python - <<'PY'
-import json,sys; print(json.load(open(sys.argv[1]))["date"])
-PY
-"$BUNDLE_JPX")
+          DATE=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['date'])" "$BUNDLE_JPX")
           cp note_post_llm_jpx.md public/jpx/latest.md
           cp "$BUNDLE_JPX"        public/jpx/latest.json
           cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
