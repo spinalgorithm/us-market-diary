@@ -1,98 +1,88 @@
-name: build-daily-jpx
-
+name: daily-jpx
 on:
   schedule:
-    - cron: '35 6 * * 1-5'   # JST 15:35 前後
+    - cron: "35 20 * * 1-5"   # JP 장 마감 후 KST 새벽에 맞게 조정
   workflow_dispatch:
 
 permissions:
   contents: write
 
-concurrency:
-  group: daily-jpx-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build:
+  jpx:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas requests xlrd openpyxl lxml openai
+          pip install pandas yfinance requests lxml openai
 
-      - name: Bootstrap JPX universe (codes + names)
+      # JPX 유니버스/이름 자동 생성
+      - name: Bootstrap JPX universe
         run: |
           python scripts/bootstrap_jpx_universe.py
-          echo "tickers: $(wc -l < data/jpx_tickers.txt)"
-          head -n 3 data/jpx_tickers.txt || true
-          head -n 3 data/jpx_names.csv   || true
+          ls -l data/
 
-      - name: Commit JPX universe files
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@users.noreply.github.com"
-          git add -f data/jpx_tickers.txt data/jpx_names.csv || true
-          git commit -m "chore(data): update JPX universe $(date -u +'%F')" || true
-          git pull --rebase origin main || true
-          git push || true
-
-      - name: Generate JP bundle (yfinance)
+      # Top600 등 번들 생성
+      - name: Build JPX toplists
         env:
           MIN_PRICE_JPY: "1000"
         run: |
           python fetch_jpx_toplists.py
-          echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
-          echo "bundle -> $BUNDLE_JPX"
+          echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> "$GITHUB_ENV"
 
-      - name: Preflight size guard
-        id: preflight
+      - name: Read bundle date
         run: |
-          N=$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(len(d['lists']['universe_top600_by_dollar']))" "$BUNDLE_JPX")
-          echo "UNIVERSE_SIZE=$N"
-          if [ "$N" -lt 200 ]; then
-            echo "skip_llm=1" >> $GITHUB_OUTPUT
-          else
-            echo "skip_llm=0" >> $GITHUB_OUTPUT
-          fi
+          python - <<'PY' > __date.env
+import json,os
+p=os.environ["BUNDLE_JPX"]
+d=json.load(open(p,encoding="utf-8"))
+print("DATE="+d["date"])
+PY
+          cat __date.env >> "$GITHUB_ENV"
+
+      - id: preflight
+        name: Preflight size guard
+        run: |
+          python - <<'PY' > __pf.env
+import json,os
+d=json.load(open(os.environ["BUNDLE_JPX"],encoding="utf-8"))
+n=len(d.get("lists",{}).get("universe_top600_by_dollar",[]))
+print("skip_llm=" + ("1" if n<100 else "0"))
+PY
+          cat __pf.env >> "$GITHUB_OUTPUT"
 
       - name: Summarize with GPT-5 (JP)
         if: steps.preflight.outputs.skip_llm == '0'
         env:
-         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-         OPENAI_MODEL: gpt-5
-         OPENAI_MAX_OUTPUT_TOKENS: "7000"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5
+          OPENAI_MAX_OUTPUT_TOKENS: "8000"
+          HEADER_PREFIX: "取引代金上位600日本株"
+          MIN_PRICE_JPY: "1000"
         run: |
           python summarize_with_openai_jp.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
 
-      - name: Fallback summary (universe small)
-        if: steps.preflight.outputs.skip_llm == '1'
-        run: |
-          python -c "import json,sys; d=json.load(open(sys.argv[1])); open('note_post_llm_jpx.md','w',encoding='utf-8').write('# 取引代金上位600日本株 デイリー要約 | '+d['date']+'\n\n(ユニバース不足のため簡易出力)\n')" "$BUNDLE_JPX"
-
-      - name: Publish to public/jpx/
+      - name: Publish to public/jpx
         run: |
           mkdir -p public/jpx
-          DATE=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['date'])" "$BUNDLE_JPX")
-          cp note_post_llm_jpx.md public/jpx/latest.md
-          cp "$BUNDLE_JPX"        public/jpx/latest.json
-          cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
-          cp "$BUNDLE_JPX"        "public/jpx/${DATE}.json"
+          cp "$BUNDLE_JPX" "public/jpx/${DATE}.json"
+          cp "$BUNDLE_JPX" public/jpx/latest.json
+          if [ -f note_post_llm_jpx.md ]; then
+            cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
+            cp note_post_llm_jpx.md public/jpx/latest.md
+          fi
 
-      - name: Commit and push site artifacts
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add public/jpx note_post_llm_jpx.md || true
-          git commit -m "daily-jpx: $(date -u +'%Y-%m-%d')" || true
-          git pull --rebase origin main || true
-          git push || true
+          git pull --rebase
+          git add public/jpx data/*.csv data/*.txt out_jpx || true
+          git commit -m "JPX daily: ${DATE}" || true
+          git push
