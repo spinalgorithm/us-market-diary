@@ -1,73 +1,89 @@
 #!/usr/bin/env python3
-import os, sys, csv, json, time, argparse, datetime as dt
+import os, sys, csv, json, time, argparse
 from pathlib import Path
-
 import pandas as pd
 import yfinance as yf
 
 BATCH = 100
-MIN_PRICE_JPY = float(os.getenv("MIN_PRICE_JPY", "1000"))  # 상승/하락 Top10 최저가 필터
+MIN_PRICE_JPY = float(os.getenv("MIN_PRICE_JPY", "1000"))
 
 def load_universe():
     p = Path("data/jpx_tickers.txt")
     if p.exists():
         codes = [x.strip() for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
     else:
-        # 최소 시드(작동 보장용). 실제 운용은 data/jpx_tickers.txt 채워라.
-        codes = ["7203","6758","9984","9432","9983","8306","8035","6861","4063","4502","6954","7974","8591","8766","6367","7267","7269","7751","7735","7201"]
+        # fallback 최소 시드
+        codes = ["7203","6758","9984","9432","9983","8306","8035","6861","4063","4502","6954",
+                 "7974","8591","8766","6367","7267","7269","7751","7735","7201"]
     return [c + ".T" for c in codes]
+
+def load_name_map():
+    """data/jpx_names.csv -> { '8035': '東京エレクトロン', ... }"""
+    m = {}
+    p = Path("data/jpx_names.csv")
+    if p.exists():
+        with p.open("r", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            for row in r:
+                code = (row.get("ticker") or row.get("code") or "").strip()
+                name = (row.get("name") or row.get("name_ja") or row.get("jp_name") or "").strip()
+                if code:
+                    m[code] = name
+    return m
+
+def apply_names(rows, name_map):
+    for r in rows:
+        code = r.get("ticker")
+        if code in name_map:
+            r["name"] = name_map[code]
+    return rows
 
 def batched(seq, n):
     for i in range(0, len(seq), n):
         yield seq[i:i+n]
 
 def fetch_batch(tickers):
-    # 2영업일 히스토리로 전일 대비 % 계산
     df = yf.download(
-        tickers=tickers,
-        period="3d", interval="1d",
+        tickers=tickers, period="3d", interval="1d",
         group_by="ticker", auto_adjust=False, progress=False, threads=True
     )
     out = []
-    # yfinance는 단일/복수에 따라 형태가 달라서 분기 처리
     if isinstance(df.columns, pd.MultiIndex):
         for t in tickers:
-            if t not in df.columns.get_level_values(0):  # 일부 실패 가능
+            if t not in df.columns.get_level_values(0): 
                 continue
             cdf = df[t].dropna()
-            if cdf.empty or len(cdf) < 2:  # 최소 2일 필요
+            if len(cdf) < 2:
                 continue
-            last = cdf.iloc[-1]
-            prev = cdf.iloc[-2]
-            o = float(last.get("Open", float("nan")))
-            c = float(last.get("Close", float("nan")))
+            last, prev = cdf.iloc[-1], cdf.iloc[-2]
+            o = float(last.get("Open", float("nan"))); c = float(last.get("Close", float("nan")))
             v = float(last.get("Volume", float("nan")))
-            p = None
-            if prev.get("Close") and prev["Close"] != 0 and pd.notna(prev["Close"]) and pd.notna(c):
-                p = (c - prev["Close"]) / prev["Close"]
             if pd.isna(c) or pd.isna(v):
                 continue
-            dv = v * c  # JPY 기준 거래대금
+            p = None
+            if prev.get("Close") and prev["Close"] != 0 and pd.notna(prev["Close"]):
+                p = (c - prev["Close"]) / prev["Close"]
+            dv = v * c  # 円建て
             out.append({"ticker": t.replace(".T",""), "open": o, "close": c, "volume": v,
                         "dollar_volume": dv, "pct_change": p})
+        dtidx = df.index
     else:
-        # 단일 티커 케이스
         cdf = df.dropna()
-        if not cdf.empty and len(cdf) >= 2:
-            last = cdf.iloc[-1]; prev = cdf.iloc[-2]
+        dtidx = df.index
+        if len(cdf) >= 2:
+            last, prev = cdf.iloc[-1], cdf.iloc[-2]
             t = tickers[0]
-            o = float(last.get("Open", float("nan")))
-            c = float(last.get("Close", float("nan")))
+            o = float(last.get("Open", float("nan"))); c = float(last.get("Close", float("nan")))
             v = float(last.get("Volume", float("nan")))
-            p = None
-            if prev.get("Close") and prev["Close"] != 0 and pd.notna(prev["Close"]) and pd.notna(c):
-                p = (c - prev["Close"]) / prev["Close"]
-            if pd.isna(c) or pd.isna(v):
-                return out
-            dv = v * c
-            out.append({"ticker": t.replace(".T",""), "open": o, "close": c, "volume": v,
-                        "dollar_volume": dv, "pct_change": p})
-    return out, df.index[-1].date() if not df.empty else None
+            if not(pd.isna(c) or pd.isna(v)):
+                p = None
+                if prev.get("Close") and prev["Close"] != 0 and pd.notna(prev["Close"]):
+                    p = (c - prev["Close"]) / prev["Close"]
+                dv = v * c
+                out.append({"ticker": t.replace(".T",""), "open": o, "close": c, "volume": v,
+                            "dollar_volume": dv, "pct_change": p})
+    last_date = dtidx[-1].date() if len(dtidx) > 0 else None
+    return out, last_date
 
 def ensure_out(date_str: str) -> Path:
     p = Path("out_jpx") / date_str
@@ -83,20 +99,21 @@ def main():
     ap = argparse.ArgumentParser()
     args = ap.parse_args()
 
+    name_map = load_name_map()
+    print(f"[DBG] names loaded: {len(name_map)}")
     tickers = load_universe()
-    rows = []
-    last_date = None
+    print(f"[DBG] tickers loaded: {len(tickers)}")
 
+    rows, last_date = [], None
     for chunk in batched(tickers, BATCH):
         try:
             r, d = fetch_batch(chunk)
             rows.extend(r)
             if d: last_date = d
         except Exception as e:
-            # 야후 제한 완화
-            time.sleep(2)
+            time.sleep(1.2)
             continue
-        time.sleep(0.8)  # 레이트 한도 보호
+        time.sleep(0.6)
 
     if not rows or not last_date:
         print("ERROR: no data", file=sys.stderr); sys.exit(2)
@@ -104,20 +121,29 @@ def main():
     date_str = last_date.strftime("%Y-%m-%d")
     outdir = ensure_out(date_str)
 
-    # 랭킹 계산
     rows_dv = sorted([r for r in rows if r.get("dollar_volume")], key=lambda x: x["dollar_volume"], reverse=True)
-    top600 = rows_dv[:600]
+    top600   = rows_dv[:600]
     top10_dv = top600[:10]
     top10_vol = sorted([r for r in rows if r.get("volume")], key=lambda x: x["volume"], reverse=True)[:10]
-    pool_ge = [r for r in rows if r.get("close") and r["close"] >= MIN_PRICE_JPY and r.get("pct_change") is not None]
-    top10_g = sorted(pool_ge, key=lambda x: x["pct_change"], reverse=True)[:10]
-    top10_l = sorted(pool_ge, key=lambda x: x["pct_change"])[:10]
 
-    cols = ["ticker","open","close","volume","dollar_volume","pct_change"]
+    pool = [r for r in rows if r.get("close") and r["close"] >= MIN_PRICE_JPY and r.get("pct_change") is not None]
+    gains = [r for r in pool if r["pct_change"] > 0]
+    losses = [r for r in pool if r["pct_change"] < 0]
+    top10_g = sorted(gains,  key=lambda x: x["pct_change"], reverse=True)[:10]
+    top10_l = sorted(losses, key=lambda x: x["pct_change"])[:10]
+
+    # 이름 주입
+    apply_names(top600,   name_map)
+    apply_names(top10_dv, name_map)
+    apply_names(top10_vol,name_map)
+    apply_names(top10_g,  name_map)
+    apply_names(top10_l,  name_map)
+
+    cols = ["ticker","name","open","close","volume","dollar_volume","pct_change"]
     write_csv(outdir/"universe_top600_by_dollar.csv", top600, cols)
-    write_csv(outdir/"top10_dollar_value.csv", top10_dv, cols)
-    write_csv(outdir/"top10_volume.csv", top10_vol, cols)
-    write_csv(outdir/"top10_gainers_ge_minprice.csv", top10_g, cols)
+    write_csv(outdir/"top10_dollar_value.csv",       top10_dv, cols)
+    write_csv(outdir/"top10_volume.csv",             top10_vol, cols)
+    write_csv(outdir/"top10_gainers_ge_minprice.csv",top10_g, cols)
     write_csv(outdir/"top10_losers_ge_minprice.csv", top10_l, cols)
 
     bundle = {
@@ -129,7 +155,7 @@ def main():
             "universe_top600_by_dollar": top600,
             "top10_dollar_value": top10_dv,
             "top10_volume": top10_vol,
-            "top10_gainers_ge10": top10_g,   # 이름은 US와 호환 위해 유지
+            "top10_gainers_ge10": top10_g,
             "top10_losers_ge10": top10_l
         }
     }
