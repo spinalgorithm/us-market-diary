@@ -34,6 +34,9 @@ jobs:
       - name: Bootstrap JPX universe (codes + names)
         run: |
           python scripts/bootstrap_jpx_universe.py
+          echo "tickers: $(wc -l < data/jpx_tickers.txt)"
+          head -n 5 data/jpx_tickers.txt || true
+          head -n 5 data/jpx_names.csv   || true
 
       - name: Generate JP bundle (yfinance)
         env:
@@ -44,12 +47,15 @@ jobs:
           echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
           echo "BUNDLE_JPX path: $BUNDLE_JPX"
 
+ 
+
       - name: Summarize with GPT-5 (JP)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
-          OPENAI_MAX_OUTPUT_TOKENS: "6500"
-          HEADER_PREFIX: "取引代金上位600日本株"
+          OPENAI_MAX_OUTPUT_TOKENS: "8000"
+          HEADER_PREFIX: "取引代金上位600日本株"   # ← 강제 일본 헤더
+ 
         run: |
           set -e
           test -f "$BUNDLE_JPX" || (echo "Bundle not found: $BUNDLE_JPX" && exit 1)
