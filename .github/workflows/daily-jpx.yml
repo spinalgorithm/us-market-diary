@@ -2,7 +2,7 @@ name: build-daily-jpx
 
 on:
   schedule:
-    - cron: '35 6 * * 1-5'   # JST/KST 15:35 (UTC 06:35)
+    - cron: '35 6 * * 1-5'   # 平日 JP 市場引け後 (UTC 06:35 ≒ JST 15:35)
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,11 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas openai
+          pip install yfinance pandas requests xlrd openai
+
+      - name: Bootstrap JPX universe (codes + names)
+        run: |
+          python scripts/bootstrap_jpx_universe.py
 
       - name: Generate JP bundle (yfinance)
         env:
@@ -40,11 +44,12 @@ jobs:
           echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
           echo "BUNDLE_JPX path: $BUNDLE_JPX"
 
-      - name: Summarize with GPT-5 (JP equities)
+      - name: Summarize with GPT-5 (JP)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
           OPENAI_MAX_OUTPUT_TOKENS: "6500"
+          HEADER_PREFIX: "取引代金上位600日本株"
         run: |
           set -e
           test -f "$BUNDLE_JPX" || (echo "Bundle not found: $BUNDLE_JPX" && exit 1)
