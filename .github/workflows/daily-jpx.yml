@@ -68,12 +68,11 @@ jobs:
       - name: Summarize with GPT-5 (JP)
         if: steps.preflight.outputs.skip_llm == '0'
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: gpt-5
-          OPENAI_MAX_OUTPUT_TOKENS: "7000"
-          HEADER_PREFIX: "取引代金上位600日本株"
+         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+         OPENAI_MODEL: gpt-5
+         OPENAI_MAX_OUTPUT_TOKENS: "7000"
         run: |
-          python summarize_with_openai.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
+          python summarize_with_openai_jp.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
 
       - name: Fallback summary (universe small)
         if: steps.preflight.outputs.skip_llm == '1'
