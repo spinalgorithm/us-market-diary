@@ -93,18 +93,32 @@ def from_stockanalysis():
         return False
 
 def from_repo():
-    # public/jpx/jpx_universe.csv → ticker,name 열 기대
+    # 다양한 컬럼명 대응: ticker/code, name/name_ja/jp_name
     p = Path("public/jpx/jpx_universe.csv")
-    if not p.exists(): return False
+    if not p.exists():
+        return False
     try:
+        import pandas as pd
         df = pd.read_csv(p)
-        if "ticker" not in df.columns or "name" not in df.columns: return False
-        rows = [(str(int(t)) if str(t).isdigit() else str(t), str(n)) for t,n in zip(df["ticker"], df["name"])]
-        if not rows: return False
-        write_outputs(rows); return True
+        cols = {c.lower(): c for c in df.columns}
+        c_code = cols.get("ticker") or cols.get("code")
+        c_name = cols.get("name") or cols.get("name_ja") or cols.get("jp_name")
+        if not c_code:
+            return False
+        if c_name is None:
+            # 이름 없으면 공란으로
+            df["__name"] = ""
+            c_name = "__name"
+        # 4자리 코드만
+        df = df[df[c_code].astype(str).str.match(r"^\d{4}$")]
+        rows = [(str(int(c)), str(n)) for c, n in zip(df[c_code], df[c_name])]
+        if not rows:
+            return False
+        write_outputs(rows)
+        return True
     except Exception:
         return False
-
+        
 def from_seed():
     write_outputs(SEED); return True
 
