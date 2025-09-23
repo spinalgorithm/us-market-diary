@@ -2,7 +2,7 @@ name: build-daily-jpx
 
 on:
   schedule:
-    - cron: '35 6 * * 1-5'   # 平日 JP 市場引け後 (UTC 06:35 ≒ JST 15:35)
+    - cron: '35 6 * * 1-5'   # JST 15:35 前後
   workflow_dispatch:
 
 permissions:
@@ -16,7 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -29,14 +30,23 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas requests xlrd openai
+          pip install yfinance pandas requests xlrd openpyxl lxml openai
 
       - name: Bootstrap JPX universe (codes + names)
         run: |
           python scripts/bootstrap_jpx_universe.py
           echo "tickers: $(wc -l < data/jpx_tickers.txt)"
-          head -n 5 data/jpx_tickers.txt || true
-          head -n 5 data/jpx_names.csv   || true
+          head -n 3 data/jpx_tickers.txt || true
+          head -n 3 data/jpx_names.csv   || true
+
+      - name: Commit JPX universe files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f data/jpx_tickers.txt data/jpx_names.csv || true
+          git commit -m "chore(data): update JPX universe $(date -u +'%F')" || true
+          git pull --rebase origin main || true
+          git push || true
 
       - name: Generate JP bundle (yfinance)
         env:
@@ -45,38 +55,58 @@ jobs:
           set -e
           python fetch_jpx_toplists.py
           echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
-          echo "BUNDLE_JPX path: $BUNDLE_JPX"
+          echo "bundle -> $BUNDLE_JPX"
 
- 
+      - name: Preflight size guard
+        run: |
+          python - <<'PY'
+import json, os
+p=os.environ["BUNDLE_JPX"]
+n=len(json.load(open(p))["lists"]["universe_top600_by_dollar"])
+print("UNIVERSE_SIZE", n)
+open(os.environ["GITHUB_ENV"], "a").write(f"SKIP_LLM={'1' if n<200 else '0'}\n")
+PY
 
       - name: Summarize with GPT-5 (JP)
+        if: env.SKIP_LLM == '0'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
-          OPENAI_MAX_OUTPUT_TOKENS: "8000"
-          HEADER_PREFIX: "取引代金上位600日本株"   # ← 강제 일본 헤더
- 
+          OPENAI_MAX_OUTPUT_TOKENS: "7000"
+          HEADER_PREFIX: "取引代金上位600日本株"
         run: |
-          set -e
-          test -f "$BUNDLE_JPX" || (echo "Bundle not found: $BUNDLE_JPX" && exit 1)
           python summarize_with_openai.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
+
+      - name: Fallback summary (universe small)
+        if: env.SKIP_LLM == '1'
+        run: |
+          python - <<'PY'
+import json,os
+b=os.environ["BUNDLE_JPX"]; d=json.load(open(b))
+open("note_post_llm_jpx.md","w",encoding="utf-8").write(
+  f"# 取引代金上位600日本株 デイリー要約 | {d['date']}\n\n"
+  "(ユニバース不足のため簡易出力)\n"
+)
+PY
 
       - name: Publish to public/jpx/
         run: |
           set -e
           mkdir -p public/jpx
-          DATE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["date"])' "$BUNDLE_JPX")
+          DATE=$(python - <<'PY'
+import json,sys; print(json.load(open(sys.argv[1]))["date"])
+PY
+"$BUNDLE_JPX")
           cp note_post_llm_jpx.md public/jpx/latest.md
           cp "$BUNDLE_JPX"        public/jpx/latest.json
           cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
           cp "$BUNDLE_JPX"        "public/jpx/${DATE}.json"
 
-      - name: Commit and push (rebase)
+      - name: Commit and push site artifacts
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add public/jpx note_post_llm_jpx.md || true
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "daily-jpx: $(date -u +'%Y-%m-%d')"
-          git pull --rebase origin main
-          git push
+          git commit -m "daily-jpx: $(date -u +'%Y-%m-%d')" || true
+          git pull --rebase origin main || true
+          git push || true
