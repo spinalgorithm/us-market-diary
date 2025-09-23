@@ -3,7 +3,7 @@
   "market": "JP",
   "currency": "JPY",
   "counts": {
-    "total_rows": 3778,
+    "total_rows": 3776,
     "universe_top600_by_dollar": 600
   },
   "lists": {
@@ -15,7 +15,8 @@
         "volume": 30102000.0,
         "dollar_volume": 638011890000.0,
         "pct_change": 0.10476935105551212,
-        "name": "Lasertec Corporation"
+        "name": "Lasertec Corporation",
+        "themes": []
       },
       {
         "ticker": "8035",
@@ -24,7 +25,8 @@
         "volume": 9058500.0,
         "dollar_volume": 240956100000.0,
         "pct_change": 0.038656774697383836,
-        "name": "Tokyo Electron Ltd."
+        "name": "Tokyo Electron Ltd.",
+        "themes": []
       },
       {
         "ticker": "6146",
@@ -33,7 +35,8 @@
         "volume": 4066100.0,
         "dollar_volume": 193830987000.0,
         "pct_change": 0.001260239445494644,
-        "name": "Disco Corporation"
+        "name": "Disco Corporation",
+        "themes": []
       },
       {
         "ticker": "6857",
@@ -42,7 +45,8 @@
         "volume": 12388300.0,
         "dollar_volume": 192018650000.0,
         "pct_change": 0.03195739014647137,
-        "name": "Advantest Corporation"
+        "name": "Advantest Corporation",
+        "themes": []
       },
       {
         "ticker": "9984",
@@ -51,7 +55,8 @@
         "volume": 9753100.0,
         "dollar_volume": 174873083000.0,
         "pct_change": -0.024217687074829932,
-        "name": "SoftBank Group Corp."
+        "name": "SoftBank Group Corp.",
+        "themes": []
       },
       {
         "ticker": "8306",
@@ -60,7 +65,8 @@
         "volume": 43209500.0,
         "dollar_volume": 102363305500.0,
         "pct_change": 0.01174460815716421,
-        "name": "Mitsubishi UFJ Financial Group, Inc."
+        "name": "Mitsubishi UFJ Financial Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "5803",
@@ -69,7 +75,8 @@
         "volume": 6479800.0,
         "dollar_volume": 92337150000.0,
         "pct_change": 0.01967799642218247,
-        "name": "Fujikura Ltd."
+        "name": "Fujikura Ltd.",
+        "themes": []
       },
       {
         "ticker": "7974",
@@ -78,7 +85,8 @@
         "volume": 5838200.0,
         "dollar_volume": 74115949000.0,
         "pct_change": -0.008203125,
-        "name": "Nintendo Co., Ltd."
+        "name": "Nintendo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6501",
@@ -87,7 +95,8 @@
         "volume": 18896900.0,
         "dollar_volume": 72696374300.0,
         "pct_change": -0.0041418586590732595,
-        "name": "Hitachi Ltd."
+        "name": "Hitachi Ltd.",
+        "themes": []
       },
       {
         "ticker": "7011",
@@ -96,7 +105,8 @@
         "volume": 18661600.0,
         "dollar_volume": 68712011200.0,
         "pct_change": -0.004326663061114116,
-        "name": "Mitsubishi Heavy Industries Ltd."
+        "name": "Mitsubishi Heavy Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "6526",
@@ -105,7 +115,8 @@
         "volume": 21744800.0,
         "dollar_volume": 64310246000.0,
         "pct_change": 0.07408752496822227,
-        "name": "Socionext Inc."
+        "name": "Socionext Inc.",
+        "themes": []
       },
       {
         "ticker": "9501",
@@ -114,7 +125,8 @@
         "volume": 92079400.0,
         "dollar_volume": 60763198308.03223,
         "pct_change": -0.037485344350998456,
-        "name": "Tokyo Electric Power Company Holdings, Inc."
+        "name": "Tokyo Electric Power Company Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "9983",
@@ -123,7 +135,8 @@
         "volume": 1244900.0,
         "dollar_volume": 58012340000.0,
         "pct_change": 0.019247594050743656,
-        "name": "Fast Retailing Co. Ltd."
+        "name": "Fast Retailing Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "6758",
@@ -132,7 +145,8 @@
         "volume": 12485200.0,
         "dollar_volume": 54810028000.0,
         "pct_change": 0.01596852580421199,
-        "name": "Sony Group Corp."
+        "name": "Sony Group Corp.",
+        "themes": []
       },
       {
         "ticker": "7203",
@@ -141,7 +155,8 @@
         "volume": 18457400.0,
         "dollar_volume": 54707733600.0,
         "pct_change": 0.014026684912760863,
-        "name": "Toyota Motor Corporation"
+        "name": "Toyota Motor Corporation",
+        "themes": []
       },
       {
         "ticker": "8136",
@@ -150,7 +165,8 @@
         "volume": 7684200.0,
         "dollar_volume": 51215193000.0,
         "pct_change": -0.019564577817005,
-        "name": "Sanrio Co., Ltd."
+        "name": "Sanrio Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5801",
@@ -159,7 +175,8 @@
         "volume": 5446000.0,
         "dollar_volume": 48817944000.0,
         "pct_change": 0.0007815116668527409,
-        "name": "Furukawa Electric Co., Ltd."
+        "name": "Furukawa Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6525",
@@ -168,7 +185,8 @@
         "volume": 10443300.0,
         "dollar_volume": 46785984000.0,
         "pct_change": 0.06590530573399953,
-        "name": "Kokusai Electric Corporation"
+        "name": "Kokusai Electric Corporation",
+        "themes": []
       },
       {
         "ticker": "8316",
@@ -177,7 +195,8 @@
         "volume": 11091000.0,
         "dollar_volume": 46438017000.0,
         "pct_change": 0.009645526886906198,
-        "name": "Sumitomo Mitsui Financial Group, Inc."
+        "name": "Sumitomo Mitsui Financial Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "7012",
@@ -186,7 +205,8 @@
         "volume": 4548300.0,
         "dollar_volume": 43267977900.0,
         "pct_change": 0.005921539600296077,
-        "name": "Kawasaki Heavy Industries, Ltd."
+        "name": "Kawasaki Heavy Industries, Ltd.",
+        "themes": []
       },
       {
         "ticker": "7013",
@@ -195,7 +215,8 @@
         "volume": 2623200.0,
         "dollar_volume": 42351564000.0,
         "pct_change": 0.0003097893432465923,
-        "name": "IHI Corporation"
+        "name": "IHI Corporation",
+        "themes": []
       },
       {
         "ticker": "3350",
@@ -204,7 +225,8 @@
         "volume": 71681500.0,
         "dollar_volume": 42220403500.0,
         "pct_change": -0.03125,
-        "name": "Metaplanet Inc."
+        "name": "Metaplanet Inc.",
+        "themes": []
       },
       {
         "ticker": "8411",
@@ -213,7 +235,8 @@
         "volume": 8509700.0,
         "dollar_volume": 41969840400.0,
         "pct_change": 0.018166804293971925,
-        "name": "Mizuho Financial Group, Inc."
+        "name": "Mizuho Financial Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "4062",
@@ -222,7 +245,8 @@
         "volume": 4250200.0,
         "dollar_volume": 38362305200.0,
         "pct_change": 0.056043056043056046,
-        "name": "Ibiden Co., Ltd."
+        "name": "Ibiden Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6098",
@@ -231,7 +255,8 @@
         "volume": 4503000.0,
         "dollar_volume": 35893413000.0,
         "pct_change": 0.005170239596469105,
-        "name": "Recruit Holdings Co., Ltd."
+        "name": "Recruit Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3436",
@@ -240,7 +265,8 @@
         "volume": 22101100.0,
         "dollar_volume": 34930788550.0,
         "pct_change": 0.07736877982276755,
-        "name": "Sumco Corporation"
+        "name": "Sumco Corporation",
+        "themes": []
       },
       {
         "ticker": "9104",
@@ -249,7 +275,8 @@
         "volume": 7370200.0,
         "dollar_volume": 34418834000.0,
         "pct_change": -0.02219430485762144,
-        "name": "Mitsui O.S.K. Lines, Ltd."
+        "name": "Mitsui O.S.K. Lines, Ltd.",
+        "themes": []
       },
       {
         "ticker": "6315",
@@ -258,7 +285,8 @@
         "volume": 14338600.0,
         "dollar_volume": 34197561000.0,
         "pct_change": 0.06473214285714286,
-        "name": "Towa Corporation"
+        "name": "Towa Corporation",
+        "themes": []
       },
       {
         "ticker": "4063",
@@ -267,7 +295,8 @@
         "volume": 7109000.0,
         "dollar_volume": 33511826000.0,
         "pct_change": 0.01770293609671848,
-        "name": "Shin-Etsu Chemical Co. Ltd."
+        "name": "Shin-Etsu Chemical Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "6981",
@@ -276,7 +305,8 @@
         "volume": 11821400.0,
         "dollar_volume": 33170848400.0,
         "pct_change": 0.07674597083653108,
-        "name": "Murata Manufacturing Co., Ltd."
+        "name": "Murata Manufacturing Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6861",
@@ -285,7 +315,8 @@
         "volume": 576300.0,
         "dollar_volume": 32272800000.0,
         "pct_change": 0.0048447873676655305,
-        "name": "Keyence Corporation"
+        "name": "Keyence Corporation",
+        "themes": []
       },
       {
         "ticker": "8058",
@@ -294,7 +325,8 @@
         "volume": 8845600.0,
         "dollar_volume": 31844160000.0,
         "pct_change": 0.008120974516942034,
-        "name": "Mitsubishi Corporation"
+        "name": "Mitsubishi Corporation",
+        "themes": []
       },
       {
         "ticker": "6273",
@@ -303,7 +335,8 @@
         "volume": 704400.0,
         "dollar_volume": 31345800000.0,
         "pct_change": 0.002026570592208962,
-        "name": "SMC Corporation"
+        "name": "SMC Corporation",
+        "themes": []
       },
       {
         "ticker": "7741",
@@ -312,7 +345,8 @@
         "volume": 1397500.0,
         "dollar_volume": 29305575000.0,
         "pct_change": 0.022926829268292682,
-        "name": "Hoya Corporation"
+        "name": "Hoya Corporation",
+        "themes": []
       },
       {
         "ticker": "5016",
@@ -321,7 +355,8 @@
         "volume": 17837200.0,
         "dollar_volume": 29038961600.0,
         "pct_change": -0.00640830027464144,
-        "name": "JX Advanced Metals Corp"
+        "name": "JX Advanced Metals Corp",
+        "themes": []
       },
       {
         "ticker": "9101",
@@ -330,7 +365,8 @@
         "volume": 5351800.0,
         "dollar_volume": 28685648000.0,
         "pct_change": -0.015610651974288337,
-        "name": "Nippon Yusen Kabushiki Kaisha"
+        "name": "Nippon Yusen Kabushiki Kaisha",
+        "themes": []
       },
       {
         "ticker": "7453",
@@ -339,7 +375,8 @@
         "volume": 9196200.0,
         "dollar_volume": 27386283600.0,
         "pct_change": -0.024246395806028834,
-        "name": "Ryohin Keikaku Co., Ltd."
+        "name": "Ryohin Keikaku Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6594",
@@ -348,7 +385,8 @@
         "volume": 10006300.0,
         "dollar_volume": 27327205300.0,
         "pct_change": 0.019029850746268655,
-        "name": "Nidec Corporation"
+        "name": "Nidec Corporation",
+        "themes": []
       },
       {
         "ticker": "7735",
@@ -357,7 +395,8 @@
         "volume": 1866500.0,
         "dollar_volume": 25953682500.0,
         "pct_change": 0.009437386569872959,
-        "name": "Screen Holdings Co., Ltd."
+        "name": "Screen Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9107",
@@ -366,7 +405,8 @@
         "volume": 11519300.0,
         "dollar_volume": 25762914450.0,
         "pct_change": -0.019938650306748466,
-        "name": "Kawasaki Kisen Kaisha Ltd."
+        "name": "Kawasaki Kisen Kaisha Ltd.",
+        "themes": []
       },
       {
         "ticker": "3905",
@@ -375,7 +415,8 @@
         "volume": 10675900.0,
         "dollar_volume": 25590132300.0,
         "pct_change": 0.13601895734597155,
-        "name": "Datasection Inc."
+        "name": "Datasection Inc.",
+        "themes": []
       },
       {
         "ticker": "8031",
@@ -384,7 +425,8 @@
         "volume": 6392700.0,
         "dollar_volume": 24126049800.0,
         "pct_change": 0.01342642320085929,
-        "name": "Mitsui & Co., Ltd."
+        "name": "Mitsui & Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9433",
@@ -393,7 +435,10 @@
         "volume": 9725900.0,
         "dollar_volume": 23682566500.0,
         "pct_change": -0.013970439360194372,
-        "name": "KDDI Corporation"
+        "name": "KDDI Corporation",
+        "themes": [
+          "通信"
+        ]
       },
       {
         "ticker": "6723",
@@ -402,7 +447,8 @@
         "volume": 12715400.0,
         "dollar_volume": 23472628400.0,
         "pct_change": 0.04559614839988672,
-        "name": "Renesas Electronics Corporation"
+        "name": "Renesas Electronics Corporation",
+        "themes": []
       },
       {
         "ticker": "9432",
@@ -411,7 +457,8 @@
         "volume": 140157800.0,
         "dollar_volume": 22172963532.27234,
         "pct_change": 0.0012658034698872626,
-        "name": "Nippon Telegraph and Telephone Corporation"
+        "name": "Nippon Telegraph and Telephone Corporation",
+        "themes": []
       },
       {
         "ticker": "4004",
@@ -420,7 +467,8 @@
         "volume": 3930500.0,
         "dollar_volume": 21165742500.0,
         "pct_change": 0.053816046966731895,
-        "name": "Resonac Holdings Corporation"
+        "name": "Resonac Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "4568",
@@ -429,7 +477,8 @@
         "volume": 6131700.0,
         "dollar_volume": 21105311400.0,
         "pct_change": -0.028506915043748235,
-        "name": "Daiichi Sankyo Co., Ltd."
+        "name": "Daiichi Sankyo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8001",
@@ -438,7 +487,8 @@
         "volume": 2375200.0,
         "dollar_volume": 20747372000.0,
         "pct_change": 0.004022988505747126,
-        "name": "Itochu Corporation"
+        "name": "Itochu Corporation",
+        "themes": []
       },
       {
         "ticker": "8766",
@@ -447,7 +497,8 @@
         "volume": 3058300.0,
         "dollar_volume": 19187774200.0,
         "pct_change": -0.008220044261776794,
-        "name": "Tokio Marine Holdings, Inc."
+        "name": "Tokio Marine Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "3563",
@@ -456,7 +507,8 @@
         "volume": 2336500.0,
         "dollar_volume": 19103224000.0,
         "pct_change": 0.03546099290780142,
-        "name": "Food & Life Companies Ltd."
+        "name": "Food & Life Companies Ltd.",
+        "themes": []
       },
       {
         "ticker": "7003",
@@ -465,7 +517,8 @@
         "volume": 4241800.0,
         "dollar_volume": 18345785000.0,
         "pct_change": 0.01645123384253819,
-        "name": "Mitsui E&S Co., Ltd."
+        "name": "Mitsui E&S Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6762",
@@ -474,7 +527,8 @@
         "volume": 8345800.0,
         "dollar_volume": 18160460800.0,
         "pct_change": 0.04164672091910005,
-        "name": "TDK Corporation"
+        "name": "TDK Corporation",
+        "themes": []
       },
       {
         "ticker": "4452",
@@ -483,7 +537,8 @@
         "volume": 2743800.0,
         "dollar_volume": 17960914800.0,
         "pct_change": -0.017707082833133252,
-        "name": "Kao Corporation"
+        "name": "Kao Corporation",
+        "themes": []
       },
       {
         "ticker": "4661",
@@ -492,7 +547,8 @@
         "volume": 4842700.0,
         "dollar_volume": 17588686400.0,
         "pct_change": 0.021947101857062466,
-        "name": "Oriental Land Co., Ltd."
+        "name": "Oriental Land Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3692",
@@ -501,7 +557,8 @@
         "volume": 1970200.0,
         "dollar_volume": 16884614000.0,
         "pct_change": 0.07393483709273183,
-        "name": "Ffri Security Inc."
+        "name": "Ffri Security Inc.",
+        "themes": []
       },
       {
         "ticker": "4755",
@@ -510,7 +567,8 @@
         "volume": 17075600.0,
         "dollar_volume": 16467709056.884766,
         "pct_change": -0.026350303468891972,
-        "name": "Rakuten Group, Inc."
+        "name": "Rakuten Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "6954",
@@ -519,7 +577,8 @@
         "volume": 3704000.0,
         "dollar_volume": 16119808000.0,
         "pct_change": 0.04364508393285372,
-        "name": "Fanuc Corporation"
+        "name": "Fanuc Corporation",
+        "themes": []
       },
       {
         "ticker": "5838",
@@ -528,7 +587,8 @@
         "volume": 1993500.0,
         "dollar_volume": 15944013000.0,
         "pct_change": 0.05098554533508541,
-        "name": "Rakuten Bank Ltd."
+        "name": "Rakuten Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "4519",
@@ -537,7 +597,8 @@
         "volume": 2369800.0,
         "dollar_volume": 15839743200.0,
         "pct_change": -0.02080281277468503,
-        "name": "Chugai Pharmaceutical Co., Ltd."
+        "name": "Chugai Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6752",
@@ -546,7 +607,8 @@
         "volume": 9732800.0,
         "dollar_volume": 15762269600.0,
         "pct_change": 0.03980738362760835,
-        "name": "Panasonic Holdings Corporation"
+        "name": "Panasonic Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "7267",
@@ -555,7 +617,8 @@
         "volume": 9481700.0,
         "dollar_volume": 15753844550.0,
         "pct_change": 0.01870018393623544,
-        "name": "Honda Motor Co., Ltd."
+        "name": "Honda Motor Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4502",
@@ -564,7 +627,8 @@
         "volume": 3498000.0,
         "dollar_volume": 15590586000.0,
         "pct_change": -0.004689593568557392,
-        "name": "Takeda Pharmaceutical Co., Ltd."
+        "name": "Takeda Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4592",
@@ -573,7 +637,8 @@
         "volume": 5301000.0,
         "dollar_volume": 15245676000.0,
         "pct_change": 0.07313432835820896,
-        "name": "SanBio Co., Ltd."
+        "name": "SanBio Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8308",
@@ -582,7 +647,8 @@
         "volume": 9768200.0,
         "dollar_volume": 15067448500.0,
         "pct_change": 0.03419376466644318,
-        "name": "Resona Holdings Inc."
+        "name": "Resona Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6506",
@@ -591,7 +657,8 @@
         "volume": 4685800.0,
         "dollar_volume": 15032046400.0,
         "pct_change": 0.04699738903394256,
-        "name": "Yaskawa Electric Corporation"
+        "name": "Yaskawa Electric Corporation",
+        "themes": []
       },
       {
         "ticker": "9434",
@@ -600,7 +667,8 @@
         "volume": 65303900.0,
         "dollar_volume": 14752150611.416626,
         "pct_change": -0.013106160244620593,
-        "name": "SoftBank Corp."
+        "name": "SoftBank Corp.",
+        "themes": []
       },
       {
         "ticker": "6701",
@@ -609,7 +677,8 @@
         "volume": 3005700.0,
         "dollar_volume": 14051647500.0,
         "pct_change": -0.0021344717182497333,
-        "name": "NEC Corporation"
+        "name": "NEC Corporation",
+        "themes": []
       },
       {
         "ticker": "6976",
@@ -618,7 +687,8 @@
         "volume": 3941100.0,
         "dollar_volume": 13588912800.0,
         "pct_change": 0.09634340222575517,
-        "name": "Taiyo Yuden Co., Ltd."
+        "name": "Taiyo Yuden Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6645",
@@ -627,7 +697,8 @@
         "volume": 3114500.0,
         "dollar_volume": 13099587000.0,
         "pct_change": 0.06400202377940804,
-        "name": "Omron Corporation"
+        "name": "Omron Corporation",
+        "themes": []
       },
       {
         "ticker": "6367",
@@ -636,7 +707,8 @@
         "volume": 750700.0,
         "dollar_volume": 12942068000.0,
         "pct_change": -0.00805523590333717,
-        "name": "Daikin Industries Ltd."
+        "name": "Daikin Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "8473",
@@ -645,7 +717,8 @@
         "volume": 1938200.0,
         "dollar_volume": 12648693200.0,
         "pct_change": -0.007905138339920948,
-        "name": "SBI Holdings Inc."
+        "name": "SBI Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "3382",
@@ -654,7 +727,8 @@
         "volume": 6311100.0,
         "dollar_volume": 12584333400.0,
         "pct_change": 0.004028197381671702,
-        "name": "Seven & I Holdings Co., Ltd."
+        "name": "Seven & I Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9719",
@@ -663,7 +737,8 @@
         "volume": 2744400.0,
         "dollar_volume": 12500742000.0,
         "pct_change": -0.06333538967715402,
-        "name": "Scsk Corporation"
+        "name": "Scsk Corporation",
+        "themes": []
       },
       {
         "ticker": "5706",
@@ -672,7 +747,8 @@
         "volume": 1159500.0,
         "dollar_volume": 12325485000.0,
         "pct_change": -0.016651248843663275,
-        "name": "Mitsui Mining & Smelting Co., Ltd."
+        "name": "Mitsui Mining & Smelting Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7182",
@@ -681,7 +757,8 @@
         "volume": 6874800.0,
         "dollar_volume": 12274955400.0,
         "pct_change": -0.004182933630786392,
-        "name": "Japan Post Bank Co., Ltd."
+        "name": "Japan Post Bank Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5401",
@@ -690,7 +767,8 @@
         "volume": 3822500.0,
         "dollar_volume": 12163195000.0,
         "pct_change": -0.013027295285359801,
-        "name": "Nippon Steel Corporation"
+        "name": "Nippon Steel Corporation",
+        "themes": []
       },
       {
         "ticker": "6702",
@@ -699,7 +777,8 @@
         "volume": 3232000.0,
         "dollar_volume": 11906688000.0,
         "pct_change": 0.005184174624829468,
-        "name": "Fujitsu Limited"
+        "name": "Fujitsu Limited",
+        "themes": []
       },
       {
         "ticker": "5631",
@@ -708,7 +787,8 @@
         "volume": 1395500.0,
         "dollar_volume": 11886869000.0,
         "pct_change": -0.04141345937429665,
-        "name": "Japan Steel Works Ltd."
+        "name": "Japan Steel Works Ltd.",
+        "themes": []
       },
       {
         "ticker": "8233",
@@ -717,7 +797,8 @@
         "volume": 7209000.0,
         "dollar_volume": 11855200500.0,
         "pct_change": 0.08190789473684211,
-        "name": "Takashimaya Co., Ltd."
+        "name": "Takashimaya Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6503",
@@ -726,7 +807,8 @@
         "volume": 3070900.0,
         "dollar_volume": 11647923700.0,
         "pct_change": 0.00026371308016877635,
-        "name": "Mitsubishi Electric Corporation"
+        "name": "Mitsubishi Electric Corporation",
+        "themes": []
       },
       {
         "ticker": "2914",
@@ -735,7 +817,8 @@
         "volume": 2370700.0,
         "dollar_volume": 11294014800.0,
         "pct_change": -0.0012578616352201257,
-        "name": "Japan Tobacco Inc."
+        "name": "Japan Tobacco Inc.",
+        "themes": []
       },
       {
         "ticker": "7751",
@@ -744,7 +827,8 @@
         "volume": 2482100.0,
         "dollar_volume": 11023006100.0,
         "pct_change": 0.01764436296975252,
-        "name": "Canon Inc."
+        "name": "Canon Inc.",
+        "themes": []
       },
       {
         "ticker": "6871",
@@ -753,7 +837,8 @@
         "volume": 1743600.0,
         "dollar_volume": 11019552000.0,
         "pct_change": 0.06937394247038917,
-        "name": "Micronics Japan Co. Ltd."
+        "name": "Micronics Japan Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "8725",
@@ -762,7 +847,8 @@
         "volume": 3103500.0,
         "dollar_volume": 10576728000.0,
         "pct_change": -0.0005865102639296188,
-        "name": "MS&AD Insurance Group Holdings, Inc."
+        "name": "MS&AD Insurance Group Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "7201",
@@ -771,7 +857,8 @@
         "volume": 28469000.0,
         "dollar_volume": 10522142573.760986,
         "pct_change": 0.007633637960007994,
-        "name": "Nissan Motor Co., Ltd."
+        "name": "Nissan Motor Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6902",
@@ -780,7 +867,8 @@
         "volume": 4690600.0,
         "dollar_volume": 10316974700.0,
         "pct_change": 0.019230769230769232,
-        "name": "Denso Corporation"
+        "name": "Denso Corporation",
+        "themes": []
       },
       {
         "ticker": "8053",
@@ -789,7 +877,8 @@
         "volume": 2317400.0,
         "dollar_volume": 10173386000.0,
         "pct_change": 0.005957836846929423,
-        "name": "Sumitomo Corporation"
+        "name": "Sumitomo Corporation",
+        "themes": []
       },
       {
         "ticker": "9766",
@@ -798,7 +887,8 @@
         "volume": 477000.0,
         "dollar_volume": 10129095000.0,
         "pct_change": -0.007478382799719561,
-        "name": "Konami Group Corporation"
+        "name": "Konami Group Corporation",
+        "themes": []
       },
       {
         "ticker": "8002",
@@ -807,7 +897,8 @@
         "volume": 2766400.0,
         "dollar_volume": 10083528000.0,
         "pct_change": 0.008019911504424779,
-        "name": "Marubeni Corporation"
+        "name": "Marubeni Corporation",
+        "themes": []
       },
       {
         "ticker": "3323",
@@ -816,7 +907,8 @@
         "volume": 62105400.0,
         "dollar_volume": 9998969400.0,
         "pct_change": -0.012269938650306749,
-        "name": "Recomm Co., Ltd."
+        "name": "Recomm Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7527",
@@ -825,7 +917,8 @@
         "volume": 110510300.0,
         "dollar_volume": 9945927000.0,
         "pct_change": 0.34328358208955223,
-        "name": "SystemSoft Corp."
+        "name": "SystemSoft Corp.",
+        "themes": []
       },
       {
         "ticker": "4543",
@@ -834,7 +927,8 @@
         "volume": 4047600.0,
         "dollar_volume": 9942929400.0,
         "pct_change": -0.0008135041692088672,
-        "name": "Terumo Corporation"
+        "name": "Terumo Corporation",
+        "themes": []
       },
       {
         "ticker": "3778",
@@ -843,7 +937,8 @@
         "volume": 2750500.0,
         "dollar_volume": 9833037500.0,
         "pct_change": -0.04411764705882353,
-        "name": "Sakura Internet Inc."
+        "name": "Sakura Internet Inc.",
+        "themes": []
       },
       {
         "ticker": "5108",
@@ -852,7 +947,8 @@
         "volume": 1386400.0,
         "dollar_volume": 9751937600.0,
         "pct_change": 0.0021370565607636417,
-        "name": "Bridgestone Corporation"
+        "name": "Bridgestone Corporation",
+        "themes": []
       },
       {
         "ticker": "5802",
@@ -861,7 +957,8 @@
         "volume": 2332300.0,
         "dollar_volume": 9700035700.0,
         "pct_change": -0.0059751434034416824,
-        "name": "Sumitomo Electric Industries Ltd."
+        "name": "Sumitomo Electric Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "7269",
@@ -870,7 +967,8 @@
         "volume": 4519800.0,
         "dollar_volume": 9681411600.0,
         "pct_change": 0.004690431519699813,
-        "name": "Suzuki Motor Corporation"
+        "name": "Suzuki Motor Corporation",
+        "themes": []
       },
       {
         "ticker": "3853",
@@ -879,7 +977,8 @@
         "volume": 5600300.0,
         "dollar_volume": 9548511500.0,
         "pct_change": -0.015020219526285385,
-        "name": "Asteria Corp"
+        "name": "Asteria Corp",
+        "themes": []
       },
       {
         "ticker": "8591",
@@ -888,7 +987,8 @@
         "volume": 2397200.0,
         "dollar_volume": 9533664400.0,
         "pct_change": -0.0030082727500626723,
-        "name": "Orix Corporation"
+        "name": "Orix Corporation",
+        "themes": []
       },
       {
         "ticker": "8267",
@@ -897,7 +997,8 @@
         "volume": 5331600.0,
         "dollar_volume": 9490248000.0,
         "pct_change": -0.019823788546255508,
-        "name": "Aeon Co., Ltd."
+        "name": "Aeon Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6301",
@@ -906,7 +1007,8 @@
         "volume": 1772800.0,
         "dollar_volume": 9342656000.0,
         "pct_change": 0.009771986970684038,
-        "name": "Komatsu Ltd."
+        "name": "Komatsu Ltd.",
+        "themes": []
       },
       {
         "ticker": "4503",
@@ -915,7 +1017,8 @@
         "volume": 5568100.0,
         "dollar_volume": 9309863200.0,
         "pct_change": 0.008748114630467572,
-        "name": "Astellas Pharma Inc."
+        "name": "Astellas Pharma Inc.",
+        "themes": []
       },
       {
         "ticker": "7532",
@@ -924,7 +1027,8 @@
         "volume": 1848400.0,
         "dollar_volume": 9129247600.0,
         "pct_change": 0.0010133765707336846,
-        "name": "Pan Pacific International Holdings Corporation"
+        "name": "Pan Pacific International Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "4578",
@@ -933,7 +1037,8 @@
         "volume": 1135200.0,
         "dollar_volume": 9125872800.0,
         "pct_change": -0.01252917332023093,
-        "name": "Otsuka Holdings Co., Ltd."
+        "name": "Otsuka Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9843",
@@ -942,7 +1047,8 @@
         "volume": 638600.0,
         "dollar_volume": 9119208000.0,
         "pct_change": -0.020911895783339046,
-        "name": "Nitori Holdings Co., Ltd."
+        "name": "Nitori Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8630",
@@ -951,7 +1057,8 @@
         "volume": 1912300.0,
         "dollar_volume": 9026056000.0,
         "pct_change": 0.007255655142979087,
-        "name": "Sompo Holdings Inc."
+        "name": "Sompo Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "8801",
@@ -960,7 +1067,8 @@
         "volume": 5645900.0,
         "dollar_volume": 8968512150.0,
         "pct_change": -0.0127408328154133,
-        "name": "Mitsui Fudosan Co., Ltd."
+        "name": "Mitsui Fudosan Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8309",
@@ -969,7 +1077,8 @@
         "volume": 2006900.0,
         "dollar_volume": 8641711400.0,
         "pct_change": 0.005135387488328665,
-        "name": "Sumitomo Mitsui Trust Holdings Inc."
+        "name": "Sumitomo Mitsui Trust Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4506",
@@ -978,7 +1087,8 @@
         "volume": 5157900.0,
         "dollar_volume": 8624008800.0,
         "pct_change": 0.022004889975550123,
-        "name": "Sumitomo Pharma Co., Ltd."
+        "name": "Sumitomo Pharma Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4901",
@@ -987,7 +1097,8 @@
         "volume": 2365600.0,
         "dollar_volume": 8577665600.0,
         "pct_change": 0.020258863252673044,
-        "name": "Fujifilm Holdings Corporation"
+        "name": "Fujifilm Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "8604",
@@ -996,7 +1107,8 @@
         "volume": 7755700.0,
         "dollar_volume": 8484735800.0,
         "pct_change": 0.0032095369096744614,
-        "name": "Nomura Holdings Inc."
+        "name": "Nomura Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "7936",
@@ -1005,7 +1117,8 @@
         "volume": 2201500.0,
         "dollar_volume": 8466969000.0,
         "pct_change": -0.010293360782295419,
-        "name": "Asics Corporation"
+        "name": "Asics Corporation",
+        "themes": []
       },
       {
         "ticker": "6988",
@@ -1014,7 +1127,8 @@
         "volume": 2357600.0,
         "dollar_volume": 8282248800.0,
         "pct_change": 0.02869692532942899,
-        "name": "Nitto Denko Corporation"
+        "name": "Nitto Denko Corporation",
+        "themes": []
       },
       {
         "ticker": "5713",
@@ -1023,7 +1137,8 @@
         "volume": 1914200.0,
         "dollar_volume": 8150663600.0,
         "pct_change": 0.026024096385542168,
-        "name": "Sumitomo Metal Mining Co., Ltd."
+        "name": "Sumitomo Metal Mining Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8795",
@@ -1032,7 +1147,8 @@
         "volume": 2233800.0,
         "dollar_volume": 8099758800.0,
         "pct_change": -0.009018857611369226,
-        "name": "T&D Holdings Inc."
+        "name": "T&D Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "9022",
@@ -1041,7 +1157,8 @@
         "volume": 1935300.0,
         "dollar_volume": 8045042100.0,
         "pct_change": -0.002878388102662509,
-        "name": "Central Japan Railway Company"
+        "name": "Central Japan Railway Company",
+        "themes": []
       },
       {
         "ticker": "1812",
@@ -1050,7 +1167,8 @@
         "volume": 1858600.0,
         "dollar_volume": 8016141800.0,
         "pct_change": -0.02947794779477948,
-        "name": "Kajima Corporation"
+        "name": "Kajima Corporation",
+        "themes": []
       },
       {
         "ticker": "6361",
@@ -1059,7 +1177,8 @@
         "volume": 2550300.0,
         "dollar_volume": 7984989300.0,
         "pct_change": 0.007076230299131554,
-        "name": "Ebara Corporation"
+        "name": "Ebara Corporation",
+        "themes": []
       },
       {
         "ticker": "5020",
@@ -1068,7 +1187,8 @@
         "volume": 8450700.0,
         "dollar_volume": 7946193106.842041,
         "pct_change": 0.018964022790956242,
-        "name": "Eneos Holdings, Inc."
+        "name": "Eneos Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "6971",
@@ -1077,7 +1197,8 @@
         "volume": 3847000.0,
         "dollar_volume": 7920973000.0,
         "pct_change": 0.019306930693069307,
-        "name": "Kyocera Corporation"
+        "name": "Kyocera Corporation",
+        "themes": []
       },
       {
         "ticker": "1605",
@@ -1086,7 +1207,8 @@
         "volume": 3000400.0,
         "dollar_volume": 7915055200.0,
         "pct_change": 0.009567546880979716,
-        "name": "Inpex Corporation"
+        "name": "Inpex Corporation",
+        "themes": []
       },
       {
         "ticker": "2802",
@@ -1095,7 +1217,8 @@
         "volume": 1846900.0,
         "dollar_volume": 7901038200.0,
         "pct_change": 0.019056693663649357,
-        "name": "Ajinomoto Co., Inc."
+        "name": "Ajinomoto Co., Inc.",
+        "themes": []
       },
       {
         "ticker": "1928",
@@ -1104,7 +1227,8 @@
         "volume": 2296600.0,
         "dollar_volume": 7705093000.0,
         "pct_change": -0.014973576042278332,
-        "name": "Sekisui House Ltd."
+        "name": "Sekisui House Ltd.",
+        "themes": []
       },
       {
         "ticker": "4704",
@@ -1113,7 +1237,8 @@
         "volume": 891000.0,
         "dollar_volume": 7484400000.0,
         "pct_change": -0.004975124378109453,
-        "name": "Trend Micro Incorporated"
+        "name": "Trend Micro Incorporated",
+        "themes": []
       },
       {
         "ticker": "8830",
@@ -1122,7 +1247,8 @@
         "volume": 1185400.0,
         "dollar_volume": 7483430200.0,
         "pct_change": -0.02002483700714064,
-        "name": "Sumitomo Realty & Development Co., Ltd."
+        "name": "Sumitomo Realty & Development Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6963",
@@ -1131,7 +1257,8 @@
         "volume": 3308900.0,
         "dollar_volume": 7349066900.0,
         "pct_change": 0.024682814302191464,
-        "name": "Rohm Co., Ltd."
+        "name": "Rohm Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9503",
@@ -1140,7 +1267,8 @@
         "volume": 3325300.0,
         "dollar_volume": 7335611800.0,
         "pct_change": 0.015186378278877128,
-        "name": "Kansai Electric Power Co., Inc."
+        "name": "Kansai Electric Power Co., Inc.",
+        "themes": []
       },
       {
         "ticker": "4005",
@@ -1149,7 +1277,8 @@
         "volume": 15376800.0,
         "dollar_volume": 7334733600.0,
         "pct_change": 0.01770852907360824,
-        "name": "Sumitomo Chemical Co., Ltd."
+        "name": "Sumitomo Chemical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7711",
@@ -1158,7 +1287,8 @@
         "volume": 1254600.0,
         "dollar_volume": 7276680000.0,
         "pct_change": 0.0017271157167530224,
-        "name": "Sukegawa Electric Co., Ltd."
+        "name": "Sukegawa Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6417",
@@ -1167,7 +1297,8 @@
         "volume": 2644600.0,
         "dollar_volume": 7172155200.0,
         "pct_change": -0.07566462167689161,
-        "name": "Sankyo Co. Ltd."
+        "name": "Sankyo Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "4689",
@@ -1176,7 +1307,8 @@
         "volume": 14637500.0,
         "dollar_volume": 7121143750.0,
         "pct_change": -0.016177957532861477,
-        "name": "Ly Corporation"
+        "name": "Ly Corporation",
+        "themes": []
       },
       {
         "ticker": "8750",
@@ -1185,7 +1317,8 @@
         "volume": 5855700.0,
         "dollar_volume": 6927293100.0,
         "pct_change": 0.0,
-        "name": "Dai-ichi Life Holdings Inc."
+        "name": "Dai-ichi Life Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "2502",
@@ -1194,7 +1327,8 @@
         "volume": 3896000.0,
         "dollar_volume": 6880336000.0,
         "pct_change": -0.007865168539325843,
-        "name": "Asahi Group Holdings, Ltd."
+        "name": "Asahi Group Holdings, Ltd.",
+        "themes": []
       },
       {
         "ticker": "9020",
@@ -1203,7 +1337,8 @@
         "volume": 1895100.0,
         "dollar_volume": 6877317900.0,
         "pct_change": -0.002473886750962067,
-        "name": "East Japan Railway Company"
+        "name": "East Japan Railway Company",
+        "themes": []
       },
       {
         "ticker": "9697",
@@ -1212,7 +1347,8 @@
         "volume": 1681500.0,
         "dollar_volume": 6825208500.0,
         "pct_change": -0.005878030859662013,
-        "name": "Capcom Co., Ltd."
+        "name": "Capcom Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7733",
@@ -1221,7 +1357,8 @@
         "volume": 3684300.0,
         "dollar_volume": 6815955000.0,
         "pct_change": -0.0008101539292465569,
-        "name": "Olympus Corporation"
+        "name": "Olympus Corporation",
+        "themes": []
       },
       {
         "ticker": "6532",
@@ -1230,7 +1367,8 @@
         "volume": 768500.0,
         "dollar_volume": 6815058000.0,
         "pct_change": 0.009447922595332954,
-        "name": "BayCurrent Inc."
+        "name": "BayCurrent Inc.",
+        "themes": []
       },
       {
         "ticker": "7832",
@@ -1239,7 +1377,8 @@
         "volume": 1408000.0,
         "dollar_volume": 6769664000.0,
         "pct_change": -0.007021891780256092,
-        "name": "Bandai Namco Holdings Inc."
+        "name": "Bandai Namco Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4911",
@@ -1248,7 +1387,8 @@
         "volume": 2677100.0,
         "dollar_volume": 6702119850.0,
         "pct_change": 0.03514575149886293,
-        "name": "Shiseido Co., Ltd."
+        "name": "Shiseido Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3110",
@@ -1257,7 +1397,8 @@
         "volume": 972500.0,
         "dollar_volume": 6525475000.0,
         "pct_change": -0.0073964497041420114,
-        "name": "Nitto Boseki Co., Ltd."
+        "name": "Nitto Boseki Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4307",
@@ -1266,7 +1407,8 @@
         "volume": 1086000.0,
         "dollar_volume": 6365046000.0,
         "pct_change": -0.005767599660729432,
-        "name": "Nomura Research Institute, Ltd."
+        "name": "Nomura Research Institute, Ltd.",
+        "themes": []
       },
       {
         "ticker": "1801",
@@ -1275,7 +1417,8 @@
         "volume": 636300.0,
         "dollar_volume": 6353455500.0,
         "pct_change": -0.033865505563618774,
-        "name": "Taisei Corporation"
+        "name": "Taisei Corporation",
+        "themes": []
       },
       {
         "ticker": "3099",
@@ -1284,7 +1427,8 @@
         "volume": 2128700.0,
         "dollar_volume": 6237091000.0,
         "pct_change": 0.024833857992305003,
-        "name": "Isetan Mitsukoshi Holdings Ltd."
+        "name": "Isetan Mitsukoshi Holdings Ltd.",
+        "themes": []
       },
       {
         "ticker": "8802",
@@ -1293,7 +1437,8 @@
         "volume": 1860700.0,
         "dollar_volume": 6229623600.0,
         "pct_change": -0.002680965147453083,
-        "name": "Mitsubishi Estate Co., Ltd."
+        "name": "Mitsubishi Estate Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4107",
@@ -1302,7 +1447,8 @@
         "volume": 215800.0,
         "dollar_volume": 6204250000.0,
         "pct_change": 0.029359112065878983,
-        "name": "Ise Chemicals Corporation"
+        "name": "Ise Chemicals Corporation",
+        "themes": []
       },
       {
         "ticker": "5721",
@@ -1311,7 +1457,8 @@
         "volume": 24625100.0,
         "dollar_volume": 6156275000.0,
         "pct_change": -0.13793103448275862,
-        "name": "S Science Co., Ltd."
+        "name": "S Science Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6178",
@@ -1320,7 +1467,8 @@
         "volume": 4098800.0,
         "dollar_volume": 6088767400.0,
         "pct_change": -0.005356545028456646,
-        "name": "Japan Post Holdings Co., Ltd."
+        "name": "Japan Post Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7202",
@@ -1329,7 +1477,8 @@
         "volume": 3103500.0,
         "dollar_volume": 6078204750.0,
         "pct_change": 0.016610433428497273,
-        "name": "Isuzu Motors Ltd."
+        "name": "Isuzu Motors Ltd.",
+        "themes": []
       },
       {
         "ticker": "4523",
@@ -1338,7 +1487,8 @@
         "volume": 1151700.0,
         "dollar_volume": 5965806000.0,
         "pct_change": 0.0036814570819608604,
-        "name": "Eisai Co., Ltd."
+        "name": "Eisai Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3498",
@@ -1347,7 +1497,8 @@
         "volume": 625400.0,
         "dollar_volume": 5903776000.0,
         "pct_change": 0.02386117136659436,
-        "name": "Kasumigaseki Capital Co., Ltd."
+        "name": "Kasumigaseki Capital Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9602",
@@ -1356,7 +1507,8 @@
         "volume": 638400.0,
         "dollar_volume": 5872003200.0,
         "pct_change": -0.03178947368421053,
-        "name": "Toho Co. Ltd."
+        "name": "Toho Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "6201",
@@ -1365,7 +1517,8 @@
         "volume": 345300.0,
         "dollar_volume": 5756151000.0,
         "pct_change": -0.0017964071856287425,
-        "name": "Toyota Industries Corporation"
+        "name": "Toyota Industries Corporation",
+        "themes": []
       },
       {
         "ticker": "4385",
@@ -1374,7 +1527,8 @@
         "volume": 2511200.0,
         "dollar_volume": 5720513600.0,
         "pct_change": 0.004187789288075821,
-        "name": "Mercari, Inc."
+        "name": "Mercari, Inc.",
+        "themes": []
       },
       {
         "ticker": "2432",
@@ -1383,7 +1537,8 @@
         "volume": 2462500.0,
         "dollar_volume": 5667443750.0,
         "pct_change": -0.01053310404127257,
-        "name": "Dena Co., Ltd."
+        "name": "Dena Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9735",
@@ -1392,7 +1547,8 @@
         "volume": 1014800.0,
         "dollar_volume": 5631125200.0,
         "pct_change": -0.005377307761247535,
-        "name": "Secom Co., Ltd."
+        "name": "Secom Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6323",
@@ -1401,7 +1557,8 @@
         "volume": 2623000.0,
         "dollar_volume": 5538464500.0,
         "pct_change": 0.01441268316118184,
-        "name": "Rorze Corporation"
+        "name": "Rorze Corporation",
+        "themes": []
       },
       {
         "ticker": "6383",
@@ -1410,7 +1567,8 @@
         "volume": 1170600.0,
         "dollar_volume": 5491284600.0,
         "pct_change": 0.005357908272610373,
-        "name": "Daifuku Co., Ltd."
+        "name": "Daifuku Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6326",
@@ -1419,7 +1577,8 @@
         "volume": 2920100.0,
         "dollar_volume": 5481027700.0,
         "pct_change": 0.011042283867492593,
-        "name": "Kubota Corporation"
+        "name": "Kubota Corporation",
+        "themes": []
       },
       {
         "ticker": "7270",
@@ -1428,7 +1587,8 @@
         "volume": 1764500.0,
         "dollar_volume": 5466421000.0,
         "pct_change": 0.013080444735120994,
-        "name": "Subaru Corporation"
+        "name": "Subaru Corporation",
+        "themes": []
       },
       {
         "ticker": "8848",
@@ -1437,7 +1597,8 @@
         "volume": 6951300.0,
         "dollar_volume": 5463721800.0,
         "pct_change": 0.08713692946058091,
-        "name": "Leopalace21 Corporation"
+        "name": "Leopalace21 Corporation",
+        "themes": []
       },
       {
         "ticker": "6590",
@@ -1446,7 +1607,8 @@
         "volume": 439700.0,
         "dollar_volume": 5364340000.0,
         "pct_change": -0.007323026851098454,
-        "name": "Shibaura Mechatronics Corporation"
+        "name": "Shibaura Mechatronics Corporation",
+        "themes": []
       },
       {
         "ticker": "9684",
@@ -1455,7 +1617,8 @@
         "volume": 527700.0,
         "dollar_volume": 5125022400.0,
         "pct_change": -0.01380991064175467,
-        "name": "Square Enix Holdings Co., Ltd."
+        "name": "Square Enix Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9024",
@@ -1464,7 +1627,8 @@
         "volume": 923500.0,
         "dollar_volume": 5117113500.0,
         "pct_change": -0.009828448892065762,
-        "name": "Seibu Holdings Inc."
+        "name": "Seibu Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "8015",
@@ -1473,7 +1637,8 @@
         "volume": 1229300.0,
         "dollar_volume": 5094219200.0,
         "pct_change": 0.006802721088435374,
-        "name": "Toyota Tsusho Corporation"
+        "name": "Toyota Tsusho Corporation",
+        "themes": []
       },
       {
         "ticker": "4324",
@@ -1482,7 +1647,8 @@
         "volume": 1531600.0,
         "dollar_volume": 5094101600.0,
         "pct_change": 0.01340645947592931,
-        "name": "Dentsu Group Inc."
+        "name": "Dentsu Group Inc.",
+        "themes": []
       },
       {
         "ticker": "4507",
@@ -1491,7 +1657,8 @@
         "volume": 1924600.0,
         "dollar_volume": 5081906300.0,
         "pct_change": -0.022760917838638046,
-        "name": "Shionogi & Co., Ltd."
+        "name": "Shionogi & Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "1911",
@@ -1500,7 +1667,8 @@
         "volume": 2898400.0,
         "dollar_volume": 5056258800.0,
         "pct_change": -0.007679180887372013,
-        "name": "Sumitomo Forestry Co., Ltd."
+        "name": "Sumitomo Forestry Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4188",
@@ -1509,7 +1677,8 @@
         "volume": 5637800.0,
         "dollar_volume": 4997909700.0,
         "pct_change": 0.0014685808574804989,
-        "name": "Mitsubishi Chemical Group Corporation"
+        "name": "Mitsubishi Chemical Group Corporation",
+        "themes": []
       },
       {
         "ticker": "1925",
@@ -1518,7 +1687,8 @@
         "volume": 924200.0,
         "dollar_volume": 4996225200.0,
         "pct_change": -0.0014776505356483192,
-        "name": "Daiwa House Industry Co., Ltd."
+        "name": "Daiwa House Industry Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3697",
@@ -1527,7 +1697,8 @@
         "volume": 3691600.0,
         "dollar_volume": 4907982200.0,
         "pct_change": -0.019542772861356934,
-        "name": "Shift Inc."
+        "name": "Shift Inc.",
+        "themes": []
       },
       {
         "ticker": "1802",
@@ -1536,7 +1707,8 @@
         "volume": 2017800.0,
         "dollar_volume": 4907289600.0,
         "pct_change": -0.015185260174124316,
-        "name": "Obayashi Corporation"
+        "name": "Obayashi Corporation",
+        "themes": []
       },
       {
         "ticker": "7309",
@@ -1545,7 +1717,8 @@
         "volume": 296800.0,
         "dollar_volume": 4726540000.0,
         "pct_change": -0.001880288310874334,
-        "name": "Shimano Inc."
+        "name": "Shimano Inc.",
+        "themes": []
       },
       {
         "ticker": "3861",
@@ -1554,7 +1727,8 @@
         "volume": 5702600.0,
         "dollar_volume": 4722893389.611816,
         "pct_change": 0.0068077276772405045,
-        "name": "Oji Holdings Corporation"
+        "name": "Oji Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "8697",
@@ -1563,7 +1737,8 @@
         "volume": 2966500.0,
         "dollar_volume": 4691519750.0,
         "pct_change": 0.011836212412028152,
-        "name": "Japan Exchange Group Inc."
+        "name": "Japan Exchange Group Inc.",
+        "themes": []
       },
       {
         "ticker": "5344",
@@ -1572,7 +1747,8 @@
         "volume": 107600.0,
         "dollar_volume": 4689208000.0,
         "pct_change": 0.006001846722068329,
-        "name": "Maruwa Co., Ltd."
+        "name": "Maruwa Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7259",
@@ -1581,7 +1757,8 @@
         "volume": 1842400.0,
         "dollar_volume": 4676011200.0,
         "pct_change": -0.0029463759575721863,
-        "name": "Aisin Corporation"
+        "name": "Aisin Corporation",
+        "themes": []
       },
       {
         "ticker": "1803",
@@ -1590,7 +1767,8 @@
         "volume": 2217400.0,
         "dollar_volume": 4632148600.0,
         "pct_change": -0.02062822315986873,
-        "name": "Shimizu Corporation"
+        "name": "Shimizu Corporation",
+        "themes": []
       },
       {
         "ticker": "7261",
@@ -1599,7 +1777,8 @@
         "volume": 4135200.0,
         "dollar_volume": 4606612800.0,
         "pct_change": 0.017351598173515982,
-        "name": "Mazda Motor Corporation"
+        "name": "Mazda Motor Corporation",
+        "themes": []
       },
       {
         "ticker": "9023",
@@ -1608,7 +1787,8 @@
         "volume": 2622000.0,
         "dollar_volume": 4562280000.0,
         "pct_change": -0.011644419199091167,
-        "name": "Tokyo Metro Co., Ltd."
+        "name": "Tokyo Metro Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7550",
@@ -1617,7 +1797,8 @@
         "volume": 465700.0,
         "dollar_volume": 4560134400.0,
         "pct_change": -0.006493506493506494,
-        "name": "Zensho Holdings Co., Ltd."
+        "name": "Zensho Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8113",
@@ -1626,7 +1807,8 @@
         "volume": 4655700.0,
         "dollar_volume": 4549550096.832275,
         "pct_change": 0.007007406865096332,
-        "name": "Unicharm Corporation"
+        "name": "Unicharm Corporation",
+        "themes": []
       },
       {
         "ticker": "7014",
@@ -1635,7 +1817,8 @@
         "volume": 1469800.0,
         "dollar_volume": 4482890000.0,
         "pct_change": -0.011345218800648298,
-        "name": "Namura Shipbuilding Co., Ltd."
+        "name": "Namura Shipbuilding Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2413",
@@ -1644,7 +1827,8 @@
         "volume": 1921200.0,
         "dollar_volume": 4481199000.0,
         "pct_change": 0.007777057679844459,
-        "name": "M3 Inc."
+        "name": "M3 Inc.",
+        "themes": []
       },
       {
         "ticker": "5411",
@@ -1653,7 +1837,8 @@
         "volume": 2377500.0,
         "dollar_volume": 4476832500.0,
         "pct_change": -0.005282620179609086,
-        "name": "JFE Holdings Inc."
+        "name": "JFE Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6504",
@@ -1662,7 +1847,8 @@
         "volume": 448400.0,
         "dollar_volume": 4475928800.0,
         "pct_change": 0.00675743822491175,
-        "name": "Fuji Electric Co., Ltd."
+        "name": "Fuji Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2503",
@@ -1671,7 +1857,8 @@
         "volume": 2046000.0,
         "dollar_volume": 4435728000.0,
         "pct_change": -0.006871278057718736,
-        "name": "Kirin Holdings Co., Ltd."
+        "name": "Kirin Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6016",
@@ -1680,7 +1867,8 @@
         "volume": 398800.0,
         "dollar_volume": 4422692000.0,
         "pct_change": 0.05820610687022901,
-        "name": "Japan Engine Corporation"
+        "name": "Japan Engine Corporation",
+        "themes": []
       },
       {
         "ticker": "6869",
@@ -1689,7 +1877,8 @@
         "volume": 2364100.0,
         "dollar_volume": 4413774700.0,
         "pct_change": 0.001609442060085837,
-        "name": "Sysmex Corporation"
+        "name": "Sysmex Corporation",
+        "themes": []
       },
       {
         "ticker": "6754",
@@ -1698,7 +1887,8 @@
         "volume": 2155600.0,
         "dollar_volume": 4340300600.0,
         "pct_change": 0.07158062799361363,
-        "name": "Anritsu Corporation"
+        "name": "Anritsu Corporation",
+        "themes": []
       },
       {
         "ticker": "2897",
@@ -1707,7 +1897,8 @@
         "volume": 1502300.0,
         "dollar_volume": 4320614800.0,
         "pct_change": 0.006298110566829951,
-        "name": "Nissin Foods Holdings Co., Ltd."
+        "name": "Nissin Foods Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9531",
@@ -1716,7 +1907,8 @@
         "volume": 807100.0,
         "dollar_volume": 4308299800.0,
         "pct_change": -0.00946372239747634,
-        "name": "Tokyo Gas Co., Ltd."
+        "name": "Tokyo Gas Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8304",
@@ -1725,7 +1917,8 @@
         "volume": 1795600.0,
         "dollar_volume": 4286097200.0,
         "pct_change": 0.011440677966101695,
-        "name": "Aozora Bank Ltd."
+        "name": "Aozora Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "9201",
@@ -1734,7 +1927,8 @@
         "volume": 1400800.0,
         "dollar_volume": 4278043200.0,
         "pct_change": -0.007797270955165692,
-        "name": "Japan Airlines Co., Ltd."
+        "name": "Japan Airlines Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8601",
@@ -1743,7 +1937,8 @@
         "volume": 3486400.0,
         "dollar_volume": 4218544000.0,
         "pct_change": 0.01001669449081803,
-        "name": "Daiwa Securities Group Inc."
+        "name": "Daiwa Securities Group Inc.",
+        "themes": []
       },
       {
         "ticker": "4751",
@@ -1752,7 +1947,8 @@
         "volume": 2409000.0,
         "dollar_volume": 4213341000.0,
         "pct_change": -0.00370264881800057,
-        "name": "CyberAgent Inc."
+        "name": "CyberAgent Inc.",
+        "themes": []
       },
       {
         "ticker": "9202",
@@ -1761,7 +1957,8 @@
         "volume": 1450800.0,
         "dollar_volume": 4179754800.0,
         "pct_change": -0.008432283600068835,
-        "name": "Ana Holdings Inc."
+        "name": "Ana Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4204",
@@ -1770,7 +1967,8 @@
         "volume": 1460300.0,
         "dollar_volume": 4121696750.0,
         "pct_change": -0.014834205933682374,
-        "name": "Sekisui Chemical Co., Ltd."
+        "name": "Sekisui Chemical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9021",
@@ -1779,7 +1977,8 @@
         "volume": 1231100.0,
         "dollar_volume": 4108180700.0,
         "pct_change": -0.00861556743909685,
-        "name": "West Japan Railway Company"
+        "name": "West Japan Railway Company",
+        "themes": []
       },
       {
         "ticker": "1942",
@@ -1788,7 +1987,8 @@
         "volume": 1000000.0,
         "dollar_volume": 4108000000.0,
         "pct_change": -0.011073663938372653,
-        "name": "Kandenko Co., Ltd."
+        "name": "Kandenko Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6141",
@@ -1797,7 +1997,8 @@
         "volume": 1369400.0,
         "dollar_volume": 4069172100.0,
         "pct_change": 0.0025303643724696357,
-        "name": "DMG Mori Co. Ltd."
+        "name": "DMG Mori Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "3659",
@@ -1806,7 +2007,8 @@
         "volume": 1208900.0,
         "dollar_volume": 4061904000.0,
         "pct_change": 0.005988023952095809,
-        "name": "Nexon Co., Ltd."
+        "name": "Nexon Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2768",
@@ -1815,7 +2017,8 @@
         "volume": 1016400.0,
         "dollar_volume": 4049337600.0,
         "pct_change": 0.005806614491290078,
-        "name": "Sojitz Corporation"
+        "name": "Sojitz Corporation",
+        "themes": []
       },
       {
         "ticker": "6269",
@@ -1824,7 +2027,8 @@
         "volume": 505700.0,
         "dollar_volume": 4005144000.0,
         "pct_change": -0.0012610340479192938,
-        "name": "Modec Inc."
+        "name": "Modec Inc.",
+        "themes": []
       },
       {
         "ticker": "4586",
@@ -1833,7 +2037,8 @@
         "volume": 37141800.0,
         "dollar_volume": 3974172600.0,
         "pct_change": 0.13829787234042554,
-        "name": "MedRx Co. Ltd."
+        "name": "MedRx Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "9041",
@@ -1842,7 +2047,8 @@
         "volume": 1268700.0,
         "dollar_volume": 3954537900.0,
         "pct_change": 0.012012987012987014,
-        "name": "Kintetsu Group Holdings Co., Ltd."
+        "name": "Kintetsu Group Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7729",
@@ -1851,7 +2057,8 @@
         "volume": 381000.0,
         "dollar_volume": 3886200000.0,
         "pct_change": 0.005917159763313609,
-        "name": "Tokyo Seimitsu Co., Ltd."
+        "name": "Tokyo Seimitsu Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5334",
@@ -1860,7 +2067,8 @@
         "volume": 658900.0,
         "dollar_volume": 3878285400.0,
         "pct_change": 0.0023841961852861036,
-        "name": "Niterra Co., Ltd."
+        "name": "Niterra Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9509",
@@ -1869,7 +2077,8 @@
         "volume": 3473800.0,
         "dollar_volume": 3873287000.0,
         "pct_change": -0.014146772767462422,
-        "name": "Hokkaido Electric Power Co., Inc."
+        "name": "Hokkaido Electric Power Co., Inc.",
+        "themes": []
       },
       {
         "ticker": "3402",
@@ -1878,7 +2087,8 @@
         "volume": 3977900.0,
         "dollar_volume": 3857767371.4416504,
         "pct_change": 0.001962974822793739,
-        "name": "Toray Industries, Inc."
+        "name": "Toray Industries, Inc.",
+        "themes": []
       },
       {
         "ticker": "6674",
@@ -1887,7 +2097,8 @@
         "volume": 1066700.0,
         "dollar_volume": 3722783000.0,
         "pct_change": 0.0553371635923798,
-        "name": "GS Yuasa Corporation"
+        "name": "GS Yuasa Corporation",
+        "themes": []
       },
       {
         "ticker": "3635",
@@ -1896,7 +2107,8 @@
         "volume": 1923300.0,
         "dollar_volume": 3711969000.0,
         "pct_change": 0.008886565603763722,
-        "name": "Koei Tecmo Holdings Co., Ltd."
+        "name": "Koei Tecmo Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9613",
@@ -1905,7 +2117,10 @@
         "volume": 933800.0,
         "dollar_volume": 3707186000.0,
         "pct_change": 0.0,
-        "name": "NTT Data Group Corporation"
+        "name": "NTT Data Group Corporation",
+        "themes": [
+          "通信"
+        ]
       },
       {
         "ticker": "3064",
@@ -1914,7 +2129,8 @@
         "volume": 1638800.0,
         "dollar_volume": 3704507400.0,
         "pct_change": -0.02627611458108981,
-        "name": "Monotaro Co., Ltd."
+        "name": "Monotaro Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6965",
@@ -1923,7 +2139,8 @@
         "volume": 2261200.0,
         "dollar_volume": 3698192600.0,
         "pct_change": 0.016469857054070853,
-        "name": "Hamamatsu Photonics K.K."
+        "name": "Hamamatsu Photonics K.K.",
+        "themes": []
       },
       {
         "ticker": "5726",
@@ -1932,7 +2149,8 @@
         "volume": 1564200.0,
         "dollar_volume": 3675870000.0,
         "pct_change": -0.020833333333333332,
-        "name": "Osaka Titanium Technologies Co., Ltd."
+        "name": "Osaka Titanium Technologies Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4369",
@@ -1941,7 +2159,8 @@
         "volume": 1184200.0,
         "dollar_volume": 3671020000.0,
         "pct_change": 0.014729950900163666,
-        "name": "Tri Chemical Laboratories Inc."
+        "name": "Tri Chemical Laboratories Inc.",
+        "themes": []
       },
       {
         "ticker": "4684",
@@ -1950,7 +2169,8 @@
         "volume": 680600.0,
         "dollar_volume": 3652099600.0,
         "pct_change": 0.0003728560775540641,
-        "name": "Obic Co., Ltd."
+        "name": "Obic Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4183",
@@ -1959,7 +2179,8 @@
         "volume": 958100.0,
         "dollar_volume": 3639821900.0,
         "pct_change": 0.023713284828887092,
-        "name": "Mitsui Chemicals, Inc."
+        "name": "Mitsui Chemicals, Inc.",
+        "themes": []
       },
       {
         "ticker": "6728",
@@ -1968,7 +2189,8 @@
         "volume": 532400.0,
         "dollar_volume": 3574533600.0,
         "pct_change": 0.006898620275944811,
-        "name": "Ulvac Inc."
+        "name": "Ulvac Inc.",
+        "themes": []
       },
       {
         "ticker": "7211",
@@ -1977,7 +2199,8 @@
         "volume": 8400900.0,
         "dollar_volume": 3526697717.449951,
         "pct_change": 0.0067145990239058755,
-        "name": "Mitsubishi Motors Corporation"
+        "name": "Mitsubishi Motors Corporation",
+        "themes": []
       },
       {
         "ticker": "4182",
@@ -1986,7 +2209,8 @@
         "volume": 1245300.0,
         "dollar_volume": 3475009650.0,
         "pct_change": 0.014358415121773901,
-        "name": "Mitsubishi Gas Chemical Company, Inc."
+        "name": "Mitsubishi Gas Chemical Company, Inc.",
+        "themes": []
       },
       {
         "ticker": "3038",
@@ -1995,7 +2219,8 @@
         "volume": 797700.0,
         "dollar_volume": 3452445600.0,
         "pct_change": 0.00815280689494526,
-        "name": "Kobe Bussan Co., Ltd."
+        "name": "Kobe Bussan Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3092",
@@ -2004,7 +2229,8 @@
         "volume": 2414000.0,
         "dollar_volume": 3432708000.0,
         "pct_change": 0.00035174111853675694,
-        "name": "Zozo, Inc."
+        "name": "Zozo, Inc.",
+        "themes": []
       },
       {
         "ticker": "4917",
@@ -2013,7 +2239,8 @@
         "volume": 1523200.0,
         "dollar_volume": 3427200000.0,
         "pct_change": 0.0514018691588785,
-        "name": "Mandom Corporation"
+        "name": "Mandom Corporation",
+        "themes": []
       },
       {
         "ticker": "7731",
@@ -2022,7 +2249,8 @@
         "volume": 1830800.0,
         "dollar_volume": 3365925800.0,
         "pct_change": -0.022074468085106384,
-        "name": "Nikon Corporation"
+        "name": "Nikon Corporation",
+        "themes": []
       },
       {
         "ticker": "3407",
@@ -2031,7 +2259,8 @@
         "volume": 2787100.0,
         "dollar_volume": 3334765150.0,
         "pct_change": 0.008003369839932602,
-        "name": "Asahi Kasei Corporation"
+        "name": "Asahi Kasei Corporation",
+        "themes": []
       },
       {
         "ticker": "4680",
@@ -2040,7 +2269,8 @@
         "volume": 2514200.0,
         "dollar_volume": 3333829200.0,
         "pct_change": -0.03982621288921072,
-        "name": "Round One Corporation"
+        "name": "Round One Corporation",
+        "themes": []
       },
       {
         "ticker": "7186",
@@ -2049,7 +2279,8 @@
         "volume": 2940000.0,
         "dollar_volume": 3325140000.0,
         "pct_change": 0.014349775784753363,
-        "name": "Concordia Financial Group, Ltd."
+        "name": "Concordia Financial Group, Ltd.",
+        "themes": []
       },
       {
         "ticker": "8593",
@@ -2058,7 +2289,8 @@
         "volume": 2679700.0,
         "dollar_volume": 3318808450.0,
         "pct_change": 0.0020226537216828477,
-        "name": "Mitsubishi HC Capital Inc."
+        "name": "Mitsubishi HC Capital Inc.",
+        "themes": []
       },
       {
         "ticker": "1878",
@@ -2067,7 +2299,8 @@
         "volume": 198800.0,
         "dollar_volume": 3268272000.0,
         "pct_change": -0.007845503922751962,
-        "name": "Daito Trust Construction Co. Ltd."
+        "name": "Daito Trust Construction Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "4186",
@@ -2076,7 +2309,8 @@
         "volume": 644900.0,
         "dollar_volume": 3254810300.0,
         "pct_change": 0.03570695670018469,
-        "name": "Tokyo Ohka Kogyo Co., Ltd."
+        "name": "Tokyo Ohka Kogyo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4021",
@@ -2085,7 +2319,8 @@
         "volume": 588200.0,
         "dollar_volume": 3252157800.0,
         "pct_change": 0.04163526752072343,
-        "name": "Nissan Chemical Corporation"
+        "name": "Nissan Chemical Corporation",
+        "themes": []
       },
       {
         "ticker": "3088",
@@ -2094,7 +2329,8 @@
         "volume": 1069600.0,
         "dollar_volume": 3233400800.0,
         "pct_change": -0.006245890861275477,
-        "name": "Matsukiyococokara & Co."
+        "name": "Matsukiyococokara & Co.",
+        "themes": []
       },
       {
         "ticker": "8331",
@@ -2103,7 +2339,8 @@
         "volume": 2080700.0,
         "dollar_volume": 3205318350.0,
         "pct_change": 0.011822660098522168,
-        "name": "Chiba Bank Ltd."
+        "name": "Chiba Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "8354",
@@ -2112,7 +2349,8 @@
         "volume": 718900.0,
         "dollar_volume": 3189040400.0,
         "pct_change": 0.018365472910927456,
-        "name": "Fukuoka Financial Group Inc."
+        "name": "Fukuoka Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "5595",
@@ -2121,7 +2359,8 @@
         "volume": 1795000.0,
         "dollar_volume": 3178945000.0,
         "pct_change": -0.044252563410685376,
-        "name": "Institute for Q-shu Pioneers"
+        "name": "Institute for Q-shu Pioneers",
+        "themes": []
       },
       {
         "ticker": "7272",
@@ -2130,7 +2369,8 @@
         "volume": 2855400.0,
         "dollar_volume": 3178060200.0,
         "pct_change": 0.006329113924050633,
-        "name": "Yamaha Motor Co., Ltd."
+        "name": "Yamaha Motor Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2269",
@@ -2139,7 +2379,8 @@
         "volume": 1010900.0,
         "dollar_volume": 3175236900.0,
         "pct_change": 0.003514376996805112,
-        "name": "Meiji Holdings Co., Ltd."
+        "name": "Meiji Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2875",
@@ -2148,7 +2389,8 @@
         "volume": 293400.0,
         "dollar_volume": 3173121000.0,
         "pct_change": 0.010275572162540868,
-        "name": "Toyo Suisan Kaisha Ltd."
+        "name": "Toyo Suisan Kaisha Ltd.",
+        "themes": []
       },
       {
         "ticker": "2267",
@@ -2157,7 +2399,8 @@
         "volume": 1284500.0,
         "dollar_volume": 3172715000.0,
         "pct_change": 0.0040650406504065045,
-        "name": "Yakult Honsha Co., Ltd."
+        "name": "Yakult Honsha Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7911",
@@ -2166,7 +2409,8 @@
         "volume": 805800.0,
         "dollar_volume": 3112805400.0,
         "pct_change": 0.01178627553693033,
-        "name": "Toppan Holdings Inc."
+        "name": "Toppan Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "8105",
@@ -2175,7 +2419,8 @@
         "volume": 5394600.0,
         "dollar_volume": 3091105800.0,
         "pct_change": -0.1251908396946565,
-        "name": "Marusho Hotta Co., Ltd."
+        "name": "Marusho Hotta Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9532",
@@ -2184,7 +2429,8 @@
         "volume": 716100.0,
         "dollar_volume": 3043425000.0,
         "pct_change": 0.010221060137865463,
-        "name": "Osaka Gas Co., Ltd."
+        "name": "Osaka Gas Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2585",
@@ -2193,7 +2439,8 @@
         "volume": 1309200.0,
         "dollar_volume": 3025561200.0,
         "pct_change": 0.005219660722053067,
-        "name": "Lifedrink Co Inc."
+        "name": "Lifedrink Co Inc.",
+        "themes": []
       },
       {
         "ticker": "5110",
@@ -2202,7 +2449,8 @@
         "volume": 1701400.0,
         "dollar_volume": 3008925900.0,
         "pct_change": -0.02481389578163772,
-        "name": "Sumitomo Rubber Industries, Ltd."
+        "name": "Sumitomo Rubber Industries, Ltd.",
+        "themes": []
       },
       {
         "ticker": "4971",
@@ -2211,7 +2459,8 @@
         "volume": 784800.0,
         "dollar_volume": 2978316000.0,
         "pct_change": 0.0936599423631124,
-        "name": "MEC Co. Ltd."
+        "name": "MEC Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "5938",
@@ -2220,7 +2469,8 @@
         "volume": 1543600.0,
         "dollar_volume": 2955994000.0,
         "pct_change": -0.0018243419338024498,
-        "name": "Lixil Corporation"
+        "name": "Lixil Corporation",
+        "themes": []
       },
       {
         "ticker": "7419",
@@ -2229,7 +2479,8 @@
         "volume": 752100.0,
         "dollar_volume": 2951992500.0,
         "pct_change": 0.01683937823834197,
-        "name": "Nojima Corporation"
+        "name": "Nojima Corporation",
+        "themes": []
       },
       {
         "ticker": "9831",
@@ -2238,7 +2489,8 @@
         "volume": 6134200.0,
         "dollar_volume": 2943189085.119629,
         "pct_change": 0.0029264086838331023,
-        "name": "Yamada Holdings Co., Ltd."
+        "name": "Yamada Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9147",
@@ -2247,7 +2499,8 @@
         "volume": 865200.0,
         "dollar_volume": 2934758400.0,
         "pct_change": -0.0026462805057336078,
-        "name": "Nippon Express Holdings Inc."
+        "name": "Nippon Express Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "3289",
@@ -2256,7 +2509,8 @@
         "volume": 2325800.0,
         "dollar_volume": 2890969400.0,
         "pct_change": 0.0016116035455278,
-        "name": "Tokyu Fudosan Holdings Corporation"
+        "name": "Tokyu Fudosan Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "2587",
@@ -2265,7 +2519,8 @@
         "volume": 605900.0,
         "dollar_volume": 2851365400.0,
         "pct_change": 0.00448239060832444,
-        "name": "Suntory Beverage & Food Ltd."
+        "name": "Suntory Beverage & Food Ltd.",
+        "themes": []
       },
       {
         "ticker": "5333",
@@ -2274,7 +2529,8 @@
         "volume": 1120800.0,
         "dollar_volume": 2797516800.0,
         "pct_change": 0.018983466013472138,
-        "name": "NGK Insulators, Ltd."
+        "name": "NGK Insulators, Ltd.",
+        "themes": []
       },
       {
         "ticker": "4528",
@@ -2283,7 +2539,8 @@
         "volume": 1620400.0,
         "dollar_volume": 2786277800.0,
         "pct_change": 0.005261619409529378,
-        "name": "Ono Pharmaceutical Co., Ltd."
+        "name": "Ono Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4564",
@@ -2292,7 +2549,8 @@
         "volume": 99064600.0,
         "dollar_volume": 2773808800.0,
         "pct_change": 0.07692307692307693,
-        "name": "OncoTherapy Science Inc."
+        "name": "OncoTherapy Science Inc.",
+        "themes": []
       },
       {
         "ticker": "6479",
@@ -2301,7 +2559,8 @@
         "volume": 991900.0,
         "dollar_volume": 2762937450.0,
         "pct_change": 0.01846435100548446,
-        "name": "Minebea Mitsumi Inc."
+        "name": "Minebea Mitsumi Inc.",
+        "themes": []
       },
       {
         "ticker": "5831",
@@ -2310,7 +2569,8 @@
         "volume": 1383400.0,
         "dollar_volume": 2759883000.0,
         "pct_change": 0.010126582278481013,
-        "name": "Shizuoka Financial Group Inc."
+        "name": "Shizuoka Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "6268",
@@ -2319,7 +2579,8 @@
         "volume": 808800.0,
         "dollar_volume": 2747493600.0,
         "pct_change": 0.01737047020065888,
-        "name": "Nabtesco Corporation"
+        "name": "Nabtesco Corporation",
+        "themes": []
       },
       {
         "ticker": "7181",
@@ -2328,7 +2589,8 @@
         "volume": 668400.0,
         "dollar_volume": 2741108400.0,
         "pct_change": 0.00048792388387411563,
-        "name": "Japan Post Insurance Co., Ltd."
+        "name": "Japan Post Insurance Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6305",
@@ -2337,7 +2599,8 @@
         "volume": 580300.0,
         "dollar_volume": 2734953900.0,
         "pct_change": -0.0033833791499259885,
-        "name": "Hitachi Construction Machinery Co., Ltd."
+        "name": "Hitachi Construction Machinery Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5201",
@@ -2346,7 +2609,8 @@
         "volume": 569600.0,
         "dollar_volume": 2730092800.0,
         "pct_change": 0.0012533946104031752,
-        "name": "AGC Inc."
+        "name": "AGC Inc.",
+        "themes": []
       },
       {
         "ticker": "1662",
@@ -2355,7 +2619,8 @@
         "volume": 2072800.0,
         "dollar_volume": 2727804800.0,
         "pct_change": 0.03622047244094488,
-        "name": "Japan Petroleum Exploration Co., Ltd."
+        "name": "Japan Petroleum Exploration Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6324",
@@ -2364,7 +2629,8 @@
         "volume": 876000.0,
         "dollar_volume": 2693700000.0,
         "pct_change": 0.01485148514851485,
-        "name": "Harmonic Drive Systems Inc."
+        "name": "Harmonic Drive Systems Inc.",
+        "themes": []
       },
       {
         "ticker": "5101",
@@ -2373,7 +2639,8 @@
         "volume": 462400.0,
         "dollar_volume": 2687006400.0,
         "pct_change": 0.01679790026246719,
-        "name": "Yokohama Rubber Co., Ltd."
+        "name": "Yokohama Rubber Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4593",
@@ -2382,7 +2649,8 @@
         "volume": 4317900.0,
         "dollar_volume": 2685733800.0,
         "pct_change": 0.05245346869712352,
-        "name": "Healios K.K."
+        "name": "Healios K.K.",
+        "themes": []
       },
       {
         "ticker": "4072",
@@ -2391,7 +2659,8 @@
         "volume": 728000.0,
         "dollar_volume": 2668120000.0,
         "pct_change": -0.04308093994778068,
-        "name": "Densan System Holdings Co., Ltd."
+        "name": "Densan System Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5406",
@@ -2400,7 +2669,8 @@
         "volume": 1470300.0,
         "dollar_volume": 2656096950.0,
         "pct_change": -0.000829646017699115,
-        "name": "Kobe Steel Ltd."
+        "name": "Kobe Steel Ltd.",
+        "themes": []
       },
       {
         "ticker": "6586",
@@ -2409,7 +2679,8 @@
         "volume": 543200.0,
         "dollar_volume": 2645384000.0,
         "pct_change": -0.013570994531091757,
-        "name": "Makita Corporation"
+        "name": "Makita Corporation",
+        "themes": []
       },
       {
         "ticker": "5253",
@@ -2418,7 +2689,8 @@
         "volume": 1358400.0,
         "dollar_volume": 2624428800.0,
         "pct_change": -0.009230769230769232,
-        "name": "Cover Corp."
+        "name": "Cover Corp.",
+        "themes": []
       },
       {
         "ticker": "5105",
@@ -2427,7 +2699,8 @@
         "volume": 636100.0,
         "dollar_volume": 2593379700.0,
         "pct_change": 0.010408921933085501,
-        "name": "Toyo Tire Corporation"
+        "name": "Toyo Tire Corporation",
+        "themes": []
       },
       {
         "ticker": "9048",
@@ -2436,7 +2709,8 @@
         "volume": 1483600.0,
         "dollar_volume": 2593332800.0,
         "pct_change": 0.0014322543683758235,
-        "name": "Nagoya Railroad Co., Ltd."
+        "name": "Nagoya Railroad Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7752",
@@ -2445,7 +2719,8 @@
         "volume": 1892800.0,
         "dollar_volume": 2575154400.0,
         "pct_change": 0.023702031602708805,
-        "name": "Ricoh Company, Ltd."
+        "name": "Ricoh Company, Ltd.",
+        "themes": []
       },
       {
         "ticker": "9468",
@@ -2454,7 +2729,8 @@
         "volume": 721700.0,
         "dollar_volume": 2571417100.0,
         "pct_change": 0.002250351617440225,
-        "name": "Kadokawa Corporation"
+        "name": "Kadokawa Corporation",
+        "themes": []
       },
       {
         "ticker": "8951",
@@ -2463,7 +2739,8 @@
         "volume": 18193.0,
         "dollar_volume": 2570670900.0,
         "pct_change": -0.0007072135785007072,
-        "name": "Nippon Building Fund Inc."
+        "name": "Nippon Building Fund Inc.",
+        "themes": []
       },
       {
         "ticker": "5830",
@@ -2472,7 +2749,8 @@
         "volume": 1187600.0,
         "dollar_volume": 2569966400.0,
         "pct_change": 0.018832391713747645,
-        "name": "Iyogin Holdings Inc."
+        "name": "Iyogin Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "9502",
@@ -2481,7 +2759,8 @@
         "volume": 1247700.0,
         "dollar_volume": 2567766600.0,
         "pct_change": 0.0004861448711716091,
-        "name": "Chubu Electric Power Company, Inc."
+        "name": "Chubu Electric Power Company, Inc.",
+        "themes": []
       },
       {
         "ticker": "6481",
@@ -2490,7 +2769,8 @@
         "volume": 627000.0,
         "dollar_volume": 2565684000.0,
         "pct_change": 0.015132721409079633,
-        "name": "THK Co., Ltd."
+        "name": "THK Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5032",
@@ -2499,7 +2779,8 @@
         "volume": 461500.0,
         "dollar_volume": 2556710000.0,
         "pct_change": -0.0035971223021582736,
-        "name": "Anycolor Inc."
+        "name": "Anycolor Inc.",
+        "themes": []
       },
       {
         "ticker": "6724",
@@ -2508,7 +2789,8 @@
         "volume": 1271600.0,
         "dollar_volume": 2547014800.0,
         "pct_change": 0.028762198253723677,
-        "name": "Seiko Epson Corporation"
+        "name": "Seiko Epson Corporation",
+        "themes": []
       },
       {
         "ticker": "9044",
@@ -2517,7 +2799,8 @@
         "volume": 928400.0,
         "dollar_volume": 2541495000.0,
         "pct_change": 0.008473015288266716,
-        "name": "Nankai Electric Railway Co., Ltd."
+        "name": "Nankai Electric Railway Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4732",
@@ -2526,7 +2809,8 @@
         "volume": 1425000.0,
         "dollar_volume": 2536500000.0,
         "pct_change": -0.016302846090080134,
-        "name": "Uss Co. Ltd."
+        "name": "Uss Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "9166",
@@ -2535,7 +2819,8 @@
         "volume": 2697000.0,
         "dollar_volume": 2527089000.0,
         "pct_change": -0.02598752598752599,
-        "name": "Genda Inc."
+        "name": "Genda Inc.",
+        "themes": []
       },
       {
         "ticker": "4716",
@@ -2544,7 +2829,8 @@
         "volume": 153500.0,
         "dollar_volume": 2515865000.0,
         "pct_change": 0.003981623277182236,
-        "name": "Oracle Corporation Japan"
+        "name": "Oracle Corporation Japan",
+        "themes": []
       },
       {
         "ticker": "4768",
@@ -2553,7 +2839,8 @@
         "volume": 799300.0,
         "dollar_volume": 2513798500.0,
         "pct_change": 0.005756315957787016,
-        "name": "Otsuka Corporation"
+        "name": "Otsuka Corporation",
+        "themes": []
       },
       {
         "ticker": "2160",
@@ -2562,7 +2849,8 @@
         "volume": 993000.0,
         "dollar_volume": 2470584000.0,
         "pct_change": -0.03453628249902988,
-        "name": "GNI Group Ltd."
+        "name": "GNI Group Ltd.",
+        "themes": []
       },
       {
         "ticker": "4612",
@@ -2571,7 +2859,8 @@
         "volume": 2469400.0,
         "dollar_volume": 2469400000.0,
         "pct_change": 0.0019036413791585207,
-        "name": "Nippon Paint Holdings Co., Ltd."
+        "name": "Nippon Paint Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8253",
@@ -2580,7 +2869,8 @@
         "volume": 636300.0,
         "dollar_volume": 2461844700.0,
         "pct_change": -0.0015483870967741935,
-        "name": "Credit Saison Co., Ltd."
+        "name": "Credit Saison Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "1969",
@@ -2589,7 +2879,8 @@
         "volume": 289000.0,
         "dollar_volume": 2455344000.0,
         "pct_change": -0.008866075594960336,
-        "name": "Takasago Thermal Engineering Co., Ltd."
+        "name": "Takasago Thermal Engineering Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5233",
@@ -2598,7 +2889,8 @@
         "volume": 626400.0,
         "dollar_volume": 2451103200.0,
         "pct_change": -0.013114754098360656,
-        "name": "Taiheiyo Cement Corporation"
+        "name": "Taiheiyo Cement Corporation",
+        "themes": []
       },
       {
         "ticker": "9962",
@@ -2607,7 +2899,8 @@
         "volume": 1021000.0,
         "dollar_volume": 2439679500.0,
         "pct_change": 0.006529064869418702,
-        "name": "Misumi Group Inc."
+        "name": "Misumi Group Inc.",
+        "themes": []
       },
       {
         "ticker": "2371",
@@ -2616,7 +2909,8 @@
         "volume": 923900.0,
         "dollar_volume": 2429395050.0,
         "pct_change": -0.0066112580279561765,
-        "name": "Kakaku.com Inc."
+        "name": "Kakaku.com Inc.",
+        "themes": []
       },
       {
         "ticker": "4042",
@@ -2625,7 +2919,8 @@
         "volume": 1042400.0,
         "dollar_volume": 2428270800.0,
         "pct_change": 0.014369693011103853,
-        "name": "Tosoh Corporation"
+        "name": "Tosoh Corporation",
+        "themes": []
       },
       {
         "ticker": "6113",
@@ -2634,7 +2929,8 @@
         "volume": 1303800.0,
         "dollar_volume": 2412030000.0,
         "pct_change": 0.015089163237311385,
-        "name": "Amada Co., Ltd."
+        "name": "Amada Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2801",
@@ -2643,7 +2939,8 @@
         "volume": 1842700.0,
         "dollar_volume": 2379847050.0,
         "pct_change": 0.0003872966692486445,
-        "name": "Kikkoman Corporation"
+        "name": "Kikkoman Corporation",
+        "themes": []
       },
       {
         "ticker": "9435",
@@ -2652,7 +2949,8 @@
         "volume": 55800.0,
         "dollar_volume": 2379312000.0,
         "pct_change": -0.0011712344811431249,
-        "name": "Hikari Tsushin Inc."
+        "name": "Hikari Tsushin Inc.",
+        "themes": []
       },
       {
         "ticker": "5602",
@@ -2661,7 +2959,8 @@
         "volume": 271600.0,
         "dollar_volume": 2327612000.0,
         "pct_change": -0.0011655011655011655,
-        "name": "Kurimoto Ltd."
+        "name": "Kurimoto Ltd.",
+        "themes": []
       },
       {
         "ticker": "5332",
@@ -2670,7 +2969,8 @@
         "volume": 576100.0,
         "dollar_volume": 2303823900.0,
         "pct_change": -0.002494387627837366,
-        "name": "Toto Ltd."
+        "name": "Toto Ltd.",
+        "themes": []
       },
       {
         "ticker": "6507",
@@ -2679,7 +2979,8 @@
         "volume": 275000.0,
         "dollar_volume": 2299000000.0,
         "pct_change": 0.013333333333333334,
-        "name": "Sinfonia Technology Co., Ltd."
+        "name": "Sinfonia Technology Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5805",
@@ -2688,7 +2989,8 @@
         "volume": 292200.0,
         "dollar_volume": 2285004000.0,
         "pct_change": -0.020050125313283207,
-        "name": "Swcc Corporation"
+        "name": "Swcc Corporation",
+        "themes": []
       },
       {
         "ticker": "5021",
@@ -2697,7 +2999,8 @@
         "volume": 311800.0,
         "dollar_volume": 2263668000.0,
         "pct_change": 0.008333333333333333,
-        "name": "Cosmo Energy Holdings Co., Ltd."
+        "name": "Cosmo Energy Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4912",
@@ -2706,7 +3009,8 @@
         "volume": 1445100.0,
         "dollar_volume": 2248575600.0,
         "pct_change": 0.010061668289516391,
-        "name": "Lion Corporation"
+        "name": "Lion Corporation",
+        "themes": []
       },
       {
         "ticker": "9042",
@@ -2715,7 +3019,8 @@
         "volume": 508300.0,
         "dollar_volume": 2236011700.0,
         "pct_change": 0.002050113895216401,
-        "name": "Hankyu Hanshin Holdings Inc."
+        "name": "Hankyu Hanshin Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4666",
@@ -2724,7 +3029,8 @@
         "volume": 1164500.0,
         "dollar_volume": 2234093250.0,
         "pct_change": -0.012355212355212355,
-        "name": "Park24 Co., Ltd."
+        "name": "Park24 Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4091",
@@ -2733,7 +3039,8 @@
         "volume": 393100.0,
         "dollar_volume": 2232414900.0,
         "pct_change": 0.01664876476906552,
-        "name": "Nippon Sanso Holdings Corporation"
+        "name": "Nippon Sanso Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "6814",
@@ -2742,7 +3049,8 @@
         "volume": 410400.0,
         "dollar_volume": 2212056000.0,
         "pct_change": 0.009363295880149813,
-        "name": "Furuno Electric Co., Ltd."
+        "name": "Furuno Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3349",
@@ -2751,7 +3059,8 @@
         "volume": 253500.0,
         "dollar_volume": 2190240000.0,
         "pct_change": -0.00563931407526758,
-        "name": "Cosmos Pharmaceutical Corp."
+        "name": "Cosmos Pharmaceutical Corp.",
+        "themes": []
       },
       {
         "ticker": "9064",
@@ -2760,7 +3069,8 @@
         "volume": 909400.0,
         "dollar_volume": 2182560000.0,
         "pct_change": -0.0033222591362126247,
-        "name": "Yamato Holdings Co., Ltd."
+        "name": "Yamato Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2586",
@@ -2769,7 +3079,8 @@
         "volume": 9169600.0,
         "dollar_volume": 2173195200.0,
         "pct_change": 0.039473684210526314,
-        "name": "Fruta Fruta Inc."
+        "name": "Fruta Fruta Inc.",
+        "themes": []
       },
       {
         "ticker": "2158",
@@ -2778,7 +3089,8 @@
         "volume": 2333100.0,
         "dollar_volume": 2172116100.0,
         "pct_change": 0.023076923076923078,
-        "name": "Fronteo Inc."
+        "name": "Fronteo Inc.",
+        "themes": []
       },
       {
         "ticker": "3003",
@@ -2787,7 +3099,8 @@
         "volume": 1322700.0,
         "dollar_volume": 2161291800.0,
         "pct_change": -0.006384919428397689,
-        "name": "Hulic Co., Ltd."
+        "name": "Hulic Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4023",
@@ -2796,7 +3109,8 @@
         "volume": 531400.0,
         "dollar_volume": 2149513000.0,
         "pct_change": 0.012515644555694618,
-        "name": "Kureha Corporation"
+        "name": "Kureha Corporation",
+        "themes": []
       },
       {
         "ticker": "1808",
@@ -2805,7 +3119,8 @@
         "volume": 856300.0,
         "dollar_volume": 2145031500.0,
         "pct_change": -0.005952380952380952,
-        "name": "Haseko Corporation"
+        "name": "Haseko Corporation",
+        "themes": []
       },
       {
         "ticker": "9616",
@@ -2814,7 +3129,8 @@
         "volume": 647000.0,
         "dollar_volume": 2142864000.0,
         "pct_change": 0.0048543689320388345,
-        "name": "Kyoritsu Maintenance Co., Ltd."
+        "name": "Kyoritsu Maintenance Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7777",
@@ -2823,7 +3139,8 @@
         "volume": 6846800.0,
         "dollar_volume": 2115661200.0,
         "pct_change": 0.013114754098360656,
-        "name": "3-D Matrix Ltd."
+        "name": "3-D Matrix Ltd.",
+        "themes": []
       },
       {
         "ticker": "6841",
@@ -2832,7 +3149,8 @@
         "volume": 482200.0,
         "dollar_volume": 2115411400.0,
         "pct_change": 0.015274242073594076,
-        "name": "Yokogawa Electric Corporation"
+        "name": "Yokogawa Electric Corporation",
+        "themes": []
       },
       {
         "ticker": "7721",
@@ -2841,7 +3159,8 @@
         "volume": 449300.0,
         "dollar_volume": 2113956500.0,
         "pct_change": 0.021715526601520086,
-        "name": "Tokyo Keiki Inc."
+        "name": "Tokyo Keiki Inc.",
+        "themes": []
       },
       {
         "ticker": "6753",
@@ -2850,7 +3169,8 @@
         "volume": 2462000.0,
         "dollar_volume": 2110918860.1074219,
         "pct_change": 0.03152070719713305,
-        "name": "Sharp Corporation"
+        "name": "Sharp Corporation",
+        "themes": []
       },
       {
         "ticker": "3197",
@@ -2859,7 +3179,8 @@
         "volume": 702300.0,
         "dollar_volume": 2096716650.0,
         "pct_change": 0.001005867560771165,
-        "name": "Skylark Holdings Co., Ltd."
+        "name": "Skylark Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5019",
@@ -2868,7 +3189,8 @@
         "volume": 2030400.0,
         "dollar_volume": 2093342400.0,
         "pct_change": 0.0068359375,
-        "name": "Idemitsu Kosan Co., Ltd."
+        "name": "Idemitsu Kosan Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6254",
@@ -2877,7 +3199,8 @@
         "volume": 635200.0,
         "dollar_volume": 2086632000.0,
         "pct_change": -0.004545454545454545,
-        "name": "Nomura Micro Science Co., Ltd."
+        "name": "Nomura Micro Science Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6448",
@@ -2886,7 +3209,8 @@
         "volume": 800300.0,
         "dollar_volume": 2084381350.0,
         "pct_change": 0.025393700787401576,
-        "name": "Brother Industries Ltd."
+        "name": "Brother Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "1893",
@@ -2895,7 +3219,8 @@
         "volume": 1794500.0,
         "dollar_volume": 2082517250.0,
         "pct_change": 0.003025064822817632,
-        "name": "Penta-Ocean Construction Co., Ltd."
+        "name": "Penta-Ocean Construction Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6471",
@@ -2904,7 +3229,8 @@
         "volume": 2636000.0,
         "dollar_volume": 2080594767.8222656,
         "pct_change": 0.0017768287035494898,
-        "name": "NSK Ltd."
+        "name": "NSK Ltd.",
+        "themes": []
       },
       {
         "ticker": "5985",
@@ -2913,7 +3239,8 @@
         "volume": 1872200.0,
         "dollar_volume": 2080014200.0,
         "pct_change": 0.03928905519176801,
-        "name": "Suncall Corporation"
+        "name": "Suncall Corporation",
+        "themes": []
       },
       {
         "ticker": "5844",
@@ -2922,7 +3249,8 @@
         "volume": 672200.0,
         "dollar_volume": 2073064800.0,
         "pct_change": 0.014473684210526316,
-        "name": "Kyoto Financial Group Inc."
+        "name": "Kyoto Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "7167",
@@ -2931,7 +3259,8 @@
         "volume": 2248800.0,
         "dollar_volume": 2046632825.0976562,
         "pct_change": 0.0018713684788499482,
-        "name": "Mebuki Financial Group Inc."
+        "name": "Mebuki Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "3696",
@@ -2940,7 +3269,8 @@
         "volume": 757400.0,
         "dollar_volume": 2044222600.0,
         "pct_change": -0.014963503649635036,
-        "name": "Ceres Inc."
+        "name": "Ceres Inc.",
+        "themes": []
       },
       {
         "ticker": "2282",
@@ -2949,7 +3279,8 @@
         "volume": 352200.0,
         "dollar_volume": 2044168800.0,
         "pct_change": 0.0010348395998620215,
-        "name": "Nh Foods Ltd."
+        "name": "Nh Foods Ltd.",
+        "themes": []
       },
       {
         "ticker": "6770",
@@ -2958,7 +3289,8 @@
         "volume": 1048800.0,
         "dollar_volume": 2003732400.0,
         "pct_change": 0.02247792346802248,
-        "name": "Alps Alpine Co., Ltd."
+        "name": "Alps Alpine Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2726",
@@ -2967,7 +3299,8 @@
         "volume": 781100.0,
         "dollar_volume": 1998053800.0,
         "pct_change": -0.015775298191612157,
-        "name": "Pal Group Holdings Co., Ltd."
+        "name": "Pal Group Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8952",
@@ -2976,7 +3309,8 @@
         "volume": 15608.0,
         "dollar_volume": 1986898400.0,
         "pct_change": -0.00779423226812159,
-        "name": "Japan Real Estate Investment Corporation"
+        "name": "Japan Real Estate Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "6460",
@@ -2985,7 +3319,8 @@
         "volume": 640100.0,
         "dollar_volume": 1975988700.0,
         "pct_change": 0.016798418972332016,
-        "name": "Sega Sammy Holdings Inc."
+        "name": "Sega Sammy Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "3923",
@@ -2994,7 +3329,8 @@
         "volume": 729100.0,
         "dollar_volume": 1970757300.0,
         "pct_change": 0.011980531636091352,
-        "name": "Rakus Co., Ltd."
+        "name": "Rakus Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3656",
@@ -3003,7 +3339,8 @@
         "volume": 10954800.0,
         "dollar_volume": 1949954400.0,
         "pct_change": -0.08247422680412371,
-        "name": "KLab Inc."
+        "name": "KLab Inc.",
+        "themes": []
       },
       {
         "ticker": "8341",
@@ -3012,7 +3349,8 @@
         "volume": 325200.0,
         "dollar_volume": 1946322000.0,
         "pct_change": 0.028527238357106032,
-        "name": "77 Bank Ltd."
+        "name": "77 Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "4151",
@@ -3021,7 +3359,8 @@
         "volume": 833000.0,
         "dollar_volume": 1945471500.0,
         "pct_change": -0.006170212765957447,
-        "name": "Kyowa Kirin Co., Ltd."
+        "name": "Kyowa Kirin Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2871",
@@ -3030,7 +3369,8 @@
         "volume": 1110000.0,
         "dollar_volume": 1936950000.0,
         "pct_change": -0.0042796005706134095,
-        "name": "Nichirei Corporation"
+        "name": "Nichirei Corporation",
+        "themes": []
       },
       {
         "ticker": "2222",
@@ -3039,7 +3379,8 @@
         "volume": 1022300.0,
         "dollar_volume": 1930613550.0,
         "pct_change": 0.04164368450082736,
-        "name": "Kotobuki Spirits Co., Ltd."
+        "name": "Kotobuki Spirits Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3405",
@@ -3048,7 +3389,8 @@
         "volume": 1109300.0,
         "dollar_volume": 1921307600.0,
         "pct_change": 0.01762632197414806,
-        "name": "Kuraray Co., Ltd."
+        "name": "Kuraray Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3626",
@@ -3057,7 +3399,8 @@
         "volume": 380300.0,
         "dollar_volume": 1906063600.0,
         "pct_change": -0.0075247524752475245,
-        "name": "TIS Inc."
+        "name": "TIS Inc.",
+        "themes": []
       },
       {
         "ticker": "6890",
@@ -3066,7 +3409,8 @@
         "volume": 454600.0,
         "dollar_volume": 1888863000.0,
         "pct_change": 0.028465346534653466,
-        "name": "Ferrotec Holdings Corporation"
+        "name": "Ferrotec Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "7276",
@@ -3075,7 +3419,8 @@
         "volume": 832500.0,
         "dollar_volume": 1885612500.0,
         "pct_change": 0.00823503227242377,
-        "name": "Koito Manufacturing Co., Ltd."
+        "name": "Koito Manufacturing Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9143",
@@ -3084,7 +3429,8 @@
         "volume": 1181600.0,
         "dollar_volume": 1882879600.0,
         "pct_change": -0.01055572803477181,
-        "name": "SG Holdings Co., Ltd."
+        "name": "SG Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8252",
@@ -3093,7 +3439,8 @@
         "volume": 576100.0,
         "dollar_volume": 1876357700.0,
         "pct_change": 0.0012296341838303104,
-        "name": "Marui Group Co., Ltd."
+        "name": "Marui Group Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5214",
@@ -3102,7 +3449,8 @@
         "volume": 383500.0,
         "dollar_volume": 1874548000.0,
         "pct_change": 0.007004532344458179,
-        "name": "Nippon Electric Glass Co., Ltd."
+        "name": "Nippon Electric Glass Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "1721",
@@ -3111,7 +3459,8 @@
         "volume": 505600.0,
         "dollar_volume": 1871731200.0,
         "pct_change": 0.009544586855740387,
-        "name": "Comsys Holdings Corporation"
+        "name": "Comsys Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "5929",
@@ -3120,7 +3469,8 @@
         "volume": 423500.0,
         "dollar_volume": 1871446500.0,
         "pct_change": -0.015154891909962113,
-        "name": "Sanwa Holdings Corporation"
+        "name": "Sanwa Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "3231",
@@ -3129,7 +3479,8 @@
         "volume": 1939200.0,
         "dollar_volume": 1859692800.0,
         "pct_change": -0.0031185031185031187,
-        "name": "Nomura Real Estate Holdings, Inc."
+        "name": "Nomura Real Estate Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "7701",
@@ -3138,7 +3489,8 @@
         "volume": 494000.0,
         "dollar_volume": 1839162000.0,
         "pct_change": 0.0045871559633027525,
-        "name": "Shimadzu Corporation"
+        "name": "Shimadzu Corporation",
+        "themes": []
       },
       {
         "ticker": "5711",
@@ -3147,7 +3499,8 @@
         "volume": 692500.0,
         "dollar_volume": 1825776250.0,
         "pct_change": 0.017757189731712024,
-        "name": "Mitsubishi Materials Corporation"
+        "name": "Mitsubishi Materials Corporation",
+        "themes": []
       },
       {
         "ticker": "7649",
@@ -3156,7 +3509,8 @@
         "volume": 499300.0,
         "dollar_volume": 1813956900.0,
         "pct_change": -0.011697497279651796,
-        "name": "Sugi Holdings Co., Ltd."
+        "name": "Sugi Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2809",
@@ -3165,7 +3519,8 @@
         "volume": 433800.0,
         "dollar_volume": 1802872800.0,
         "pct_change": 0.0007223693715386468,
-        "name": "Kewpie Corporation"
+        "name": "Kewpie Corporation",
+        "themes": []
       },
       {
         "ticker": "7747",
@@ -3174,7 +3529,8 @@
         "volume": 692400.0,
         "dollar_volume": 1799547600.0,
         "pct_change": 0.01602814698983581,
-        "name": "Asahi Intecc Co., Ltd."
+        "name": "Asahi Intecc Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6834",
@@ -3183,7 +3539,8 @@
         "volume": 189600.0,
         "dollar_volume": 1797408000.0,
         "pct_change": 0.05921787709497207,
-        "name": "Seikoh Giken Co., Ltd."
+        "name": "Seikoh Giken Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9007",
@@ -3192,7 +3549,8 @@
         "volume": 1042400.0,
         "dollar_volume": 1784588800.0,
         "pct_change": -0.003202328966521106,
-        "name": "Odakyu Electric Railway Co., Ltd."
+        "name": "Odakyu Electric Railway Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8111",
@@ -3201,7 +3559,8 @@
         "volume": 237800.0,
         "dollar_volume": 1782786600.0,
         "pct_change": -0.0076770350761085375,
-        "name": "Goldwin Inc."
+        "name": "Goldwin Inc.",
+        "themes": []
       },
       {
         "ticker": "6845",
@@ -3210,7 +3569,8 @@
         "volume": 1216800.0,
         "dollar_volume": 1774702800.0,
         "pct_change": -0.018836192398250923,
-        "name": "Azbil Corporation"
+        "name": "Azbil Corporation",
+        "themes": []
       },
       {
         "ticker": "6473",
@@ -3219,7 +3579,8 @@
         "volume": 1153400.0,
         "dollar_volume": 1766432100.0,
         "pct_change": 0.011224826675470452,
-        "name": "JTEKT Corporation"
+        "name": "JTEKT Corporation",
+        "themes": []
       },
       {
         "ticker": "9508",
@@ -3228,7 +3589,8 @@
         "volume": 1151100.0,
         "dollar_volume": 1750823100.0,
         "pct_change": 0.0066181336863004635,
-        "name": "Kyushu Electric Power Co., Inc."
+        "name": "Kyushu Electric Power Co., Inc.",
+        "themes": []
       },
       {
         "ticker": "3281",
@@ -3237,7 +3599,8 @@
         "volume": 12878.0,
         "dollar_volume": 1739817800.0,
         "pct_change": -0.003687315634218289,
-        "name": "GLP J-REIT"
+        "name": "GLP J-REIT",
+        "themes": []
       },
       {
         "ticker": "2334",
@@ -3246,7 +3609,8 @@
         "volume": 325700.0,
         "dollar_volume": 1739238000.0,
         "pct_change": -0.06315789473684211,
-        "name": "Federal National Mortgage Association (FNCL) Floating Rate Note 1995 Series"
+        "name": "Federal National Mortgage Association (FNCL) Floating Rate Note 1995 Series",
+        "themes": []
       },
       {
         "ticker": "4114",
@@ -3255,7 +3619,8 @@
         "volume": 928700.0,
         "dollar_volume": 1738062050.0,
         "pct_change": 0.007265877287405812,
-        "name": "Nippon Shokubai Co., Ltd."
+        "name": "Nippon Shokubai Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5262",
@@ -3264,7 +3629,8 @@
         "volume": 426900.0,
         "dollar_volume": 1726810500.0,
         "pct_change": -0.024125452352231604,
-        "name": "Nippon Hume Corporation"
+        "name": "Nippon Hume Corporation",
+        "themes": []
       },
       {
         "ticker": "3391",
@@ -3273,7 +3639,8 @@
         "volume": 734500.0,
         "dollar_volume": 1722402500.0,
         "pct_change": -0.008875739644970414,
-        "name": "Tsuruha Holdings Inc."
+        "name": "Tsuruha Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "1890",
@@ -3282,7 +3649,8 @@
         "volume": 994300.0,
         "dollar_volume": 1718150400.0,
         "pct_change": -0.012006861063464836,
-        "name": "Toyo Construction Co. Ltd."
+        "name": "Toyo Construction Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "4194",
@@ -3291,7 +3659,8 @@
         "volume": 145500.0,
         "dollar_volume": 1710352500.0,
         "pct_change": -0.019190654985398414,
-        "name": "Visional Inc."
+        "name": "Visional Inc.",
+        "themes": []
       },
       {
         "ticker": "3086",
@@ -3300,7 +3669,8 @@
         "volume": 683300.0,
         "dollar_volume": 1701758650.0,
         "pct_change": 0.007280080889787664,
-        "name": "J. Front Retailing Co., Ltd."
+        "name": "J. Front Retailing Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8524",
@@ -3309,7 +3679,8 @@
         "volume": 2342200.0,
         "dollar_volume": 1695752800.0,
         "pct_change": 0.0111731843575419,
-        "name": "North Pacific Bank Ltd."
+        "name": "North Pacific Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "8985",
@@ -3318,7 +3689,8 @@
         "volume": 19367.0,
         "dollar_volume": 1692675800.0,
         "pct_change": -0.00228310502283105,
-        "name": "Japan Hotel REIT Investment Corporation"
+        "name": "Japan Hotel REIT Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "9005",
@@ -3327,7 +3699,8 @@
         "volume": 904100.0,
         "dollar_volume": 1687050600.0,
         "pct_change": 0.0008045052292839903,
-        "name": "Tokyu Corporation"
+        "name": "Tokyu Corporation",
+        "themes": []
       },
       {
         "ticker": "8227",
@@ -3336,7 +3709,8 @@
         "volume": 155700.0,
         "dollar_volume": 1677667500.0,
         "pct_change": -0.008739650413983441,
-        "name": "Shimamura Co., Ltd."
+        "name": "Shimamura Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4527",
@@ -3345,7 +3719,8 @@
         "volume": 654100.0,
         "dollar_volume": 1669263200.0,
         "pct_change": 0.01978021978021978,
-        "name": "Rohto Pharmaceutical Co., Ltd."
+        "name": "Rohto Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9031",
@@ -3354,7 +3729,8 @@
         "volume": 714600.0,
         "dollar_volume": 1658943900.0,
         "pct_change": 0.011106271777003485,
-        "name": "Nishi-Nippon Railroad Co., Ltd."
+        "name": "Nishi-Nippon Railroad Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8282",
@@ -3363,7 +3739,8 @@
         "volume": 1032800.0,
         "dollar_volume": 1657644000.0,
         "pct_change": 0.003125,
-        "name": "K's Holdings Corporation"
+        "name": "K's Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "6302",
@@ -3372,7 +3749,8 @@
         "volume": 482800.0,
         "dollar_volume": 1653590000.0,
         "pct_change": 0.00972877358490566,
-        "name": "Sumitomo Heavy Industries Ltd."
+        "name": "Sumitomo Heavy Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "9009",
@@ -3381,7 +3759,8 @@
         "volume": 1189800.0,
         "dollar_volume": 1653227100.0,
         "pct_change": 0.016831320892791803,
-        "name": "Keisei Electric Railway Co., Ltd."
+        "name": "Keisei Electric Railway Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4208",
@@ -3390,7 +3769,8 @@
         "volume": 689300.0,
         "dollar_volume": 1651562800.0,
         "pct_change": 0.014394580863674851,
-        "name": "Ube Corporation"
+        "name": "Ube Corporation",
+        "themes": []
       },
       {
         "ticker": "4536",
@@ -3399,7 +3779,8 @@
         "volume": 997100.0,
         "dollar_volume": 1641226600.0,
         "pct_change": -0.0024242424242424242,
-        "name": "Santen Pharmaceutical Co., Ltd."
+        "name": "Santen Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4478",
@@ -3408,7 +3789,8 @@
         "volume": 440600.0,
         "dollar_volume": 1605987000.0,
         "pct_change": -0.03571428571428571,
-        "name": "Freee K.K."
+        "name": "Freee K.K.",
+        "themes": []
       },
       {
         "ticker": "4833",
@@ -3417,7 +3799,8 @@
         "volume": 9887600.0,
         "dollar_volume": 1591903600.0,
         "pct_change": -0.06936416184971098,
-        "name": "Def Consulting Inc."
+        "name": "Def Consulting Inc.",
+        "themes": []
       },
       {
         "ticker": "9142",
@@ -3426,7 +3809,8 @@
         "volume": 393100.0,
         "dollar_volume": 1584586100.0,
         "pct_change": -0.005182625863770977,
-        "name": "Kyushu Railway Company"
+        "name": "Kyushu Railway Company",
+        "themes": []
       },
       {
         "ticker": "8918",
@@ -3435,7 +3819,8 @@
         "volume": 158113800.0,
         "dollar_volume": 1581138000.0,
         "pct_change": 0.0,
-        "name": "Land Co., Ltd."
+        "name": "Land Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2743",
@@ -3444,7 +3829,8 @@
         "volume": 9332900.0,
         "dollar_volume": 1577260100.0,
         "pct_change": 0.049689440993788817,
-        "name": "Pixel Companyz Inc."
+        "name": "Pixel Companyz Inc.",
+        "themes": []
       },
       {
         "ticker": "6332",
@@ -3453,7 +3839,8 @@
         "volume": 514700.0,
         "dollar_volume": 1569835000.0,
         "pct_change": -0.025559105431309903,
-        "name": "Tsukishima Holdings Co., Ltd."
+        "name": "Tsukishima Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7912",
@@ -3462,7 +3849,8 @@
         "volume": 611500.0,
         "dollar_volume": 1556879000.0,
         "pct_change": 0.011320754716981131,
-        "name": "Dai Nippon Printing Co., Ltd."
+        "name": "Dai Nippon Printing Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3471",
@@ -3471,7 +3859,8 @@
         "volume": 14512.0,
         "dollar_volume": 1552784000.0,
         "pct_change": 0.0009354536950420954,
-        "name": "Mitsui Fudosan Logistics Park Inc."
+        "name": "Mitsui Fudosan Logistics Park Inc.",
+        "themes": []
       },
       {
         "ticker": "6806",
@@ -3480,7 +3869,8 @@
         "volume": 79700.0,
         "dollar_volume": 1548969500.0,
         "pct_change": 0.005431971029487843,
-        "name": "Hirose Electric Co., Ltd."
+        "name": "Hirose Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4676",
@@ -3489,7 +3879,8 @@
         "volume": 450700.0,
         "dollar_volume": 1546802400.0,
         "pct_change": -0.01633705932932072,
-        "name": "Fuji Media Holdings Inc."
+        "name": "Fuji Media Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6856",
@@ -3498,7 +3889,8 @@
         "volume": 120800.0,
         "dollar_volume": 1546240000.0,
         "pct_change": 0.00747737111373475,
-        "name": "Horiba Ltd."
+        "name": "Horiba Ltd.",
+        "themes": []
       },
       {
         "ticker": "4980",
@@ -3507,7 +3899,8 @@
         "volume": 670900.0,
         "dollar_volume": 1544411800.0,
         "pct_change": 0.05475372279495991,
-        "name": "Dexerials Corporation"
+        "name": "Dexerials Corporation",
+        "themes": []
       },
       {
         "ticker": "6330",
@@ -3516,7 +3909,8 @@
         "volume": 1025200.0,
         "dollar_volume": 1525497600.0,
         "pct_change": -0.01782178217821782,
-        "name": "Toyo Engineering Corporation"
+        "name": "Toyo Engineering Corporation",
+        "themes": []
       },
       {
         "ticker": "6310",
@@ -3525,7 +3919,8 @@
         "volume": 655800.0,
         "dollar_volume": 1525390800.0,
         "pct_change": 0.010425716768027803,
-        "name": "Iseki & Co., Ltd."
+        "name": "Iseki & Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3249",
@@ -3534,7 +3929,8 @@
         "volume": 11196.0,
         "dollar_volume": 1517058000.0,
         "pct_change": 0.003703703703703704,
-        "name": "Industrial & Infrastructure Fund Investment Corporation"
+        "name": "Industrial & Infrastructure Fund Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "9409",
@@ -3543,7 +3939,8 @@
         "volume": 466100.0,
         "dollar_volume": 1514825000.0,
         "pct_change": 0.0015408320493066256,
-        "name": "TV Asahi Holdings Corporation"
+        "name": "TV Asahi Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "6923",
@@ -3552,7 +3949,8 @@
         "volume": 490700.0,
         "dollar_volume": 1507921100.0,
         "pct_change": 0.023650899400399734,
-        "name": "Stanley Electric Co., Ltd."
+        "name": "Stanley Electric Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4088",
@@ -3561,7 +3959,8 @@
         "volume": 580400.0,
         "dollar_volume": 1500914400.0,
         "pct_change": 0.002714230321830167,
-        "name": "Air Water Inc."
+        "name": "Air Water Inc.",
+        "themes": []
       },
       {
         "ticker": "9506",
@@ -3570,7 +3969,8 @@
         "volume": 1336100.0,
         "dollar_volume": 1500440300.0,
         "pct_change": 0.010801080108010801,
-        "name": "Tohoku Electric Power Co., Inc."
+        "name": "Tohoku Electric Power Co., Inc.",
+        "themes": []
       },
       {
         "ticker": "7762",
@@ -3579,7 +3979,8 @@
         "volume": 1469300.0,
         "dollar_volume": 1492808800.0,
         "pct_change": 0.0029615004935834156,
-        "name": "Citizen Watch Co., Ltd."
+        "name": "Citizen Watch Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7732",
@@ -3588,7 +3989,8 @@
         "volume": 452400.0,
         "dollar_volume": 1482514800.0,
         "pct_change": -0.0033454987834549877,
-        "name": "Topcon Corporation"
+        "name": "Topcon Corporation",
+        "themes": []
       },
       {
         "ticker": "8960",
@@ -3597,7 +3999,8 @@
         "volume": 8205.0,
         "dollar_volume": 1481823000.0,
         "pct_change": -0.013653741125068269,
-        "name": "United Urban Investment Corporation"
+        "name": "United Urban Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "6370",
@@ -3606,7 +4009,8 @@
         "volume": 284900.0,
         "dollar_volume": 1475497100.0,
         "pct_change": -0.001542317331791016,
-        "name": "Kurita Water Industries Ltd."
+        "name": "Kurita Water Industries Ltd.",
+        "themes": []
       },
       {
         "ticker": "8804",
@@ -3615,7 +4019,8 @@
         "volume": 510700.0,
         "dollar_volume": 1475156950.0,
         "pct_change": -0.00017307026652821047,
-        "name": "Tokyo Tatemono Co., Ltd."
+        "name": "Tokyo Tatemono Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8359",
@@ -3624,7 +4029,8 @@
         "volume": 978800.0,
         "dollar_volume": 1466242400.0,
         "pct_change": 0.009093971034018189,
-        "name": "The Hachijuni Bank, Ltd."
+        "name": "The Hachijuni Bank, Ltd.",
+        "themes": []
       },
       {
         "ticker": "1944",
@@ -3633,7 +4039,8 @@
         "volume": 277800.0,
         "dollar_volume": 1451505000.0,
         "pct_change": -0.005898021308980213,
-        "name": "Kinden Corporation"
+        "name": "Kinden Corporation",
+        "themes": []
       },
       {
         "ticker": "8963",
@@ -3642,7 +4049,8 @@
         "volume": 21590.0,
         "dollar_volume": 1448689000.0,
         "pct_change": 0.004491017964071856,
-        "name": "Invincible Investment Corporation"
+        "name": "Invincible Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "3903",
@@ -3651,7 +4059,8 @@
         "volume": 2310700.0,
         "dollar_volume": 1444187500.0,
         "pct_change": -0.0234375,
-        "name": "Gumi Inc."
+        "name": "Gumi Inc.",
+        "themes": []
       },
       {
         "ticker": "1719",
@@ -3660,7 +4069,8 @@
         "volume": 843500.0,
         "dollar_volume": 1432263000.0,
         "pct_change": -0.006436512580456407,
-        "name": "Hazama Ando Corporation"
+        "name": "Hazama Ando Corporation",
+        "themes": []
       },
       {
         "ticker": "1844",
@@ -3669,7 +4079,8 @@
         "volume": 1423000.0,
         "dollar_volume": 1428692000.0,
         "pct_change": -0.08310502283105023,
-        "name": "Ohmori Co., Ltd."
+        "name": "Ohmori Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7581",
@@ -3678,7 +4089,8 @@
         "volume": 287700.0,
         "dollar_volume": 1425553500.0,
         "pct_change": -0.002014098690835851,
-        "name": "Saizeriya Co., Ltd."
+        "name": "Saizeriya Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2327",
@@ -3687,7 +4099,8 @@
         "volume": 382000.0,
         "dollar_volume": 1421040000.0,
         "pct_change": 0.0016155088852988692,
-        "name": "NS Solutions Corporation"
+        "name": "NS Solutions Corporation",
+        "themes": []
       },
       {
         "ticker": "8698",
@@ -3696,7 +4109,8 @@
         "volume": 1721300.0,
         "dollar_volume": 1420072500.0,
         "pct_change": -0.0024183796856106408,
-        "name": "Monex Group Inc."
+        "name": "Monex Group Inc.",
+        "themes": []
       },
       {
         "ticker": "9171",
@@ -3705,7 +4119,8 @@
         "volume": 984700.0,
         "dollar_volume": 1417968000.0,
         "pct_change": 0.2631578947368421,
-        "name": "Kuribayashi Steamship Co., Ltd."
+        "name": "Kuribayashi Steamship Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7951",
@@ -3714,7 +4129,8 @@
         "volume": 1416900.0,
         "dollar_volume": 1416900000.0,
         "pct_change": 0.003713753138979374,
-        "name": "Yamaha Corporation"
+        "name": "Yamaha Corporation",
+        "themes": []
       },
       {
         "ticker": "3083",
@@ -3723,7 +4139,8 @@
         "volume": 1665200.0,
         "dollar_volume": 1408759200.0,
         "pct_change": 0.04315659679408138,
-        "name": "Star Seeds Co., Ltd."
+        "name": "Star Seeds Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3186",
@@ -3732,7 +4149,8 @@
         "volume": 572100.0,
         "dollar_volume": 1407366000.0,
         "pct_change": 0.01192924722336487,
-        "name": "Nextage Co., Ltd."
+        "name": "Nextage Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6055",
@@ -3741,7 +4159,8 @@
         "volume": 740300.0,
         "dollar_volume": 1399167000.0,
         "pct_change": -0.008394543546694649,
-        "name": "Japan Material Co., Ltd."
+        "name": "Japan Material Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7458",
@@ -3750,7 +4169,8 @@
         "volume": 820200.0,
         "dollar_volume": 1395570300.0,
         "pct_change": -0.001174053419430584,
-        "name": "Daiichikosho Co., Ltd."
+        "name": "Daiichikosho Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3397",
@@ -3759,7 +4179,8 @@
         "volume": 275700.0,
         "dollar_volume": 1385116800.0,
         "pct_change": 0.0013952561291608531,
-        "name": "Toridoll Holdings Corporation"
+        "name": "Toridoll Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "1963",
@@ -3768,7 +4189,8 @@
         "volume": 929800.0,
         "dollar_volume": 1384007300.0,
         "pct_change": 0.018125854993160054,
-        "name": "JGC Holdings Corporation"
+        "name": "JGC Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "9001",
@@ -3777,7 +4199,8 @@
         "volume": 509400.0,
         "dollar_volume": 1381238100.0,
         "pct_change": 0.004817491198814156,
-        "name": "Tobu Railway Co., Ltd."
+        "name": "Tobu Railway Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8377",
@@ -3786,7 +4209,8 @@
         "volume": 364800.0,
         "dollar_volume": 1373836800.0,
         "pct_change": 0.008840075006697026,
-        "name": "Hokuhoku Financial Group Inc."
+        "name": "Hokuhoku Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "6472",
@@ -3795,7 +4219,8 @@
         "volume": 4025400.0,
         "dollar_volume": 1372258835.4309082,
         "pct_change": -0.006122466774098032,
-        "name": "NTN Corporation"
+        "name": "NTN Corporation",
+        "themes": []
       },
       {
         "ticker": "5076",
@@ -3804,7 +4229,8 @@
         "volume": 899900.0,
         "dollar_volume": 1365598250.0,
         "pct_change": -0.0036112934996717005,
-        "name": "Infroneer Holdings Inc."
+        "name": "Infroneer Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "2982",
@@ -3813,7 +4239,8 @@
         "volume": 2889600.0,
         "dollar_volume": 1363891200.0,
         "pct_change": -0.04838709677419355,
-        "name": "Ad Works Group Co., Ltd."
+        "name": "Ad Works Group Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9076",
@@ -3822,7 +4249,8 @@
         "volume": 603700.0,
         "dollar_volume": 1360136100.0,
         "pct_change": 0.01054047992823503,
-        "name": "Seino Holdings Co., Ltd."
+        "name": "Seino Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2501",
@@ -3831,7 +4259,8 @@
         "volume": 186600.0,
         "dollar_volume": 1359194400.0,
         "pct_change": -0.01951810472472742,
-        "name": "Sapporo Holdings Ltd."
+        "name": "Sapporo Holdings Ltd.",
+        "themes": []
       },
       {
         "ticker": "4393",
@@ -3840,7 +4269,8 @@
         "volume": 150600.0,
         "dollar_volume": 1346364000.0,
         "pct_change": 0.00562429696287964,
-        "name": "Bank of Innovation Inc."
+        "name": "Bank of Innovation Inc.",
+        "themes": []
       },
       {
         "ticker": "7717",
@@ -3849,7 +4279,8 @@
         "volume": 352800.0,
         "dollar_volume": 1337112000.0,
         "pct_change": 0.0676056338028169,
-        "name": "V Technology Co., Ltd."
+        "name": "V Technology Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3046",
@@ -3858,7 +4289,8 @@
         "volume": 140200.0,
         "dollar_volume": 1334704000.0,
         "pct_change": -0.01142263759086189,
-        "name": "Jins Holdings Inc."
+        "name": "Jins Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "8953",
@@ -3867,7 +4299,8 @@
         "volume": 11671.0,
         "dollar_volume": 1330494000.0,
         "pct_change": 0.0017574692442882249,
-        "name": "Japan Metropolitan Fund Investment Corporation"
+        "name": "Japan Metropolitan Fund Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "6368",
@@ -3876,7 +4309,8 @@
         "volume": 110800.0,
         "dollar_volume": 1328492000.0,
         "pct_change": 0.006717044500419815,
-        "name": "Organo Corporation"
+        "name": "Organo Corporation",
+        "themes": []
       },
       {
         "ticker": "5310",
@@ -3885,7 +4319,8 @@
         "volume": 301500.0,
         "dollar_volume": 1320570000.0,
         "pct_change": 0.03058823529411765,
-        "name": "Toyo Tanso Co., Ltd."
+        "name": "Toyo Tanso Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8410",
@@ -3894,7 +4329,8 @@
         "volume": 4574600.0,
         "dollar_volume": 1318857124.1577148,
         "pct_change": -0.004489013408660606,
-        "name": "Seven Bank Ltd."
+        "name": "Seven Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "6135",
@@ -3903,7 +4339,8 @@
         "volume": 114000.0,
         "dollar_volume": 1313280000.0,
         "pct_change": -0.0034602076124567475,
-        "name": "Makino Milling Machine Co., Ltd."
+        "name": "Makino Milling Machine Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5444",
@@ -3912,7 +4349,8 @@
         "volume": 134900.0,
         "dollar_volume": 1307585700.0,
         "pct_change": 0.0022748423120670046,
-        "name": "Yamato Kogyo Co., Ltd."
+        "name": "Yamato Kogyo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4203",
@@ -3921,7 +4359,8 @@
         "volume": 254500.0,
         "dollar_volume": 1306348500.0,
         "pct_change": 0.01703982563899346,
-        "name": "Sumitomo Bakelite Co., Ltd."
+        "name": "Sumitomo Bakelite Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6406",
@@ -3930,7 +4369,8 @@
         "volume": 230100.0,
         "dollar_volume": 1305817500.0,
         "pct_change": 0.0062056737588652485,
-        "name": "Fujitec Co., Ltd."
+        "name": "Fujitec Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4928",
@@ -3939,7 +4379,8 @@
         "volume": 276400.0,
         "dollar_volume": 1304608000.0,
         "pct_change": 0.010706638115631691,
-        "name": "Noevir Holdings Co., Ltd."
+        "name": "Noevir Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3462",
@@ -3948,7 +4389,8 @@
         "volume": 7993.0,
         "dollar_volume": 1298063200.0,
         "pct_change": -0.005511328842620943,
-        "name": "Nomura Real Estate Master Fund"
+        "name": "Nomura Real Estate Master Fund",
+        "themes": []
       },
       {
         "ticker": "4043",
@@ -3957,7 +4399,8 @@
         "volume": 342300.0,
         "dollar_volume": 1294920900.0,
         "pct_change": 0.018030139935414424,
-        "name": "Tokuyama Corporation"
+        "name": "Tokuyama Corporation",
+        "themes": []
       },
       {
         "ticker": "7205",
@@ -3966,7 +4409,8 @@
         "volume": 3418600.0,
         "dollar_volume": 1283342419.1345215,
         "pct_change": 0.0016008701255536197,
-        "name": "Hino Motors Ltd."
+        "name": "Hino Motors Ltd.",
+        "themes": []
       },
       {
         "ticker": "6613",
@@ -3975,7 +4419,8 @@
         "volume": 3272100.0,
         "dollar_volume": 1279391100.0,
         "pct_change": -0.02736318407960199,
-        "name": "QD Laser Inc."
+        "name": "QD Laser Inc.",
+        "themes": []
       },
       {
         "ticker": "8088",
@@ -3984,7 +4429,8 @@
         "volume": 765400.0,
         "dollar_volume": 1278218000.0,
         "pct_change": 0.015197568389057751,
-        "name": "Iwatani Corporation"
+        "name": "Iwatani Corporation",
+        "themes": []
       },
       {
         "ticker": "3288",
@@ -3993,7 +4439,8 @@
         "volume": 166500.0,
         "dollar_volume": 1277221500.0,
         "pct_change": -0.006990291262135922,
-        "name": "Open House Group Co., Ltd."
+        "name": "Open House Group Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9513",
@@ -4002,7 +4449,8 @@
         "volume": 457000.0,
         "dollar_volume": 1275030000.0,
         "pct_change": -0.003927168868261335,
-        "name": "Electric Power Development Co., Ltd."
+        "name": "Electric Power Development Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9936",
@@ -4011,7 +4459,8 @@
         "volume": 336900.0,
         "dollar_volume": 1271797500.0,
         "pct_change": -0.002642007926023778,
-        "name": "Ohsho Food Service Corp."
+        "name": "Ohsho Food Service Corp.",
+        "themes": []
       },
       {
         "ticker": "3269",
@@ -4020,7 +4469,8 @@
         "volume": 7451.0,
         "dollar_volume": 1259219000.0,
         "pct_change": 0.013797240551889621,
-        "name": "Advance Residence Investment Corporation"
+        "name": "Advance Residence Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "5901",
@@ -4029,7 +4479,8 @@
         "volume": 367100.0,
         "dollar_volume": 1257684600.0,
         "pct_change": -0.007244277021153289,
-        "name": "Toyo Seikan Group Holdings Ltd."
+        "name": "Toyo Seikan Group Holdings Ltd.",
+        "themes": []
       },
       {
         "ticker": "7906",
@@ -4038,7 +4489,8 @@
         "volume": 342300.0,
         "dollar_volume": 1251106500.0,
         "pct_change": -0.004087193460490463,
-        "name": "Yonex Co., Ltd."
+        "name": "Yonex Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7867",
@@ -4047,7 +4499,8 @@
         "volume": 393700.0,
         "dollar_volume": 1242123500.0,
         "pct_change": 0.009277031349968011,
-        "name": "Tomy Company Ltd."
+        "name": "Tomy Company Ltd.",
+        "themes": []
       },
       {
         "ticker": "7004",
@@ -4056,7 +4509,8 @@
         "volume": 1216300.0,
         "dollar_volume": 1241842300.0,
         "pct_change": -0.011616650532429816,
-        "name": "Kanadevia Corp."
+        "name": "Kanadevia Corp.",
+        "themes": []
       },
       {
         "ticker": "9301",
@@ -4065,7 +4519,8 @@
         "volume": 1038300.0,
         "dollar_volume": 1241287650.0,
         "pct_change": -0.0016701461377870565,
-        "name": "Mitsubishi Logistics Corp."
+        "name": "Mitsubishi Logistics Corp.",
+        "themes": []
       },
       {
         "ticker": "8056",
@@ -4074,7 +4529,8 @@
         "volume": 198800.0,
         "dollar_volume": 1239319200.0,
         "pct_change": -0.013139148329903436,
-        "name": "Biprogy Inc."
+        "name": "Biprogy Inc.",
+        "themes": []
       },
       {
         "ticker": "9504",
@@ -4083,7 +4539,8 @@
         "volume": 1428400.0,
         "dollar_volume": 1227138405.1269531,
         "pct_change": 0.00503040226295628,
-        "name": "Chugoku Electric Power Company, Incorporated"
+        "name": "Chugoku Electric Power Company, Incorporated",
+        "themes": []
       },
       {
         "ticker": "1332",
@@ -4092,7 +4549,8 @@
         "volume": 1168900.0,
         "dollar_volume": 1224422750.0,
         "pct_change": 0.0028721876495931067,
-        "name": "Nissui Corporation"
+        "name": "Nissui Corporation",
+        "themes": []
       },
       {
         "ticker": "3399",
@@ -4101,7 +4559,8 @@
         "volume": 369100.0,
         "dollar_volume": 1223566500.0,
         "pct_change": -0.017777777777777778,
-        "name": "Maruchiyo Yamaokaya Corp."
+        "name": "Maruchiyo Yamaokaya Corp.",
+        "themes": []
       },
       {
         "ticker": "7564",
@@ -4110,7 +4569,8 @@
         "volume": 207600.0,
         "dollar_volume": 1222764000.0,
         "pct_change": -0.00338409475465313,
-        "name": "Workman Co., Ltd."
+        "name": "Workman Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9404",
@@ -4119,7 +4579,8 @@
         "volume": 308100.0,
         "dollar_volume": 1221924600.0,
         "pct_change": -0.008252063015753939,
-        "name": "Nippon Television Holdings Inc."
+        "name": "Nippon Television Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "3769",
@@ -4128,7 +4589,8 @@
         "volume": 144200.0,
         "dollar_volume": 1209549600.0,
         "pct_change": 0.0009546539379474941,
-        "name": "GMO Payment Gateway Inc."
+        "name": "GMO Payment Gateway Inc.",
+        "themes": []
       },
       {
         "ticker": "3993",
@@ -4137,7 +4599,8 @@
         "volume": 318100.0,
         "dollar_volume": 1207189500.0,
         "pct_change": 0.003968253968253968,
-        "name": "Pksha Technology Inc."
+        "name": "Pksha Technology Inc.",
+        "themes": []
       },
       {
         "ticker": "4631",
@@ -4146,7 +4609,8 @@
         "volume": 330800.0,
         "dollar_volume": 1203781200.0,
         "pct_change": 0.00887163848073191,
-        "name": "Dic Corporation"
+        "name": "Dic Corporation",
+        "themes": []
       },
       {
         "ticker": "2229",
@@ -4155,7 +4619,8 @@
         "volume": 406000.0,
         "dollar_volume": 1200136000.0,
         "pct_change": -0.020218760357971495,
-        "name": "Calbee Inc."
+        "name": "Calbee Inc.",
+        "themes": []
       },
       {
         "ticker": "8984",
@@ -4164,7 +4629,8 @@
         "volume": 9495.0,
         "dollar_volume": 1199218500.0,
         "pct_change": 0.003177124702144559,
-        "name": "Daiwa House REIT Investment Corporation"
+        "name": "Daiwa House REIT Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "2002",
@@ -4173,7 +4639,8 @@
         "volume": 650300.0,
         "dollar_volume": 1197852600.0,
         "pct_change": 0.004362050163576881,
-        "name": "Nisshin Seifun Group Inc."
+        "name": "Nisshin Seifun Group Inc.",
+        "themes": []
       },
       {
         "ticker": "6787",
@@ -4182,7 +4649,8 @@
         "volume": 118000.0,
         "dollar_volume": 1187080000.0,
         "pct_change": 0.014112903225806451,
-        "name": "Meiko Electronics Co., Ltd."
+        "name": "Meiko Electronics Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6740",
@@ -4191,7 +4659,8 @@
         "volume": 47360300.0,
         "dollar_volume": 1184007500.0,
         "pct_change": -0.07407407407407407,
-        "name": "Japan Display Inc."
+        "name": "Japan Display Inc.",
+        "themes": []
       },
       {
         "ticker": "8628",
@@ -4200,7 +4669,8 @@
         "volume": 1494600.0,
         "dollar_volume": 1179239400.0,
         "pct_change": -0.006297229219143577,
-        "name": "Matsui Securities Co., Ltd."
+        "name": "Matsui Securities Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7337",
@@ -4209,7 +4679,8 @@
         "volume": 821600.0,
         "dollar_volume": 1165028800.0,
         "pct_change": 0.012134189864382585,
-        "name": "Hirogin Holdings Inc."
+        "name": "Hirogin Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4480",
@@ -4218,7 +4689,8 @@
         "volume": 475500.0,
         "dollar_volume": 1162122000.0,
         "pct_change": -0.0224,
-        "name": "Medley Inc."
+        "name": "Medley Inc.",
+        "themes": []
       },
       {
         "ticker": "2579",
@@ -4227,7 +4699,8 @@
         "volume": 440200.0,
         "dollar_volume": 1160367200.0,
         "pct_change": -0.009022556390977444,
-        "name": "Coca-Cola Bottlers Japan Holdings Inc."
+        "name": "Coca-Cola Bottlers Japan Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "7988",
@@ -4236,7 +4709,8 @@
         "volume": 259600.0,
         "dollar_volume": 1159114000.0,
         "pct_change": 0.00563063063063063,
-        "name": "Nifco Inc."
+        "name": "Nifco Inc.",
+        "themes": []
       },
       {
         "ticker": "7956",
@@ -4245,7 +4719,8 @@
         "volume": 641700.0,
         "dollar_volume": 1145755350.0,
         "pct_change": -0.003627232142857143,
-        "name": "Pigeon Corporation"
+        "name": "Pigeon Corporation",
+        "themes": []
       },
       {
         "ticker": "4061",
@@ -4254,7 +4729,8 @@
         "volume": 481900.0,
         "dollar_volume": 1145717250.0,
         "pct_change": 0.019948519948519948,
-        "name": "Denka Co., Ltd."
+        "name": "Denka Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2296",
@@ -4263,7 +4739,8 @@
         "volume": 196200.0,
         "dollar_volume": 1128150000.0,
         "pct_change": -0.005190311418685121,
-        "name": "Itoham Yonekyu Holdings Inc."
+        "name": "Itoham Yonekyu Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "4205",
@@ -4272,7 +4749,8 @@
         "volume": 664300.0,
         "dollar_volume": 1125988500.0,
         "pct_change": 0.017101710171017102,
-        "name": "Zeon Corporation"
+        "name": "Zeon Corporation",
+        "themes": []
       },
       {
         "ticker": "6227",
@@ -4281,7 +4759,8 @@
         "volume": 231600.0,
         "dollar_volume": 1125576000.0,
         "pct_change": -0.006134969325153374,
-        "name": "Aimechatc Ltd."
+        "name": "Aimechatc Ltd.",
+        "themes": []
       },
       {
         "ticker": "6465",
@@ -4290,7 +4769,8 @@
         "volume": 197500.0,
         "dollar_volume": 1122590000.0,
         "pct_change": -0.007334963325183374,
-        "name": "Hoshizaki Corporation"
+        "name": "Hoshizaki Corporation",
+        "themes": []
       },
       {
         "ticker": "4540",
@@ -4299,7 +4779,8 @@
         "volume": 300100.0,
         "dollar_volume": 1121173600.0,
         "pct_change": 0.0013401232913428035,
-        "name": "Tsumura & Co."
+        "name": "Tsumura & Co.",
+        "themes": []
       },
       {
         "ticker": "4265",
@@ -4308,7 +4789,8 @@
         "volume": 1960600.0,
         "dollar_volume": 1119502600.0,
         "pct_change": -0.14903129657228018,
-        "name": "Institution for a Global Society Corporation"
+        "name": "Institution for a Global Society Corporation",
+        "themes": []
       },
       {
         "ticker": "8334",
@@ -4317,7 +4799,8 @@
         "volume": 709400.0,
         "dollar_volume": 1119078500.0,
         "pct_change": 0.008631713554987212,
-        "name": "Gunma Bank Ltd."
+        "name": "Gunma Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "8972",
@@ -4326,7 +4809,8 @@
         "volume": 6596.0,
         "dollar_volume": 1118022000.0,
         "pct_change": -0.002354326074161271,
-        "name": "KDX Realty Investment Corporation"
+        "name": "KDX Realty Investment Corporation",
+        "themes": []
       },
       {
         "ticker": "4597",
@@ -4335,7 +4819,8 @@
         "volume": 29329900.0,
         "dollar_volume": 1114536200.0,
         "pct_change": 0.05555555555555555,
-        "name": "Solasia Pharma K.K."
+        "name": "Solasia Pharma K.K.",
+        "themes": []
       },
       {
         "ticker": "1951",
@@ -4344,7 +4829,8 @@
         "volume": 509300.0,
         "dollar_volume": 1109510050.0,
         "pct_change": -0.002289901534234028,
-        "name": "Exeo Group Inc."
+        "name": "Exeo Group Inc.",
+        "themes": []
       },
       {
         "ticker": "8366",
@@ -4353,7 +4839,8 @@
         "volume": 169500.0,
         "dollar_volume": 1106835000.0,
         "pct_change": 0.013975155279503106,
-        "name": "The Shiga Bank, Ltd."
+        "name": "The Shiga Bank, Ltd.",
+        "themes": []
       },
       {
         "ticker": "7220",
@@ -4362,7 +4849,8 @@
         "volume": 298500.0,
         "dollar_volume": 1105942500.0,
         "pct_change": -0.008032128514056224,
-        "name": "Musashi Seimitsu Industry Co., Ltd."
+        "name": "Musashi Seimitsu Industry Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4180",
@@ -4371,7 +4859,8 @@
         "volume": 676600.0,
         "dollar_volume": 1104211200.0,
         "pct_change": -0.0394349617422013,
-        "name": "Appier Group Inc."
+        "name": "Appier Group Inc.",
+        "themes": []
       },
       {
         "ticker": "9364",
@@ -4380,7 +4869,8 @@
         "volume": 240900.0,
         "dollar_volume": 1098504000.0,
         "pct_change": -0.0008764241893076249,
-        "name": "Kamigumi Co., Ltd."
+        "name": "Kamigumi Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3687",
@@ -4389,7 +4879,8 @@
         "volume": 571800.0,
         "dollar_volume": 1097856000.0,
         "pct_change": 0.0020876826722338203,
-        "name": "Fixstars Corporation"
+        "name": "Fixstars Corporation",
+        "themes": []
       },
       {
         "ticker": "7282",
@@ -4398,7 +4889,8 @@
         "volume": 293200.0,
         "dollar_volume": 1095688400.0,
         "pct_change": 0.007277628032345013,
-        "name": "Toyoda Gosei Co., Ltd."
+        "name": "Toyoda Gosei Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3994",
@@ -4407,7 +4899,8 @@
         "volume": 178200.0,
         "dollar_volume": 1087554600.0,
         "pct_change": -0.0029406959647116484,
-        "name": "Money Forward Inc."
+        "name": "Money Forward Inc.",
+        "themes": []
       },
       {
         "ticker": "4681",
@@ -4416,7 +4909,8 @@
         "volume": 593400.0,
         "dollar_volume": 1086515400.0,
         "pct_change": 0.007150715071507151,
-        "name": "Resorttrust Inc."
+        "name": "Resorttrust Inc.",
+        "themes": []
       },
       {
         "ticker": "1959",
@@ -4425,7 +4919,8 @@
         "volume": 150600.0,
         "dollar_volume": 1084320000.0,
         "pct_change": -0.002355549397256478,
-        "name": "Kyudenko Corporation"
+        "name": "Kyudenko Corporation",
+        "themes": []
       },
       {
         "ticker": "7148",
@@ -4434,7 +4929,8 @@
         "volume": 440100.0,
         "dollar_volume": 1083086100.0,
         "pct_change": 0.0004065040650406504,
-        "name": "Financial Partners Group Co., Ltd."
+        "name": "Financial Partners Group Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2201",
@@ -4443,7 +4939,8 @@
         "volume": 411000.0,
         "dollar_volume": 1082985000.0,
         "pct_change": -0.0026495079485238456,
-        "name": "Morinaga & Co., Ltd."
+        "name": "Morinaga & Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8242",
@@ -4452,7 +4949,8 @@
         "volume": 478900.0,
         "dollar_volume": 1082314000.0,
         "pct_change": 0.013452914798206279,
-        "name": "H2O Retailing Corporation"
+        "name": "H2O Retailing Corporation",
+        "themes": []
       },
       {
         "ticker": "4922",
@@ -4461,7 +4959,8 @@
         "volume": 183500.0,
         "dollar_volume": 1080815000.0,
         "pct_change": 0.014118457300275482,
-        "name": "Kose Corporation"
+        "name": "Kose Corporation",
+        "themes": []
       },
       {
         "ticker": "9989",
@@ -4470,7 +4969,8 @@
         "volume": 244000.0,
         "dollar_volume": 1076284000.0,
         "pct_change": -0.011872759856630824,
-        "name": "Sundrug Co., Ltd."
+        "name": "Sundrug Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8439",
@@ -4479,7 +4979,8 @@
         "volume": 548400.0,
         "dollar_volume": 1076235000.0,
         "pct_change": 0.0012755102040816326,
-        "name": "Tokyo Century Corporation"
+        "name": "Tokyo Century Corporation",
+        "themes": []
       },
       {
         "ticker": "6574",
@@ -4488,7 +4989,8 @@
         "volume": 4543100.0,
         "dollar_volume": 1072171600.0,
         "pct_change": -0.024793388429752067,
-        "name": "Convano Inc."
+        "name": "Convano Inc.",
+        "themes": []
       },
       {
         "ticker": "3941",
@@ -4497,7 +4999,8 @@
         "volume": 1122400.0,
         "dollar_volume": 1067851387.4023438,
         "pct_change": 0.010515161353226235,
-        "name": "Rengo Co., Ltd."
+        "name": "Rengo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2695",
@@ -4506,7 +5009,8 @@
         "volume": 305100.0,
         "dollar_volume": 1063273500.0,
         "pct_change": -0.007122507122507123,
-        "name": "Kura Sushi Inc."
+        "name": "Kura Sushi Inc.",
+        "themes": []
       },
       {
         "ticker": "5991",
@@ -4515,7 +5019,8 @@
         "volume": 507000.0,
         "dollar_volume": 1059883500.0,
         "pct_change": 0.010880077369439071,
-        "name": "NHK Spring Co., Ltd."
+        "name": "NHK Spring Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9861",
@@ -4524,7 +5029,8 @@
         "volume": 341800.0,
         "dollar_volume": 1048300600.0,
         "pct_change": -0.009366925064599484,
-        "name": "Yoshinoya Holdings Co., Ltd."
+        "name": "Yoshinoya Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5463",
@@ -4533,7 +5039,8 @@
         "volume": 271400.0,
         "dollar_volume": 1044890000.0,
         "pct_change": 0.005221932114882507,
-        "name": "Maruichi Steel Tube Ltd."
+        "name": "Maruichi Steel Tube Ltd.",
+        "themes": []
       },
       {
         "ticker": "6412",
@@ -4542,7 +5049,8 @@
         "volume": 483300.0,
         "dollar_volume": 1044411300.0,
         "pct_change": -0.00871559633027523,
-        "name": "Heiwa Corporation"
+        "name": "Heiwa Corporation",
+        "themes": []
       },
       {
         "ticker": "4902",
@@ -4551,7 +5059,8 @@
         "volume": 1914000.0,
         "dollar_volume": 1040259000.0,
         "pct_change": 0.007787895980156387,
-        "name": "Konica Minolta Inc."
+        "name": "Konica Minolta Inc.",
+        "themes": []
       },
       {
         "ticker": "3774",
@@ -4560,7 +5069,8 @@
         "volume": 377900.0,
         "dollar_volume": 1037902350.0,
         "pct_change": -0.0027233115468409588,
-        "name": "Internet Initiative Japan Inc."
+        "name": "Internet Initiative Japan Inc.",
+        "themes": []
       },
       {
         "ticker": "3549",
@@ -4569,7 +5079,8 @@
         "volume": 261800.0,
         "dollar_volume": 1036728000.0,
         "pct_change": -0.004524886877828055,
-        "name": "Kusuri No Aoki Holdings Co., Ltd."
+        "name": "Kusuri No Aoki Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2181",
@@ -4578,7 +5089,8 @@
         "volume": 3693000.0,
         "dollar_volume": 1029608354.9194336,
         "pct_change": 0.0007178093505813511,
-        "name": "Persol Holdings Co., Ltd."
+        "name": "Persol Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4613",
@@ -4587,7 +5099,8 @@
         "volume": 416600.0,
         "dollar_volume": 1027960500.0,
         "pct_change": -0.006042296072507553,
-        "name": "Kansai Paint Co., Ltd."
+        "name": "Kansai Paint Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4403",
@@ -4596,7 +5109,8 @@
         "volume": 383000.0,
         "dollar_volume": 1026248500.0,
         "pct_change": 0.0009338812103100486,
-        "name": "Nof Corporation"
+        "name": "Nof Corporation",
+        "themes": []
       },
       {
         "ticker": "8153",
@@ -4605,7 +5119,8 @@
         "volume": 253000.0,
         "dollar_volume": 1024650000.0,
         "pct_change": -0.0012330456226880395,
-        "name": "Mos Food Services Inc."
+        "name": "Mos Food Services Inc.",
+        "themes": []
       },
       {
         "ticker": "9072",
@@ -4614,7 +5129,8 @@
         "volume": 295400.0,
         "dollar_volume": 1017653000.0,
         "pct_change": 0.012937371361364304,
-        "name": "Nikkon Holdings Co., Ltd."
+        "name": "Nikkon Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6946",
@@ -4623,7 +5139,8 @@
         "volume": 226800.0,
         "dollar_volume": 1016064000.0,
         "pct_change": -0.02714440825190011,
-        "name": "Nippon Avionics Co., Ltd."
+        "name": "Nippon Avionics Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4816",
@@ -4632,7 +5149,8 @@
         "volume": 334600.0,
         "dollar_volume": 1015511000.0,
         "pct_change": -0.009787928221859706,
-        "name": "Toei Animation Co., Ltd."
+        "name": "Toei Animation Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7459",
@@ -4641,7 +5159,8 @@
         "volume": 388400.0,
         "dollar_volume": 1014695000.0,
         "pct_change": 0.007131842713955281,
-        "name": "Medipal Holdings Corp"
+        "name": "Medipal Holdings Corp",
+        "themes": []
       },
       {
         "ticker": "6544",
@@ -4650,7 +5169,8 @@
         "volume": 258100.0,
         "dollar_volume": 1013042500.0,
         "pct_change": -0.0038071065989847717,
-        "name": "Japan Elevator Service Holdings Co., Ltd."
+        "name": "Japan Elevator Service Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2767",
@@ -4659,7 +5179,8 @@
         "volume": 459800.0,
         "dollar_volume": 1008341400.0,
         "pct_change": -0.008141112618724558,
-        "name": "Tsuburaya Fields Holdings Inc."
+        "name": "Tsuburaya Fields Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6028",
@@ -4668,7 +5189,8 @@
         "volume": 209400.0,
         "dollar_volume": 1007004600.0,
         "pct_change": 0.0012492192379762648,
-        "name": "TechnoPro Holdings Inc."
+        "name": "TechnoPro Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "7616",
@@ -4677,7 +5199,8 @@
         "volume": 526000.0,
         "dollar_volume": 1002819000.0,
         "pct_change": -0.003397804495556717,
-        "name": "Colowide Co., Ltd."
+        "name": "Colowide Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9449",
@@ -4686,7 +5209,8 @@
         "volume": 266600.0,
         "dollar_volume": 1002416000.0,
         "pct_change": -0.014675052410901468,
-        "name": "GMO Internet Group, Inc."
+        "name": "GMO Internet Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "2593",
@@ -4695,7 +5219,8 @@
         "volume": 284700.0,
         "dollar_volume": 1000720500.0,
         "pct_change": 0.01707175925925926,
-        "name": "Ito En, Ltd."
+        "name": "Ito En, Ltd.",
+        "themes": []
       },
       {
         "ticker": "9008",
@@ -4704,7 +5229,8 @@
         "volume": 256600.0,
         "dollar_volume": 999970200.0,
         "pct_change": 0.0017994858611825194,
-        "name": "Keio Corporation"
+        "name": "Keio Corporation",
+        "themes": []
       },
       {
         "ticker": "9003",
@@ -4713,7 +5239,8 @@
         "volume": 375500.0,
         "dollar_volume": 984185500.0,
         "pct_change": 0.006528417818740399,
-        "name": "Sotetsu Holdings Inc."
+        "name": "Sotetsu Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6951",
@@ -4722,7 +5249,8 @@
         "volume": 197300.0,
         "dollar_volume": 981962100.0,
         "pct_change": 0.01675178753830439,
-        "name": "Jeol Ltd."
+        "name": "Jeol Ltd.",
+        "themes": []
       },
       {
         "ticker": "5947",
@@ -4731,7 +5259,8 @@
         "volume": 271400.0,
         "dollar_volume": 980296800.0,
         "pct_change": -0.015267175572519083,
-        "name": "Rinnai Corporation"
+        "name": "Rinnai Corporation",
+        "themes": []
       },
       {
         "ticker": "7383",
@@ -4740,7 +5269,8 @@
         "volume": 1037700.0,
         "dollar_volume": 975438000.0,
         "pct_change": 0.02062975027144408,
-        "name": "Net Protections Holdings Inc."
+        "name": "Net Protections Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "3556",
@@ -4749,7 +5279,8 @@
         "volume": 750200.0,
         "dollar_volume": 970758800.0,
         "pct_change": 0.18933823529411764,
-        "name": "Renet Japan Group Inc."
+        "name": "Renet Japan Group Inc.",
+        "themes": []
       },
       {
         "ticker": "6855",
@@ -4758,7 +5289,8 @@
         "volume": 273800.0,
         "dollar_volume": 969252000.0,
         "pct_change": 0.012875536480686695,
-        "name": "Japan Electronic Materials Corporation"
+        "name": "Japan Electronic Materials Corporation",
+        "themes": []
       },
       {
         "ticker": "9759",
@@ -4767,7 +5299,8 @@
         "volume": 294300.0,
         "dollar_volume": 968835600.0,
         "pct_change": 0.00243605359317905,
-        "name": "NSD Co., Ltd."
+        "name": "NSD Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "1414",
@@ -4776,7 +5309,8 @@
         "volume": 197000.0,
         "dollar_volume": 967861000.0,
         "pct_change": -0.004659643435980551,
-        "name": "Sho-Bond Holdings Co., Ltd."
+        "name": "Sho-Bond Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3167",
@@ -4785,7 +5319,8 @@
         "volume": 911300.0,
         "dollar_volume": 966889300.0,
         "pct_change": 0.003784295175023652,
-        "name": "Tokai Holdings Corp"
+        "name": "Tokai Holdings Corp",
+        "themes": []
       },
       {
         "ticker": "4665",
@@ -4794,7 +5329,8 @@
         "volume": 246100.0,
         "dollar_volume": 961512700.0,
         "pct_change": 0.004112053456694937,
-        "name": "Duskin Co., Ltd."
+        "name": "Duskin Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3466",
@@ -4803,7 +5339,8 @@
         "volume": 6719.0,
         "dollar_volume": 960817000.0,
         "pct_change": 0.014184397163120567,
-        "name": "Lasalle Logiport Real Estate Investment Trust"
+        "name": "Lasalle Logiport Real Estate Investment Trust",
+        "themes": []
       },
       {
         "ticker": "8254",
@@ -4812,7 +5349,8 @@
         "volume": 1643100.0,
         "dollar_volume": 957927300.0,
         "pct_change": 0.08971962616822429,
-        "name": "Saikaya Department Store Co., Ltd."
+        "name": "Saikaya Department Store Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4118",
@@ -4821,7 +5359,8 @@
         "volume": 222900.0,
         "dollar_volume": 956241000.0,
         "pct_change": -0.0011641443538998836,
-        "name": "Kaneka Corporation"
+        "name": "Kaneka Corporation",
+        "themes": []
       },
       {
         "ticker": "4401",
@@ -4830,7 +5369,8 @@
         "volume": 281800.0,
         "dollar_volume": 955302000.0,
         "pct_change": 0.006233303650934996,
-        "name": "Adeka Corporation"
+        "name": "Adeka Corporation",
+        "themes": []
       },
       {
         "ticker": "4784",
@@ -4839,7 +5379,8 @@
         "volume": 797100.0,
         "dollar_volume": 953331600.0,
         "pct_change": -0.031578947368421054,
-        "name": "GMO Internet Group, Inc."
+        "name": "GMO Internet Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "6258",
@@ -4848,7 +5389,8 @@
         "volume": 478800.0,
         "dollar_volume": 952812000.0,
         "pct_change": 0.04902477596204533,
-        "name": "Hirata Corporation"
+        "name": "Hirata Corporation",
+        "themes": []
       },
       {
         "ticker": "9412",
@@ -4857,7 +5399,8 @@
         "volume": 669500.0,
         "dollar_volume": 947342500.0,
         "pct_change": 0.0035460992907801418,
-        "name": "Sky Perfect JSAT Holdings Inc."
+        "name": "Sky Perfect JSAT Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "7826",
@@ -4866,7 +5409,8 @@
         "volume": 319900.0,
         "dollar_volume": 944344800.0,
         "pct_change": 0.029288702928870293,
-        "name": "Furuya Metal Co., Ltd."
+        "name": "Furuya Metal Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "1961",
@@ -4875,7 +5419,8 @@
         "volume": 184200.0,
         "dollar_volume": 943104000.0,
         "pct_change": -0.0038910505836575876,
-        "name": "Sanki Engineering Co., Ltd."
+        "name": "Sanki Engineering Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9006",
@@ -4884,7 +5429,8 @@
         "volume": 606600.0,
         "dollar_volume": 939320100.0,
         "pct_change": 0.00551948051948052,
-        "name": "Keikyu Corporation"
+        "name": "Keikyu Corporation",
+        "themes": []
       },
       {
         "ticker": "7094",
@@ -4893,7 +5439,8 @@
         "volume": 415000.0,
         "dollar_volume": 933335000.0,
         "pct_change": 0.07146260123868509,
-        "name": "Nextone Inc."
+        "name": "Nextone Inc.",
+        "themes": []
       },
       {
         "ticker": "9418",
@@ -4902,7 +5449,8 @@
         "volume": 444500.0,
         "dollar_volume": 931672000.0,
         "pct_change": -0.012717852096090438,
-        "name": "U-Next Holdings Co., Ltd."
+        "name": "U-Next Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7278",
@@ -4911,7 +5459,8 @@
         "volume": 171900.0,
         "dollar_volume": 926541000.0,
         "pct_change": -0.007366482504604052,
-        "name": "Exedy Corporation"
+        "name": "Exedy Corporation",
+        "themes": []
       },
       {
         "ticker": "2264",
@@ -4920,7 +5469,8 @@
         "volume": 259500.0,
         "dollar_volume": 925896000.0,
         "pct_change": 0.01047861795525347,
-        "name": "Morinaga Milk Industry Co., Ltd."
+        "name": "Morinaga Milk Industry Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2315",
@@ -4929,7 +5479,8 @@
         "volume": 7900000.0,
         "dollar_volume": 924300000.0,
         "pct_change": -0.00847457627118644,
-        "name": "Caica Digital Inc."
+        "name": "Caica Digital Inc.",
+        "themes": []
       },
       {
         "ticker": "1882",
@@ -4938,7 +5489,8 @@
         "volume": 575800.0,
         "dollar_volume": 922431600.0,
         "pct_change": -0.007434944237918215,
-        "name": "Toa Road Corporation"
+        "name": "Toa Road Corporation",
+        "themes": []
       },
       {
         "ticker": "4516",
@@ -4947,7 +5499,8 @@
         "volume": 277900.0,
         "dollar_volume": 922350100.0,
         "pct_change": -0.006882106523040095,
-        "name": "Nippon Shinyaku Co., Ltd."
+        "name": "Nippon Shinyaku Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "2212",
@@ -4956,7 +5509,8 @@
         "volume": 276300.0,
         "dollar_volume": 921184200.0,
         "pct_change": -0.0029904306220095694,
-        "name": "Yamazaki Baking Co., Ltd."
+        "name": "Yamazaki Baking Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9519",
@@ -4965,7 +5519,8 @@
         "volume": 956600.0,
         "dollar_volume": 920249200.0,
         "pct_change": -0.025329280648429583,
-        "name": "Renova Inc."
+        "name": "Renova Inc.",
+        "themes": []
       },
       {
         "ticker": "2918",
@@ -4974,7 +5529,8 @@
         "volume": 307300.0,
         "dollar_volume": 918519700.0,
         "pct_change": 0.06218905472636816,
-        "name": "Warabeya Nichiyo Holdings Co., Ltd."
+        "name": "Warabeya Nichiyo Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3116",
@@ -4983,7 +5539,8 @@
         "volume": 366400.0,
         "dollar_volume": 916732800.0,
         "pct_change": 0.006638503319251659,
-        "name": "Toyota Boshoku Corporation"
+        "name": "Toyota Boshoku Corporation",
+        "themes": []
       },
       {
         "ticker": "2127",
@@ -4992,7 +5549,8 @@
         "volume": 1183800.0,
         "dollar_volume": 916261200.0,
         "pct_change": 0.003110451645932168,
-        "name": "Nihon M&A Center Holdings Inc."
+        "name": "Nihon M&A Center Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "6875",
@@ -5001,7 +5559,8 @@
         "volume": 132000.0,
         "dollar_volume": 914760000.0,
         "pct_change": 0.0374251497005988,
-        "name": "Megachips Corporation"
+        "name": "Megachips Corporation",
+        "themes": []
       },
       {
         "ticker": "2702",
@@ -5010,7 +5569,8 @@
         "volume": 144100.0,
         "dollar_volume": 912153000.0,
         "pct_change": -0.0031496062992125984,
-        "name": "McDonald's Holdings Co., Ltd."
+        "name": "McDonald's Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3283",
@@ -5019,7 +5579,8 @@
         "volume": 10557.0,
         "dollar_volume": 910013400.0,
         "pct_change": -0.0011587485515643105,
-        "name": "Nippon Prologis REIT Inc."
+        "name": "Nippon Prologis REIT Inc.",
+        "themes": []
       },
       {
         "ticker": "7164",
@@ -5028,7 +5589,8 @@
         "volume": 265900.0,
         "dollar_volume": 903528200.0,
         "pct_change": -0.015072463768115942,
-        "name": "Zenkoku Hosho Co., Ltd."
+        "name": "Zenkoku Hosho Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "8954",
@@ -5037,7 +5599,8 @@
         "volume": 9011.0,
         "dollar_volume": 902902200.0,
         "pct_change": -0.0009970089730807576,
-        "name": "Orix Jreit Inc."
+        "name": "Orix Jreit Inc.",
+        "themes": []
       },
       {
         "ticker": "4464",
@@ -5046,7 +5609,8 @@
         "volume": 221200.0,
         "dollar_volume": 902496000.0,
         "pct_change": 0.0036900369003690036,
-        "name": "Soft99 Corporation"
+        "name": "Soft99 Corporation",
+        "themes": []
       },
       {
         "ticker": "6521",
@@ -5055,7 +5619,8 @@
         "volume": 397400.0,
         "dollar_volume": 896931800.0,
         "pct_change": 0.06311822892133773,
-        "name": "Oxide Corporation"
+        "name": "Oxide Corporation",
+        "themes": []
       },
       {
         "ticker": "9401",
@@ -5064,7 +5629,8 @@
         "volume": 168700.0,
         "dollar_volume": 895965700.0,
         "pct_change": -0.0054307116104868915,
-        "name": "TBS Holdings Inc."
+        "name": "TBS Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "9010",
@@ -5073,7 +5639,8 @@
         "volume": 341500.0,
         "dollar_volume": 889949000.0,
         "pct_change": -0.002297090352220521,
-        "name": "Fuji Kyuko Co., Ltd."
+        "name": "Fuji Kyuko Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "5301",
@@ -5082,7 +5649,8 @@
         "volume": 865600.0,
         "dollar_volume": 886807200.0,
         "pct_change": 0.018896071606166086,
-        "name": "Tokai Carbon Co., Ltd."
+        "name": "Tokai Carbon Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7180",
@@ -5091,7 +5659,8 @@
         "volume": 1023100.0,
         "dollar_volume": 886106885.0219727,
         "pct_change": 0.00955816638130473,
-        "name": "Kyushu Financial Group Inc."
+        "name": "Kyushu Financial Group Inc.",
+        "themes": []
       },
       {
         "ticker": "5714",
@@ -5100,7 +5669,8 @@
         "volume": 167200.0,
         "dollar_volume": 884488000.0,
         "pct_change": 0.012440191387559809,
-        "name": "Dowa Holdings Co., Ltd."
+        "name": "Dowa Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "7806",
@@ -5109,7 +5679,8 @@
         "volume": 175700.0,
         "dollar_volume": 874986000.0,
         "pct_change": -0.01968503937007874,
-        "name": "MTG Co., Ltd."
+        "name": "MTG Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9987",
@@ -5118,7 +5689,8 @@
         "volume": 149200.0,
         "dollar_volume": 873566000.0,
         "pct_change": 0.010005175090564086,
-        "name": "Suzuken Co., Ltd."
+        "name": "Suzuken Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9302",
@@ -5127,7 +5699,8 @@
         "volume": 208900.0,
         "dollar_volume": 872157500.0,
         "pct_change": -0.02453271028037383,
-        "name": "Mitsui-Soko Holdings Co., Ltd."
+        "name": "Mitsui-Soko Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4202",
@@ -5136,7 +5709,8 @@
         "volume": 614500.0,
         "dollar_volume": 867981250.0,
         "pct_change": 0.019855595667870037,
-        "name": "Daicel Corporation"
+        "name": "Daicel Corporation",
+        "themes": []
       },
       {
         "ticker": "8358",
@@ -5145,7 +5719,8 @@
         "volume": 572400.0,
         "dollar_volume": 867758400.0,
         "pct_change": 0.004638833664678595,
-        "name": "Suruga Bank Ltd."
+        "name": "Suruga Bank Ltd.",
+        "themes": []
       },
       {
         "ticker": "6622",
@@ -5154,7 +5729,8 @@
         "volume": 103900.0,
         "dollar_volume": 867565000.0,
         "pct_change": 0.006024096385542169,
-        "name": "Daihen Corporation"
+        "name": "Daihen Corporation",
+        "themes": []
       },
       {
         "ticker": "5482",
@@ -5163,7 +5739,8 @@
         "volume": 306400.0,
         "dollar_volume": 854243200.0,
         "pct_change": -0.017271765949947126,
-        "name": "Aichi Steel Corporation"
+        "name": "Aichi Steel Corporation",
+        "themes": []
       },
       {
         "ticker": "4967",
@@ -5172,7 +5749,8 @@
         "volume": 156800.0,
         "dollar_volume": 850326400.0,
         "pct_change": 0.0014773776546629731,
-        "name": "Kobayashi Pharmaceutical Co., Ltd."
+        "name": "Kobayashi Pharmaceutical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4626",
@@ -5181,7 +5759,8 @@
         "volume": 103900.0,
         "dollar_volume": 846785000.0,
         "pct_change": 0.02002503128911139,
-        "name": "Taiyo Holdings Co., Ltd."
+        "name": "Taiyo Holdings Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3226",
@@ -5190,7 +5769,8 @@
         "volume": 6396.0,
         "dollar_volume": 844911600.0,
         "pct_change": 0.006092916984006093,
-        "name": "Nippon Accommodations Fund Inc."
+        "name": "Nippon Accommodations Fund Inc.",
+        "themes": []
       },
       {
         "ticker": "6592",
@@ -5199,7 +5779,8 @@
         "volume": 328200.0,
         "dollar_volume": 844622700.0,
         "pct_change": 0.021027573894068636,
-        "name": "Mabuchi Motor Co., Ltd."
+        "name": "Mabuchi Motor Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9832",
@@ -5208,7 +5789,8 @@
         "volume": 538300.0,
         "dollar_volume": 844592700.0,
         "pct_change": -0.010094637223974764,
-        "name": "Autobacs Seven Co., Ltd."
+        "name": "Autobacs Seven Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6703",
@@ -5217,7 +5799,8 @@
         "volume": 501000.0,
         "dollar_volume": 843183000.0,
         "pct_change": 0.018765133171912834,
-        "name": "Oki Electric Industry Co., Ltd."
+        "name": "Oki Electric Industry Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3245",
@@ -5226,7 +5809,8 @@
         "volume": 633000.0,
         "dollar_volume": 836826000.0,
         "pct_change": 0.01927525057825752,
-        "name": "Dear Life Co., Ltd."
+        "name": "Dear Life Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3360",
@@ -5235,7 +5819,8 @@
         "volume": 369600.0,
         "dollar_volume": 836774400.0,
         "pct_change": 0.014109742441209407,
-        "name": "Ship Healthcare Holdings Inc."
+        "name": "Ship Healthcare Holdings Inc.",
+        "themes": []
       },
       {
         "ticker": "7984",
@@ -5244,7 +5829,8 @@
         "volume": 912100.0,
         "dollar_volume": 835209981.1340332,
         "pct_change": -0.012189846594356795,
-        "name": "Kokuyo Co., Ltd."
+        "name": "Kokuyo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6432",
@@ -5253,7 +5839,8 @@
         "volume": 157900.0,
         "dollar_volume": 828975000.0,
         "pct_change": -0.0019011406844106464,
-        "name": "Takeuchi Mfg. Co., Ltd."
+        "name": "Takeuchi Mfg. Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "4587",
@@ -5262,7 +5849,8 @@
         "volume": 497600.0,
         "dollar_volume": 828006400.0,
         "pct_change": 0.005741915986702931,
-        "name": "PeptiDream Inc."
+        "name": "PeptiDream Inc.",
+        "themes": []
       },
       {
         "ticker": "6278",
@@ -5271,7 +5859,8 @@
         "volume": 100300.0,
         "dollar_volume": 825469000.0,
         "pct_change": 0.012300123001230012,
-        "name": "Union Tool Co."
+        "name": "Union Tool Co.",
+        "themes": []
       },
       {
         "ticker": "1909",
@@ -5280,7 +5869,8 @@
         "volume": 104600.0,
         "dollar_volume": 825294000.0,
         "pct_change": 0.08379120879120878,
-        "name": "Nippon Dry-Chemical Co., Ltd."
+        "name": "Nippon Dry-Chemical Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9722",
@@ -5289,7 +5879,8 @@
         "volume": 80500.0,
         "dollar_volume": 825125000.0,
         "pct_change": -0.012524084778420038,
-        "name": "Fujita Kanko Inc."
+        "name": "Fujita Kanko Inc.",
+        "themes": []
       },
       {
         "ticker": "3097",
@@ -5298,7 +5889,8 @@
         "volume": 185600.0,
         "dollar_volume": 824064000.0,
         "pct_change": 0.010238907849829351,
-        "name": "Monogatari Corp."
+        "name": "Monogatari Corp.",
+        "themes": []
       },
       {
         "ticker": "1934",
@@ -5307,7 +5899,8 @@
         "volume": 293400.0,
         "dollar_volume": 819466200.0,
         "pct_change": 0.05356469256884195,
-        "name": "Yurtec Corporation"
+        "name": "Yurtec Corporation",
+        "themes": []
       },
       {
         "ticker": "3309",
@@ -5316,7 +5909,8 @@
         "volume": 10221.0,
         "dollar_volume": 815635800.0,
         "pct_change": -0.009925558312655087,
-        "name": "Sekisui House Reit, Inc."
+        "name": "Sekisui House Reit, Inc.",
+        "themes": []
       },
       {
         "ticker": "2281",
@@ -5325,7 +5919,8 @@
         "volume": 334900.0,
         "dollar_volume": 813807000.0,
         "pct_change": 0.0045473336089293095,
-        "name": "Prima Meat Packers Ltd."
+        "name": "Prima Meat Packers Ltd.",
+        "themes": []
       },
       {
         "ticker": "5423",
@@ -5334,7 +5929,8 @@
         "volume": 533100.0,
         "dollar_volume": 812977500.0,
         "pct_change": -0.005867014341590613,
-        "name": "Tokyo Steel Manufacturing Co. Ltd."
+        "name": "Tokyo Steel Manufacturing Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "4526",
@@ -5343,7 +5939,8 @@
         "volume": 277100.0,
         "dollar_volume": 809686200.0,
         "pct_change": -0.020449212202480724,
-        "name": "Riken Vitamin Co., Ltd."
+        "name": "Riken Vitamin Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6407",
@@ -5352,7 +5949,8 @@
         "volume": 296800.0,
         "dollar_volume": 808780000.0,
         "pct_change": 0.005535055350553505,
-        "name": "Ckd Corp"
+        "name": "Ckd Corp",
+        "themes": []
       },
       {
         "ticker": "6849",
@@ -5361,7 +5959,8 @@
         "volume": 458900.0,
         "dollar_volume": 807893450.0,
         "pct_change": 0.025334886429819452,
-        "name": "Nihon Kohden Corporation"
+        "name": "Nihon Kohden Corporation",
+        "themes": []
       },
       {
         "ticker": "8219",
@@ -5370,7 +5969,8 @@
         "volume": 317100.0,
         "dollar_volume": 801945900.0,
         "pct_change": 0.010387534958050339,
-        "name": "Aoyama Trading Co., Ltd."
+        "name": "Aoyama Trading Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3660",
@@ -5379,7 +5979,8 @@
         "volume": 1591700.0,
         "dollar_volume": 800625100.0,
         "pct_change": -0.015655577299412915,
-        "name": "Istyle Inc."
+        "name": "Istyle Inc.",
+        "themes": []
       },
       {
         "ticker": "2784",
@@ -5388,7 +5989,8 @@
         "volume": 365100.0,
         "dollar_volume": 799569000.0,
         "pct_change": 0.002059025394646534,
-        "name": "Alfresa Holdings Corporation"
+        "name": "Alfresa Holdings Corporation",
+        "themes": []
       },
       {
         "ticker": "8057",
@@ -5397,7 +5999,8 @@
         "volume": 62600.0,
         "dollar_volume": 795020000.0,
         "pct_change": 0.013567438148443736,
-        "name": "Uchida Yoko Co., Ltd."
+        "name": "Uchida Yoko Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3992",
@@ -5406,7 +6009,8 @@
         "volume": 1309400.0,
         "dollar_volume": 794805800.0,
         "pct_change": 0.03583617747440273,
-        "name": "Needs Well Inc."
+        "name": "Needs Well Inc.",
+        "themes": []
       }
     ],
     "top10_dollar_value": [
@@ -5417,7 +6021,8 @@
         "volume": 30102000.0,
         "dollar_volume": 638011890000.0,
         "pct_change": 0.10476935105551212,
-        "name": "Lasertec Corporation"
+        "name": "Lasertec Corporation",
+        "themes": []
       },
       {
         "ticker": "8035",
@@ -5426,7 +6031,8 @@
         "volume": 9058500.0,
         "dollar_volume": 240956100000.0,
         "pct_change": 0.038656774697383836,
-        "name": "Tokyo Electron Ltd."
+        "name": "Tokyo Electron Ltd.",
+        "themes": []
       },
       {
         "ticker": "6146",
@@ -5435,7 +6041,8 @@
         "volume": 4066100.0,
         "dollar_volume": 193830987000.0,
         "pct_change": 0.001260239445494644,
-        "name": "Disco Corporation"
+        "name": "Disco Corporation",
+        "themes": []
       },
       {
         "ticker": "6857",
@@ -5444,7 +6051,8 @@
         "volume": 12388300.0,
         "dollar_volume": 192018650000.0,
         "pct_change": 0.03195739014647137,
-        "name": "Advantest Corporation"
+        "name": "Advantest Corporation",
+        "themes": []
       },
       {
         "ticker": "9984",
@@ -5453,7 +6061,8 @@
         "volume": 9753100.0,
         "dollar_volume": 174873083000.0,
         "pct_change": -0.024217687074829932,
-        "name": "SoftBank Group Corp."
+        "name": "SoftBank Group Corp.",
+        "themes": []
       },
       {
         "ticker": "8306",
@@ -5462,7 +6071,8 @@
         "volume": 43209500.0,
         "dollar_volume": 102363305500.0,
         "pct_change": 0.01174460815716421,
-        "name": "Mitsubishi UFJ Financial Group, Inc."
+        "name": "Mitsubishi UFJ Financial Group, Inc.",
+        "themes": []
       },
       {
         "ticker": "5803",
@@ -5471,7 +6081,8 @@
         "volume": 6479800.0,
         "dollar_volume": 92337150000.0,
         "pct_change": 0.01967799642218247,
-        "name": "Fujikura Ltd."
+        "name": "Fujikura Ltd.",
+        "themes": []
       },
       {
         "ticker": "7974",
@@ -5480,7 +6091,8 @@
         "volume": 5838200.0,
         "dollar_volume": 74115949000.0,
         "pct_change": -0.008203125,
-        "name": "Nintendo Co., Ltd."
+        "name": "Nintendo Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6501",
@@ -5489,7 +6101,8 @@
         "volume": 18896900.0,
         "dollar_volume": 72696374300.0,
         "pct_change": -0.0041418586590732595,
-        "name": "Hitachi Ltd."
+        "name": "Hitachi Ltd.",
+        "themes": []
       },
       {
         "ticker": "7011",
@@ -5498,7 +6111,8 @@
         "volume": 18661600.0,
         "dollar_volume": 68712011200.0,
         "pct_change": -0.004326663061114116,
-        "name": "Mitsubishi Heavy Industries Ltd."
+        "name": "Mitsubishi Heavy Industries Ltd.",
+        "themes": []
       }
     ],
     "top10_volume": [
@@ -5509,7 +6123,8 @@
         "volume": 158113800.0,
         "dollar_volume": 1581138000.0,
         "pct_change": 0.0,
-        "name": "Land Co., Ltd."
+        "name": "Land Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9432",
@@ -5518,7 +6133,8 @@
         "volume": 140157800.0,
         "dollar_volume": 22172963532.27234,
         "pct_change": 0.0012658034698872626,
-        "name": "Nippon Telegraph and Telephone Corporation"
+        "name": "Nippon Telegraph and Telephone Corporation",
+        "themes": []
       },
       {
         "ticker": "7527",
@@ -5527,7 +6143,8 @@
         "volume": 110510300.0,
         "dollar_volume": 9945927000.0,
         "pct_change": 0.34328358208955223,
-        "name": "SystemSoft Corp."
+        "name": "SystemSoft Corp.",
+        "themes": []
       },
       {
         "ticker": "4564",
@@ -5536,7 +6153,8 @@
         "volume": 99064600.0,
         "dollar_volume": 2773808800.0,
         "pct_change": 0.07692307692307693,
-        "name": "OncoTherapy Science Inc."
+        "name": "OncoTherapy Science Inc.",
+        "themes": []
       },
       {
         "ticker": "9501",
@@ -5545,7 +6163,8 @@
         "volume": 92079400.0,
         "dollar_volume": 60763198308.03223,
         "pct_change": -0.037485344350998456,
-        "name": "Tokyo Electric Power Company Holdings, Inc."
+        "name": "Tokyo Electric Power Company Holdings, Inc.",
+        "themes": []
       },
       {
         "ticker": "3350",
@@ -5554,7 +6173,8 @@
         "volume": 71681500.0,
         "dollar_volume": 42220403500.0,
         "pct_change": -0.03125,
-        "name": "Metaplanet Inc."
+        "name": "Metaplanet Inc.",
+        "themes": []
       },
       {
         "ticker": "9434",
@@ -5563,7 +6183,8 @@
         "volume": 65303900.0,
         "dollar_volume": 14752150611.416626,
         "pct_change": -0.013106160244620593,
-        "name": "SoftBank Corp."
+        "name": "SoftBank Corp.",
+        "themes": []
       },
       {
         "ticker": "3323",
@@ -5572,7 +6193,8 @@
         "volume": 62105400.0,
         "dollar_volume": 9998969400.0,
         "pct_change": -0.012269938650306749,
-        "name": "Recomm Co., Ltd."
+        "name": "Recomm Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6740",
@@ -5581,7 +6203,8 @@
         "volume": 47360300.0,
         "dollar_volume": 1184007500.0,
         "pct_change": -0.07407407407407407,
-        "name": "Japan Display Inc."
+        "name": "Japan Display Inc.",
+        "themes": []
       },
       {
         "ticker": "8306",
@@ -5590,7 +6213,8 @@
         "volume": 43209500.0,
         "dollar_volume": 102363305500.0,
         "pct_change": 0.01174460815716421,
-        "name": "Mitsubishi UFJ Financial Group, Inc."
+        "name": "Mitsubishi UFJ Financial Group, Inc.",
+        "themes": []
       }
     ],
     "top10_gainers_ge10": [
@@ -5601,7 +6225,8 @@
         "volume": 984700.0,
         "dollar_volume": 1417968000.0,
         "pct_change": 0.2631578947368421,
-        "name": "Kuribayashi Steamship Co., Ltd."
+        "name": "Kuribayashi Steamship Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9082",
@@ -5610,7 +6235,8 @@
         "volume": 178300.0,
         "dollar_volume": 353925500.0,
         "pct_change": 0.25236593059936907,
-        "name": "Daiwa Motor Transportation Co., Ltd."
+        "name": "Daiwa Motor Transportation Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "9213",
@@ -5619,7 +6245,8 @@
         "volume": 74100.0,
         "dollar_volume": 92699100.0,
         "pct_change": 0.20520231213872833,
-        "name": "Seyfert Ltd."
+        "name": "Seyfert Ltd.",
+        "themes": []
       },
       {
         "ticker": "3556",
@@ -5628,7 +6255,8 @@
         "volume": 750200.0,
         "dollar_volume": 970758800.0,
         "pct_change": 0.18933823529411764,
-        "name": "Renet Japan Group Inc."
+        "name": "Renet Japan Group Inc.",
+        "themes": []
       },
       {
         "ticker": "3905",
@@ -5637,7 +6265,8 @@
         "volume": 10675900.0,
         "dollar_volume": 25590132300.0,
         "pct_change": 0.13601895734597155,
-        "name": "Datasection Inc."
+        "name": "Datasection Inc.",
+        "themes": []
       },
       {
         "ticker": "6560",
@@ -5646,7 +6275,8 @@
         "volume": 307900.0,
         "dollar_volume": 727875600.0,
         "pct_change": 0.11825922421948912,
-        "name": "Ladenburg Thalmann Financial Services Inc."
+        "name": "Ladenburg Thalmann Financial Services Inc.",
+        "themes": []
       },
       {
         "ticker": "3723",
@@ -5655,7 +6285,8 @@
         "volume": 155500.0,
         "dollar_volume": 270259000.0,
         "pct_change": 0.11768488745980707,
-        "name": "Nihon Falcom Corporation"
+        "name": "Nihon Falcom Corporation",
+        "themes": []
       },
       {
         "ticker": "3321",
@@ -5664,7 +6295,8 @@
         "volume": 415500.0,
         "dollar_volume": 641116500.0,
         "pct_change": 0.10530085959885387,
-        "name": "Mitachi Co., Ltd."
+        "name": "Mitachi Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "6920",
@@ -5673,7 +6305,8 @@
         "volume": 30102000.0,
         "dollar_volume": 638011890000.0,
         "pct_change": 0.10476935105551212,
-        "name": "Lasertec Corporation"
+        "name": "Lasertec Corporation",
+        "themes": []
       },
       {
         "ticker": "4937",
@@ -5682,7 +6315,8 @@
         "volume": 38800.0,
         "dollar_volume": 47374800.0,
         "pct_change": 0.09703504043126684,
-        "name": "Waqoo Inc."
+        "name": "Waqoo Inc.",
+        "themes": []
       }
     ],
     "top10_losers_ge10": [
@@ -5693,7 +6327,8 @@
         "volume": 130100.0,
         "dollar_volume": 200484100.0,
         "pct_change": -0.09139150943396226,
-        "name": "Intimate Merger Inc."
+        "name": "Intimate Merger Inc.",
+        "themes": []
       },
       {
         "ticker": "9399",
@@ -5702,7 +6337,8 @@
         "volume": 59765.0,
         "dollar_volume": 67594215.0,
         "pct_change": -0.08421052631578947,
-        "name": "Beat Holdings Ltd."
+        "name": "Beat Holdings Ltd.",
+        "themes": []
       },
       {
         "ticker": "1844",
@@ -5711,7 +6347,8 @@
         "volume": 1423000.0,
         "dollar_volume": 1428692000.0,
         "pct_change": -0.08310502283105023,
-        "name": "Ohmori Co., Ltd."
+        "name": "Ohmori Co., Ltd.",
+        "themes": []
       },
       {
         "ticker": "3856",
@@ -5720,7 +6357,8 @@
         "volume": 457600.0,
         "dollar_volume": 495123200.0,
         "pct_change": -0.08071367884451996,
-        "name": "Abalance Corporation"
+        "name": "Abalance Corporation",
+        "themes": []
       },
       {
         "ticker": "6417",
@@ -5729,7 +6367,8 @@
         "volume": 2644600.0,
         "dollar_volume": 7172155200.0,
         "pct_change": -0.07566462167689161,
-        "name": "Sankyo Co. Ltd."
+        "name": "Sankyo Co. Ltd.",
+        "themes": []
       },
       {
         "ticker": "9345",
@@ -5738,7 +6377,8 @@
         "volume": 18400.0,
         "dollar_volume": 38824000.0,
         "pct_change": -0.06966490299823633,
-        "name": "Bizmates Inc."
+        "name": "Bizmates Inc.",
+        "themes": []
       },
       {
         "ticker": "9719",
@@ -5747,7 +6387,8 @@
         "volume": 2744400.0,
         "dollar_volume": 12500742000.0,
         "pct_change": -0.06333538967715402,
-        "name": "Scsk Corporation"
+        "name": "Scsk Corporation",
+        "themes": []
       },
       {
         "ticker": "2334",
@@ -5756,7 +6397,8 @@
         "volume": 325700.0,
         "dollar_volume": 1739238000.0,
         "pct_change": -0.06315789473684211,
-        "name": "Federal National Mortgage Association (FNCL) Floating Rate Note 1995 Series"
+        "name": "Federal National Mortgage Association (FNCL) Floating Rate Note 1995 Series",
+        "themes": []
       },
       {
         "ticker": "9235",
@@ -5765,7 +6407,8 @@
         "volume": 166000.0,
         "dollar_volume": 196876000.0,
         "pct_change": -0.062450592885375494,
-        "name": "Ureru Net Advertising Group Inc."
+        "name": "Ureru Net Advertising Group Inc.",
+        "themes": []
       },
       {
         "ticker": "4575",
@@ -5774,8 +6417,28 @@
         "volume": 416300.0,
         "dollar_volume": 509551200.0,
         "pct_change": -0.05263157894736842,
-        "name": "Canbas Co., Ltd."
+        "name": "Canbas Co., Ltd.",
+        "themes": []
       }
     ]
-  }
+  },
+  "themes": [
+    {
+      "theme": "通信",
+      "count": 2,
+      "share": 0.005261058963862324,
+      "leaders": [
+        {
+          "ticker": "9433",
+          "name": "KDDI Corporation",
+          "pct_change": -0.013970439360194372
+        },
+        {
+          "ticker": "9613",
+          "name": "NTT Data Group Corporation",
+          "pct_change": 0.0
+        }
+      ]
+    }
+  ]
 }
