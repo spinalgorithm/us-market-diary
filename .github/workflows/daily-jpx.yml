@@ -17,11 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0, persist-credentials: true }
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+        with:
+          python-version: '3.11'
 
       - name: Install deps
         run: |
@@ -32,6 +35,7 @@ jobs:
         env:
           MIN_PRICE_JPY: "1000"
         run: |
+          set -e
           python fetch_jpx_toplists.py
           echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
           echo "BUNDLE_JPX path: $BUNDLE_JPX"
@@ -41,9 +45,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5
           OPENAI_MAX_OUTPUT_TOKENS: "6500"
-          MARKET: "JP"
-          HEADER_PREFIX: "取引代金上位600日本株"
         run: |
+          set -e
           test -f "$BUNDLE_JPX" || (echo "Bundle not found: $BUNDLE_JPX" && exit 1)
           python summarize_with_openai.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
 
@@ -51,10 +54,7 @@ jobs:
         run: |
           set -e
           mkdir -p public/jpx
-          DATE=$(python - <<'PY'
-import json,sys;print(json.load(open(sys.argv[1]))["date"])
-PY
-"$BUNDLE_JPX")
+          DATE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["date"])' "$BUNDLE_JPX")
           cp note_post_llm_jpx.md public/jpx/latest.md
           cp "$BUNDLE_JPX"        public/jpx/latest.json
           cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
