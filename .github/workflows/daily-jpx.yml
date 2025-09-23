@@ -45,9 +45,13 @@ jobs:
 
       - name: Summarize with OpenAI (JP)
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python summarize_with_openai_jp.py --bundle "${{ env.BUNDLE_JPX }}" --out note_post_llm_jp.md
+         python summarize_with_openai_jp.py \
+         --bundle "${{ env.BUNDLE_JPX }}" \
+         --names data/jpx_names.csv \
+         --out note_post_llm_jp.md \
+         --model "gpt-5"
 
       - name: Publish to public/jpx/daily
         run: |
