@@ -1,0 +1,71 @@
+name: build-daily-jpx
+
+on:
+  schedule:
+    - cron: '35 6 * * 1-5'   # JST/KST 15:35 (UTC 06:35)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-jpx-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, persist-credentials: true }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas openai
+
+      - name: Generate JP bundle (yfinance)
+        env:
+          MIN_PRICE_JPY: "1000"
+        run: |
+          python fetch_jpx_toplists.py
+          echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
+          echo "BUNDLE_JPX path: $BUNDLE_JPX"
+
+      - name: Summarize with GPT-5 (JP equities)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5
+          OPENAI_MAX_OUTPUT_TOKENS: "6500"
+          MARKET: "JP"
+          HEADER_PREFIX: "取引代金上位600日本株"
+        run: |
+          test -f "$BUNDLE_JPX" || (echo "Bundle not found: $BUNDLE_JPX" && exit 1)
+          python summarize_with_openai.py --bundle "$BUNDLE_JPX" --out note_post_llm_jpx.md
+
+      - name: Publish to public/jpx/
+        run: |
+          set -e
+          mkdir -p public/jpx
+          DATE=$(python - <<'PY'
+import json,sys;print(json.load(open(sys.argv[1]))["date"])
+PY
+"$BUNDLE_JPX")
+          cp note_post_llm_jpx.md public/jpx/latest.md
+          cp "$BUNDLE_JPX"        public/jpx/latest.json
+          cp note_post_llm_jpx.md "public/jpx/${DATE}.md"
+          cp "$BUNDLE_JPX"        "public/jpx/${DATE}.json"
+
+      - name: Commit and push (rebase)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/jpx note_post_llm_jpx.md || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "daily-jpx: $(date -u +'%Y-%m-%d')"
+          git pull --rebase origin main
+          git push
