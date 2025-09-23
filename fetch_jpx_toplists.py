@@ -1,249 +1,197 @@
 #!/usr/bin/env python3
-# JPX Toplists builder (super full version)
-# - Pulls JP tickers via data/jpx_tickers.txt (fallback seed)
-# - Uses yfinance daily OHLCV, computes JPY "dollar_volume" = Close * Volume
-# - Injects Japanese company names from data/jpx_names.csv
-# - Writes CSVs and a bundle.json under out_jpx/YYYY-MM-DD/
-# Env:
-#   MIN_PRICE_JPY: filter for gainers/losers (default 1000)
-# CLI:
-#   python fetch_jpx_toplists.py [--out-root out_jpx] [--batch 100]
-
 import os, sys, csv, json, time, argparse
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
-
 import pandas as pd
 import yfinance as yf
+from datetime import date
 
-# ---------------- Config ----------------
-DEFAULT_OUT_ROOT = "out_jpx"
-DEFAULT_BATCH = 100
-REQ_PERIOD = "3d"     # need prev close
-REQ_INTERVAL = "1d"
-SLEEP_BETWEEN = 0.8   # seconds between batches
-RETRY = 2             # yfinance occasional retry
+BATCH = 100
 MIN_PRICE_JPY = float(os.getenv("MIN_PRICE_JPY", "1000"))
 
-SEED_TICKERS = [      # fallback if data/jpx_tickers.txt is missing
-    "7203","6758","9984","9432","9983","8306","8035","6861","4063","4502",
-    "6954","7974","8591","8766","6367","7267","7269","7751","7735","7201",
-]
-
-# -------------- IO helpers --------------
-def ensure_dir(p: Path) -> Path:
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-def write_csv(p: Path, rows: List[Dict[str, Any]], cols: List[str]) -> None:
-    with p.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=cols)
-        w.writeheader()
-        for r in rows:
-            w.writerow({k: r.get(k) for k in cols})
-
-# -------------- Name map ----------------
-def load_name_map() -> Dict[str, str]:
-    """
-    data/jpx_names.csv format:
-      ticker,name
-      6920,レーザーテック
-      8035,東京エレクトロン
-      ...
-    """
-    m: Dict[str, str] = {}
-    p = Path("data/jpx_names.csv")
-    if not p.exists():
-        return m
-    with p.open(encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            code = str(row.get("ticker") or "").strip()
-            name = str(row.get("name") or "").strip()
-            if code and name:
-                m[code] = name
-    return m
-
-def apply_names(rows: List[Dict[str, Any]], name_map: Dict[str, str]) -> None:
-    for r in rows:
-        code = str(r.get("ticker") or "")
-        r["name"] = name_map.get(code, "")
-
-# -------------- Universe ----------------
-def load_universe_codes() -> List[str]:
+def load_universe_codes():
     p = Path("data/jpx_tickers.txt")
     if p.exists():
         codes = [x.strip() for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
-        codes = [c for c in codes if c.isdigit() and len(c) == 4]
-        if not codes:
-            codes = SEED_TICKERS
     else:
-        codes = SEED_TICKERS
-    # Yahoo Finance JP suffix
+        # 최소 시드. bootstrap 스텝이 성공하면 다음 실행부턴 data/ 에 풀 유니버스가 생김.
+        codes = ["7203","6758","9984","9432","9983","8306","8035","6861","4063","4502",
+                 "6954","7974","8591","8766","6367","7267","7269","7751","7735","7201"]
     return [c + ".T" for c in codes]
 
-def batched(seq: List[str], n: int):
+def load_name_map():
+    m = {}
+    p = Path("data/jpx_names.csv")
+    if p.exists():
+        with p.open(encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                c = str(r.get("ticker","")).strip()
+                n = str(r.get("name","")).strip()
+                if c: m[c] = n
+    return m
+
+def batched(seq, n):
     for i in range(0, len(seq), n):
         yield seq[i:i+n]
 
-# -------------- Fetch -------------------
-def fetch_batch(tickers: List[str]) -> Tuple[List[Dict[str, Any]], Any]:
-    """
-    Returns:
-      rows: list of dicts
-      last_date: pandas Timestamp.date() or None
-    """
-    out: List[Dict[str, Any]] = []
-
-    for attempt in range(RETRY + 1):
-        try:
-            df = yf.download(
-                tickers=tickers,
-                period=REQ_PERIOD, interval=REQ_INTERVAL,
-                group_by="ticker", auto_adjust=False,
-                progress=False, threads=True,
-            )
-            break
-        except Exception:
-            if attempt >= RETRY:
-                raise
-            time.sleep(1.2)
-
-    if df is None or df.empty:
-        return out, None
-
-    # MultiIndex when multiple tickers, single-index when one
+def fetch_batch(tickers):
+    df = yf.download(
+        tickers=tickers,
+        period="3d", interval="1d",
+        group_by="ticker", auto_adjust=False, progress=False, threads=True,
+    )
+    out = []
+    d_this = None
     if isinstance(df.columns, pd.MultiIndex):
-        last_date = df.index[-1].date() if not df.empty else None
-        base_names = set(df.columns.get_level_values(0))
         for t in tickers:
-            if t not in base_names:
+            if t not in df.columns.get_level_values(0):
                 continue
             cdf = df[t].dropna()
-            if cdf.empty or len(cdf) < 2:
+            if len(cdf) < 2:  # 전일 대비 필요
                 continue
-            last, prev = cdf.iloc[-1], cdf.iloc[-2]
-            try:
-                o = float(last.get("Open"))
-                c = float(last.get("Close"))
-                v = float(last.get("Volume"))
-                pc = (c - float(prev.get("Close"))) / float(prev.get("Close")) if float(prev.get("Close")) else None
-            except Exception:
-                continue
+            last = cdf.iloc[-1]; prev = cdf.iloc[-2]
+            o = float(last.get("Open", float("nan")))
+            c = float(last.get("Close", float("nan")))
+            v = float(last.get("Volume", float("nan")))
+            p = None
+            if pd.notna(c) and pd.notna(prev.get("Close")) and prev["Close"] != 0:
+                p = (c - float(prev["Close"])) / float(prev["Close"])
             if pd.isna(c) or pd.isna(v):
                 continue
-            out.append({
-                "ticker": t.replace(".T", ""),
-                "open": o, "close": c, "volume": v,
-                "dollar_volume": v * c,  # JPY
-                "pct_change": pc,
-            })
+            dv = v * c
+            out.append({"ticker": t.replace(".T",""), "open": o, "close": c,
+                        "volume": v, "dollar_volume": dv, "pct_change": p})
+            d_this = cdf.index[-1].date()
     else:
-        last_date = df.index[-1].date() if not df.empty else None
         cdf = df.dropna()
-        if not cdf.empty and len(cdf) >= 2:
-            last, prev = cdf.iloc[-1], cdf.iloc[-2]
-            try:
-                o = float(last.get("Open"))
-                c = float(last.get("Close"))
-                v = float(last.get("Volume"))
-                pc = (c - float(prev.get("Close"))) / float(prev.get("Close")) if float(prev.get("Close")) else None
-            except Exception:
-                pc = None
-            if not pd.isna(c) and not pd.isna(v):
-                out.append({
-                    "ticker": tickers[0].replace(".T", ""),
-                    "open": o, "close": c, "volume": v,
-                    "dollar_volume": v * c, "pct_change": pc,
-                })
-    return out, last_date
+        if len(cdf) >= 2:
+            last = cdf.iloc[-1]; prev = cdf.iloc[-2]
+            t = tickers[0]
+            o = float(last.get("Open", float("nan")))
+            c = float(last.get("Close", float("nan")))
+            v = float(last.get("Volume", float("nan")))
+            p = None
+            if pd.notna(c) and pd.notna(prev.get("Close")) and prev["Close"] != 0:
+                p = (c - float(prev["Close"])) / float(prev["Close"])
+            if not (pd.isna(c) or pd.isna(v)):
+                dv = v * c
+                out.append({"ticker": t.replace(".T",""), "open": o, "close": c,
+                            "volume": v, "dollar_volume": dv, "pct_change": p})
+                d_this = cdf.index[-1].date()
+    return out, d_this
 
-# -------------- Build lists -------------
-def build_lists(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    rows_dv = sorted(
-        (r for r in rows if r.get("dollar_volume") is not None),
-        key=lambda x: float(x["dollar_volume"]), reverse=True
-    )
-    top600 = rows_dv[:600]
-    top10_dv = top600[:10]
-    top10_vol = sorted(rows, key=lambda x: float(x.get("volume", 0)), reverse=True)[:10]
+def ensure_out(date_str: str) -> Path:
+    p = Path("out_jpx") / date_str
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
-    pool_ge = [
-        r for r in rows
-        if r.get("close") is not None and float(r["close"]) >= MIN_PRICE_JPY and r.get("pct_change") is not None
-    ]
-    top10_g = sorted(pool_ge, key=lambda x: float(x["pct_change"]), reverse=True)[:10]
-    top10_l = sorted(pool_ge, key=lambda x: float(x["pct_change"]))[:10]
+def write_csv(p: Path, rows, cols):
+    with p.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols); w.writeheader()
+        for r in rows: w.writerow({k: r.get(k) for k in cols})
 
-    return {
-        "universe_top600_by_dollar": top600,
-        "top10_dollar_value": top10_dv,
-        "top10_volume": top10_vol,
-        "top10_gainers_ge10": top10_g,  # key 名称はUS側に合わせて互換維持
-        "top10_losers_ge10": top10_l,
-    }
+THEME_KEYWORDS = {
+    "半導体": ["半導体","エレクトロン","レーザーテック","アドバンテスト","テスタ","露光","EUV","シリコン","ウエハ","SCREEN"],
+    "電機/電子部品": ["電機","モーター","センサー","コンデンサ","コネクタ","電子部品","受動部品"],
+    "自動車": ["自動車","トヨタ","ホンダ","日産","スズキ","部品","デンソー"],
+    "銀行": ["銀行","フィナンシャル"],
+    "商社": ["商事","物産","商社"],
+    "通信": ["通信","NTT","KDDI","ソフトバンク"],
+    "ゲーム/コンテンツ": ["任天堂","ソニー","ゲーム","コンテンツ"],
+    "重工/機械": ["重工","機械","造船","防衛"],
+    "電線": ["電線","フジクラ","古河","住友電工"],
+    "電力/エネルギー": ["電力","石油","ガス","原発","再生可能"],
+    "医薬/ヘルスケア": ["薬","医薬","製薬","バイオ"],
+    "海運/陸運": ["海運","陸運","JR","鉄道","運輸"],
+    "小売": ["小売","アパレル","ユニクロ","SPA"],
+}
 
-# -------------- Main --------------------
+def detect_themes(name_ja: str) -> list:
+    if not name_ja: return []
+    tags = []
+    for k, kws in THEME_KEYWORDS.items():
+        for kw in kws:
+            if kw in name_ja:
+                tags.append(k); break
+    return tags
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-root", default=DEFAULT_OUT_ROOT)
-    ap.add_argument("--batch", type=int, default=DEFAULT_BATCH)
     args = ap.parse_args()
 
-    name_map = load_name_map()
     tickers = load_universe_codes()
+    name_map = load_name_map()
 
-    rows: List[Dict[str, Any]] = []
-    last_date = None
+    rows = []
+    max_date: date | None = None
 
-    for chunk in batched(tickers, args.batch):
+    for chunk in batched(tickers, BATCH):
         try:
             r, d = fetch_batch(chunk)
+            for x in r:
+                code = x["ticker"]
+                x["name"] = name_map.get(code, "")  # 일본어 이름 주입
+                x["themes"] = detect_themes(x["name"])
             rows.extend(r)
-            if d:
-                last_date = d
+            if d and (max_date is None or d > max_date):
+                max_date = d
         except Exception:
-            # tolerate occasional Yahoo blocks
-            time.sleep(2.0)
+            time.sleep(2)
             continue
-        time.sleep(SLEEP_BETWEEN)
+        time.sleep(0.8)
 
-    if not rows or not last_date:
-        print("ERROR: no JPX data fetched", file=sys.stderr)
-        sys.exit(2)
+    if not rows or not max_date:
+        print("ERROR: no data", file=sys.stderr); sys.exit(2)
 
-    # inject names
-    apply_names(rows, name_map)
+    date_str = max_date.strftime("%Y-%m-%d")
+    outdir = ensure_out(date_str)
 
-    # lists
-    lists = build_lists(rows)
+    rows_dv = sorted([r for r in rows if r.get("dollar_volume")], key=lambda x: x["dollar_volume"], reverse=True)
+    top600 = rows_dv[:600]
+    top10_dv = top600[:10]
+    top10_vol = sorted(rows, key=lambda x: x.get("volume",0), reverse=True)[:10]
+    pool_ge = [r for r in rows if r.get("close") and r["close"] >= MIN_PRICE_JPY and r.get("pct_change") is not None]
+    top10_g = sorted(pool_ge, key=lambda x: x["pct_change"], reverse=True)[:10]
+    top10_l = sorted(pool_ge, key=lambda x: x["pct_change"])[:10]
 
-    # out paths
-    date_str = last_date.strftime("%Y-%m-%d")
-    outdir = ensure_dir(Path(args.out_root) / date_str)
+    # 테마 집계
+    total_dv = sum(float(r.get("dollar_volume") or 0) for r in top600) or 1.0
+    theme_stats = []
+    for th in THEME_KEYWORDS.keys():
+        members = [r for r in top600 if th in r.get("themes",[])]
+        share = sum(float(r.get("dollar_volume") or 0) for r in members)/total_dv
+        leaders = sorted(members, key=lambda x: x["dollar_volume"], reverse=True)[:5]
+        theme_stats.append({
+            "theme": th,
+            "count": len(members),
+            "share": share,
+            "leaders": [{"ticker": m["ticker"], "name": m.get("name",""), "pct_change": m.get("pct_change")} for m in leaders]
+        })
+    theme_stats = [t for t in theme_stats if t["count"]>0]
+    theme_stats.sort(key=lambda x: x["share"], reverse=True)
 
-    # write csvs
-    cols = ["ticker", "name", "open", "close", "volume", "dollar_volume", "pct_change"]
-    write_csv(outdir / "universe_top600_by_dollar.csv", lists["universe_top600_by_dollar"], cols)
-    write_csv(outdir / "top10_dollar_value.csv",          lists["top10_dollar_value"], cols)
-    write_csv(outdir / "top10_volume.csv",                lists["top10_volume"], cols)
-    write_csv(outdir / "top10_gainers_ge10.csv",          lists["top10_gainers_ge10"], cols)
-    write_csv(outdir / "top10_losers_ge10.csv",           lists["top10_losers_ge10"], cols)
+    cols = ["ticker","name","open","close","volume","dollar_volume","pct_change"]
+    write_csv(outdir/"universe_top600_by_dollar.csv", top600, cols)
+    write_csv(outdir/"top10_dollar_value.csv", top10_dv, cols)
+    write_csv(outdir/"top10_volume.csv", top10_vol, cols)
+    write_csv(outdir/"top10_gainers_ge_minprice.csv", top10_g, cols)
+    write_csv(outdir/"top10_losers_ge_minprice.csv", top10_l, cols)
 
-    # bundle
     bundle = {
         "date": date_str,
         "market": "JP",
         "currency": "JPY",
-        "counts": {
-            "total_rows": len(rows),
-            "universe_top600_by_dollar": len(lists["universe_top600_by_dollar"]),
+        "counts": {"total_rows": len(rows), "universe_top600_by_dollar": len(top600)},
+        "lists": {
+            "universe_top600_by_dollar": top600,
+            "top10_dollar_value": top10_dv,
+            "top10_volume": top10_vol,
+            "top10_gainers_ge10": top10_g,
+            "top10_losers_ge10": top10_l
         },
-        "lists": lists,
+        "themes": theme_stats
     }
-    (outdir / "bundle.json").write_text(json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8")
-
+    (outdir/"bundle.json").write_text(json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Wrote {outdir.resolve()}")
-    print(f"BUNDLE={str(outdir / 'bundle.json')}")
 
 if __name__ == "__main__":
     main()
