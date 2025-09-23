@@ -3,8 +3,8 @@
   "market": "JP",
   "currency": "JPY",
   "counts": {
-    "total_rows": 20,
-    "universe_top600_by_dollar": 20
+    "total_rows": 39,
+    "universe_top600_by_dollar": 39
   },
   "lists": {
     "universe_top600_by_dollar": [
@@ -41,6 +41,14 @@
         "pct_change": -0.008203125
       },
       {
+        "ticker": "6501",
+        "open": 3841.0,
+        "close": 3847.0,
+        "volume": 18896900.0,
+        "dollar_volume": 72696374300.0,
+        "pct_change": -0.0041418586590732595
+      },
+      {
         "ticker": "9983",
         "open": 46420.0,
         "close": 46600.0,
@@ -65,6 +73,22 @@
         "pct_change": 0.014026684912760863
       },
       {
+        "ticker": "8316",
+        "open": 4165.0,
+        "close": 4187.0,
+        "volume": 11091000.0,
+        "dollar_volume": 46438017000.0,
+        "pct_change": 0.009645526886906198
+      },
+      {
+        "ticker": "8411",
+        "open": 4868.0,
+        "close": 4932.0,
+        "volume": 8509700.0,
+        "dollar_volume": 41969840400.0,
+        "pct_change": 0.018166804293971925
+      },
+      {
         "ticker": "4063",
         "open": 4618.0,
         "close": 4714.0,
@@ -81,12 +105,44 @@
         "pct_change": 0.0048447873676655305
       },
       {
+        "ticker": "6861",
+        "open": 55180.0,
+        "close": 56000.0,
+        "volume": 576300.0,
+        "dollar_volume": 32272800000.0,
+        "pct_change": 0.0048447873676655305
+      },
+      {
+        "ticker": "8058",
+        "open": 3579.0,
+        "close": 3600.0,
+        "volume": 8845600.0,
+        "dollar_volume": 31844160000.0,
+        "pct_change": 0.008120974516942034
+      },
+      {
+        "ticker": "7741",
+        "open": 20385.0,
+        "close": 20970.0,
+        "volume": 1397500.0,
+        "dollar_volume": 29305575000.0,
+        "pct_change": 0.022926829268292682
+      },
+      {
         "ticker": "7735",
         "open": 13770.0,
         "close": 13905.0,
         "volume": 1866500.0,
         "dollar_volume": 25953682500.0,
         "pct_change": 0.009437386569872959
+      },
+      {
+        "ticker": "8031",
+        "open": 3724.0,
+        "close": 3774.0,
+        "volume": 6392700.0,
+        "dollar_volume": 24126049800.0,
+        "pct_change": 0.01342642320085929
       },
       {
         "ticker": "9432",
@@ -103,6 +159,14 @@
         "volume": 3058300.0,
         "dollar_volume": 19187774200.0,
         "pct_change": -0.008220044261776794
+      },
+      {
+        "ticker": "4661",
+        "open": 3599.0,
+        "close": 3632.0,
+        "volume": 4842700.0,
+        "dollar_volume": 17588686400.0,
+        "pct_change": 0.021947101857062466
       },
       {
         "ticker": "6954",
@@ -137,6 +201,22 @@
         "pct_change": -0.00805523590333717
       },
       {
+        "ticker": "3382",
+        "open": 1979.0,
+        "close": 1994.0,
+        "volume": 6311100.0,
+        "dollar_volume": 12584333400.0,
+        "pct_change": 0.004028197381671702
+      },
+      {
+        "ticker": "2914",
+        "open": 4782.0,
+        "close": 4764.0,
+        "volume": 2370700.0,
+        "dollar_volume": 11294014800.0,
+        "pct_change": -0.0012578616352201257
+      },
+      {
         "ticker": "7751",
         "open": 4359.0,
         "close": 4441.0,
@@ -153,6 +233,22 @@
         "pct_change": 0.007633637960007994
       },
       {
+        "ticker": "6902",
+        "open": 2161.0,
+        "close": 2199.5,
+        "volume": 4690600.0,
+        "dollar_volume": 10316974700.0,
+        "pct_change": 0.019230769230769232
+      },
+      {
+        "ticker": "5108",
+        "open": 7059.0,
+        "close": 7034.0,
+        "volume": 1386400.0,
+        "dollar_volume": 9751937600.0,
+        "pct_change": 0.0021370565607636417
+      },
+      {
         "ticker": "7269",
         "open": 2127.5,
         "close": 2142.0,
@@ -167,6 +263,62 @@
         "volume": 2397200.0,
         "dollar_volume": 9533664400.0,
         "pct_change": -0.0030082727500626723
+      },
+      {
+        "ticker": "4503",
+        "open": 1668.0,
+        "close": 1672.0,
+        "volume": 5568100.0,
+        "dollar_volume": 9309863200.0,
+        "pct_change": 0.008748114630467572
+      },
+      {
+        "ticker": "9022",
+        "open": 4124.0,
+        "close": 4157.0,
+        "volume": 1935300.0,
+        "dollar_volume": 8045042100.0,
+        "pct_change": -0.002878388102662509
+      },
+      {
+        "ticker": "9020",
+        "open": 3602.0,
+        "close": 3629.0,
+        "volume": 1895100.0,
+        "dollar_volume": 6877317900.0,
+        "pct_change": -0.002473886750962067
+      },
+      {
+        "ticker": "6869",
+        "open": 1857.0,
+        "close": 1867.0,
+        "volume": 2364100.0,
+        "dollar_volume": 4413774700.0,
+        "pct_change": 0.001609442060085837
+      },
+      {
+        "ticker": "3402",
+        "open": 975.0,
+        "close": 969.7999877929688,
+        "volume": 3977900.0,
+        "dollar_volume": 3857767371.4416504,
+        "pct_change": 0.001962974822793739
+      },
+      {
+        "ticker": "7205",
+        "open": 372.1000061035156,
+        "close": 375.3999938964844,
+        "volume": 3418600.0,
+        "dollar_volume": 1283342419.1345215,
+        "pct_change": 0.0016008701255536197
+      },
+      {
+        "ticker": "6901",
+        "open": 1043.0,
+        "close": 1042.0,
+        "volume": 3300.0,
+        "dollar_volume": 3438600.0,
+        "pct_change": -0.0009587727708533077
       }
     ],
     "top10_dollar_value": [
@@ -203,6 +355,14 @@
         "pct_change": -0.008203125
       },
       {
+        "ticker": "6501",
+        "open": 3841.0,
+        "close": 3847.0,
+        "volume": 18896900.0,
+        "dollar_volume": 72696374300.0,
+        "pct_change": -0.0041418586590732595
+      },
+      {
         "ticker": "9983",
         "open": 46420.0,
         "close": 46600.0,
@@ -227,28 +387,20 @@
         "pct_change": 0.014026684912760863
       },
       {
-        "ticker": "4063",
-        "open": 4618.0,
-        "close": 4714.0,
-        "volume": 7109000.0,
-        "dollar_volume": 33511826000.0,
-        "pct_change": 0.01770293609671848
+        "ticker": "8316",
+        "open": 4165.0,
+        "close": 4187.0,
+        "volume": 11091000.0,
+        "dollar_volume": 46438017000.0,
+        "pct_change": 0.009645526886906198
       },
       {
-        "ticker": "6861",
-        "open": 55180.0,
-        "close": 56000.0,
-        "volume": 576300.0,
-        "dollar_volume": 32272800000.0,
-        "pct_change": 0.0048447873676655305
-      },
-      {
-        "ticker": "7735",
-        "open": 13770.0,
-        "close": 13905.0,
-        "volume": 1866500.0,
-        "dollar_volume": 25953682500.0,
-        "pct_change": 0.009437386569872959
+        "ticker": "8411",
+        "open": 4868.0,
+        "close": 4932.0,
+        "volume": 8509700.0,
+        "dollar_volume": 41969840400.0,
+        "pct_change": 0.018166804293971925
       }
     ],
     "top10_volume": [
@@ -277,6 +429,14 @@
         "pct_change": 0.007633637960007994
       },
       {
+        "ticker": "6501",
+        "open": 3841.0,
+        "close": 3847.0,
+        "volume": 18896900.0,
+        "dollar_volume": 72696374300.0,
+        "pct_change": -0.0041418586590732595
+      },
+      {
         "ticker": "7203",
         "open": 2923.0,
         "close": 2964.0,
@@ -291,6 +451,14 @@
         "volume": 12485200.0,
         "dollar_volume": 54810028000.0,
         "pct_change": 0.01596852580421199
+      },
+      {
+        "ticker": "8316",
+        "open": 4165.0,
+        "close": 4187.0,
+        "volume": 11091000.0,
+        "dollar_volume": 46438017000.0,
+        "pct_change": 0.009645526886906198
       },
       {
         "ticker": "9984",
@@ -315,22 +483,6 @@
         "volume": 9058500.0,
         "dollar_volume": 240956100000.0,
         "pct_change": 0.038656774697383836
-      },
-      {
-        "ticker": "4063",
-        "open": 4618.0,
-        "close": 4714.0,
-        "volume": 7109000.0,
-        "dollar_volume": 33511826000.0,
-        "pct_change": 0.01770293609671848
-      },
-      {
-        "ticker": "7974",
-        "open": 13235.0,
-        "close": 12695.0,
-        "volume": 5838200.0,
-        "dollar_volume": 74115949000.0,
-        "pct_change": -0.008203125
       }
     ],
     "top10_gainers_ge10": [
@@ -351,6 +503,22 @@
         "pct_change": 0.038656774697383836
       },
       {
+        "ticker": "7741",
+        "open": 20385.0,
+        "close": 20970.0,
+        "volume": 1397500.0,
+        "dollar_volume": 29305575000.0,
+        "pct_change": 0.022926829268292682
+      },
+      {
+        "ticker": "4661",
+        "open": 3599.0,
+        "close": 3632.0,
+        "volume": 4842700.0,
+        "dollar_volume": 17588686400.0,
+        "pct_change": 0.021947101857062466
+      },
+      {
         "ticker": "9983",
         "open": 46420.0,
         "close": 46600.0,
@@ -359,12 +527,28 @@
         "pct_change": 0.019247594050743656
       },
       {
+        "ticker": "6902",
+        "open": 2161.0,
+        "close": 2199.5,
+        "volume": 4690600.0,
+        "dollar_volume": 10316974700.0,
+        "pct_change": 0.019230769230769232
+      },
+      {
         "ticker": "7267",
         "open": 1635.0,
         "close": 1661.5,
         "volume": 9481700.0,
         "dollar_volume": 15753844550.0,
         "pct_change": 0.01870018393623544
+      },
+      {
+        "ticker": "8411",
+        "open": 4868.0,
+        "close": 4932.0,
+        "volume": 8509700.0,
+        "dollar_volume": 41969840400.0,
+        "pct_change": 0.018166804293971925
       },
       {
         "ticker": "4063",
@@ -381,38 +565,6 @@
         "volume": 2482100.0,
         "dollar_volume": 11023006100.0,
         "pct_change": 0.01764436296975252
-      },
-      {
-        "ticker": "6758",
-        "open": 4373.0,
-        "close": 4390.0,
-        "volume": 12485200.0,
-        "dollar_volume": 54810028000.0,
-        "pct_change": 0.01596852580421199
-      },
-      {
-        "ticker": "7203",
-        "open": 2923.0,
-        "close": 2964.0,
-        "volume": 18457400.0,
-        "dollar_volume": 54707733600.0,
-        "pct_change": 0.014026684912760863
-      },
-      {
-        "ticker": "8306",
-        "open": 2366.5,
-        "close": 2369.0,
-        "volume": 43209500.0,
-        "dollar_volume": 102363305500.0,
-        "pct_change": 0.01174460815716421
-      },
-      {
-        "ticker": "7735",
-        "open": 13770.0,
-        "close": 13905.0,
-        "volume": 1866500.0,
-        "dollar_volume": 25953682500.0,
-        "pct_change": 0.009437386569872959
       }
     ],
     "top10_losers_ge10": [
@@ -457,6 +609,14 @@
         "pct_change": -0.004689593568557392
       },
       {
+        "ticker": "6501",
+        "open": 3841.0,
+        "close": 3847.0,
+        "volume": 18896900.0,
+        "dollar_volume": 72696374300.0,
+        "pct_change": -0.0041418586590732595
+      },
+      {
         "ticker": "8591",
         "open": 3979.0,
         "close": 3977.0,
@@ -465,36 +625,28 @@
         "pct_change": -0.0030082727500626723
       },
       {
-        "ticker": "7269",
-        "open": 2127.5,
-        "close": 2142.0,
-        "volume": 4519800.0,
-        "dollar_volume": 9681411600.0,
-        "pct_change": 0.004690431519699813
+        "ticker": "9022",
+        "open": 4124.0,
+        "close": 4157.0,
+        "volume": 1935300.0,
+        "dollar_volume": 8045042100.0,
+        "pct_change": -0.002878388102662509
       },
       {
-        "ticker": "6861",
-        "open": 55180.0,
-        "close": 56000.0,
-        "volume": 576300.0,
-        "dollar_volume": 32272800000.0,
-        "pct_change": 0.0048447873676655305
+        "ticker": "9020",
+        "open": 3602.0,
+        "close": 3629.0,
+        "volume": 1895100.0,
+        "dollar_volume": 6877317900.0,
+        "pct_change": -0.002473886750962067
       },
       {
-        "ticker": "7735",
-        "open": 13770.0,
-        "close": 13905.0,
-        "volume": 1866500.0,
-        "dollar_volume": 25953682500.0,
-        "pct_change": 0.009437386569872959
-      },
-      {
-        "ticker": "8306",
-        "open": 2366.5,
-        "close": 2369.0,
-        "volume": 43209500.0,
-        "dollar_volume": 102363305500.0,
-        "pct_change": 0.01174460815716421
+        "ticker": "2914",
+        "open": 4782.0,
+        "close": 4764.0,
+        "volume": 2370700.0,
+        "dollar_volume": 11294014800.0,
+        "pct_change": -0.0012578616352201257
       }
     ]
   }
