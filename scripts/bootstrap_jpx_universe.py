@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-# scripts/bootstrap_jpx_universe.py
-# JPX銘柄ユニバースを作成（優先度: repo > JPX公式 > StockAnalysis > シード）
-import re, io, sys, csv, time
+# JPX universe builder with yfinance validation
+import os, re, io, sys, csv, time
 from pathlib import Path
-
 import requests
 import pandas as pd
+
+# yfinance 검증용
+import warnings, logging
+warnings.filterwarnings("ignore")
+logging.getLogger("yfinance").setLevel(logging.ERROR)
+import yfinance as yf
 
 OUT = Path("data"); OUT.mkdir(parents=True, exist_ok=True)
 TICKERS_TXT = OUT / "jpx_tickers.txt"
@@ -15,6 +19,7 @@ UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/1
 JPX_PAGE = "https://www.jpx.co.jp/markets/statistics-equities/misc/01.html"
 STOCKANALYSIS = "https://stockanalysis.com/list/tokyo-stock-exchange/"
 
+# 최소 시드
 SEED = [
     ("7203","トヨタ自動車"),("6758","ソニーグループ"),("9984","ソフトバンクグループ"),
     ("9983","ファーストリテイリング"),("8035","東京エレクトロン"),("6861","キーエンス"),
@@ -28,111 +33,155 @@ SEED = [
     ("2914","日本たばこ産業"),("4503","アステラス製薬"),("7741","HOYA"),
     ("4661","オリエンタルランド"),("3382","セブン&アイ・ホールディングス"),
     ("9020","東日本旅客鉄道"),("9022","東海旅客鉄道"),("6869","シスメックス"),
-    ("5108","ブリヂストン"),("6501","日立製作所"),("6502","東芝"),("3402","東レ")
+    ("5108","ブリヂストン"),("6501","日立製作所"),("3402","東レ")
 ]
 
-def _write(rows: list[tuple[str,str]]) -> None:
-    # 重複除去・4桁コードのみ
-    seen, cleaned = set(), []
-    for c,n in rows:
-        c = str(c).strip()
-        n = str(n).strip()
-        if not re.fullmatch(r"\d{4}", c): continue
-        if c in seen: continue
-        seen.add(c); cleaned.append((c, n))
-    if not cleaned:
-        raise RuntimeError("no rows to write")
-    # 保存
-    TICKERS_TXT.write_text("\n".join([c for c,_ in cleaned]), encoding="utf-8")
+def write_outputs(rows):
+    # rows: [(code, name_ja)]
+    codes = [c for c,_ in rows]
+    TICKERS_TXT.write_text("\n".join(codes), encoding="utf-8")
     with NAMES_CSV.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f); w.writerow(["ticker","name"])
-        for c,n in cleaned: w.writerow([c,n])
-    print(f"OK: {len(cleaned)} tickers -> {TICKERS_TXT} / {NAMES_CSV}")
+        for c,n in rows: w.writerow([c,n])
 
-def from_repo() -> bool:
-    # public/jpx/jpx_universe.csv（任意）を最優先で読む
-    for p in [Path("public/jpx/jpx_universe.csv"), Path("public/jpx_universe.csv")]:
-        if not p.exists(): continue
-        try:
-            df = pd.read_csv(p)
-            cols = {c.lower(): c for c in df.columns}
-            c_code = cols.get("ticker") or cols.get("code")
-            c_name = cols.get("name") or cols.get("name_ja") or cols.get("jp_name")
-            if not c_code: continue
-            if not c_name:
-                df["__name"] = ""; c_name = "__name"
-            rows = [(str(x), str(y)) for x,y in zip(df[c_code], df[c_name])]
-            _write(rows); print(f"via repo: {p}")
-            return True
-        except Exception:
-            continue
-    return False
-
-def _jpx_xls_url() -> str | None:
+def from_jpx():
     try:
         html = requests.get(JPX_PAGE, headers=UA, timeout=30).text
         m = re.search(r'href="([^"]+/att/[^"]+\.(?:xlsx|xls))"', html)
-        return ("https://www.jpx.co.jp" + m.group(1)) if m else None
-    except Exception:
-        return None
-
-def from_jpx() -> bool:
-    url = _jpx_xls_url()
-    if not url: return False
-    try:
+        if not m: return None
+        url = "https://www.jpx.co.jp" + m.group(1)
         bin = requests.get(url, headers=UA, timeout=60).content
         xf = pd.ExcelFile(io.BytesIO(bin))
         df = None
         for sh in xf.sheet_names:
             t = xf.parse(sh)
             cols = "".join(map(str, t.columns))
-            if re.search(r"コード", cols) and re.search(r"銘柄名", cols):
+            if re.search(r'コード', cols) and re.search(r'銘柄名', cols):
                 df = t; break
-        if df is None: return False
-        col_code = next(c for c in df.columns if re.search(r"コード", str(c)))
-        col_name = next(c for c in df.columns if re.search(r"銘柄名", str(c)))
-        # ETF/REIT/ETN/インフラ除外（列があれば）
-        mk_col = next((c for c in df.columns if re.search(r"市場|区分", str(c))), None)
-        if mk_col is not None:
-            df = df[~df[mk_col].astype(str).str.contains("ETF|ETN|REIT|インフラ", regex=True, na=False)]
-        df = df[[col_code, col_name]].dropna()
-        rows = [(str(int(c)), str(n)) for c,n in df.values if re.fullmatch(r"\d{4}", str(c))]
-        _write(rows); print(f"via JPX: {url}")
-        return True
-    except Exception:
-        return False
+        if df is None: return None
+        col_code = next(c for c in df.columns if re.search(r'コード', str(c)))
+        col_name = next(c for c in df.columns if re.search(r'銘柄名', str(c)))
 
-def from_stockanalysis() -> bool:
+        # ETF/ETN/REIT/インフラ 除外 + 廃止行 제거 시도
+        maybe_mkt = next((c for c in df.columns if re.search(r'市場|区分', str(c))), None)
+        if maybe_mkt is not None:
+            df = df[~df[maybe_mkt].astype(str).str.contains("ETF|ETN|REIT|インフラ|上場廃止|廃止", regex=True, na=False)]
+
+        df = df[[col_code, col_name]].dropna()
+        df = df[df[col_code].astype(str).str.match(r'^\d{4}$')]
+        rows = [(str(int(c)), str(n).strip()) for c,n in df.values]
+        return rows if rows else None
+    except Exception:
+        return None
+
+def from_stockanalysis():
     try:
         all_rows = []
         for page in range(1, 80):
             url = STOCKANALYSIS + (f"?p={page}" if page > 1 else "")
             r = requests.get(url, headers=UA, timeout=30)
             if r.status_code != 200: break
-            rows = re.findall(r'/stocks/(\d{4})\.T/.*?</a>\s*</td>\s*<td[^>]*>([^<]+)</td>', r.text, flags=re.S)
+            rows = re.findall(r'/stocks/(\d{4})\.T/.*?</a>\s*</td>\s*<td[^>]*>([^<]+)</td>',
+                              r.text, flags=re.S)
             if not rows: break
-            all_rows += [(c.strip(), n.strip()) for c,n in rows]
-            time.sleep(0.25)
-        if not all_rows: return False
-        # 重複除去
-        seen, uniq = set(), []
+            all_rows.extend((c.strip(), n.strip()) for c,n in rows)
+            time.sleep(0.2)
+        if not all_rows: return None
+        seen, rows = set(), []
         for c,n in all_rows:
-            if c in seen: continue
-            seen.add(c); uniq.append((c,n))
-        _write(uniq); print(f"via StockAnalysis ({len(uniq)})")
-        return True
+            if c not in seen:
+                seen.add(c); rows.append((c,n))
+        return rows if rows else None
     except Exception:
-        return False
+        return None
 
-def from_seed() -> bool:
-    _write(SEED); print("via SEED"); return True
+def from_repo():
+    p = Path("public/jpx/jpx_universe.csv")
+    if not p.exists(): return None
+    try:
+        df = pd.read_csv(p)
+        cols = {c.lower(): c for c in df.columns}
+        c_code = cols.get("ticker") or cols.get("code")
+        c_name = cols.get("name") or cols.get("name_ja") or cols.get("jp_name")
+        if not c_code: return None
+        if c_name is None:
+            df["__name"] = ""
+            c_name = "__name"
+        df = df[df[c_code].astype(str).str.match(r"^\d{4}$")]
+        rows = [(str(int(c)), str(n)) for c, n in zip(df[c_code], df[c_name])]
+        return rows if rows else None
+    except Exception:
+        return None
+
+def fallback_seed():
+    return SEED
+
+def batched(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i:i+n]
+
+def validate_with_yf(rows):
+    """ yfinance로 최근 3영업일 데이터 존재하는 코드만 통과 """
+    code2name = dict(rows)
+    codes = list(code2name.keys())
+    good = set()
+
+    for chunk in batched(codes, 200):
+        syms = [c + ".T" for c in chunk]
+        try:
+            df = yf.download(
+                tickers=syms,
+                period="3d", interval="1d",
+                group_by="ticker", auto_adjust=False,
+                progress=False, threads=True
+            )
+        except Exception:
+            continue
+
+        if isinstance(df.columns, pd.MultiIndex):
+            have = set(df.columns.get_level_values(0))
+            for c in chunk:
+                if c+".T" not in have:  # 완전 실패
+                    continue
+                try:
+                    cdf = df[c+".T"].dropna()
+                except KeyError:
+                    continue
+                if not cdf.empty:
+                    good.add(c)
+        else:
+            # 단일 티커 케이스
+            if not df.empty:
+                only = chunk[0]
+                good.add(only)
+
+        time.sleep(0.3)
+
+    clean = [(c, code2name.get(c, "")) for c in sorted(good)]
+    return clean
 
 def main():
-    for fn in (from_repo, from_jpx, from_stockanalysis, from_seed):
-        if fn():
-            return
-    print("ERROR: JPX universe build failed", file=sys.stderr)
-    sys.exit(1)
+    # 1) 소스 시도
+    for src in (from_jpx, from_stockanalysis, from_repo):
+        rows = src()
+        if rows:
+            print(f"source: {src.__name__} -> raw {len(rows)} codes")
+            break
+    else:
+        rows = fallback_seed()
+        print(f"source: seed -> {len(rows)} codes")
+
+    # 2) yfinance 검증
+    rows_clean = validate_with_yf(rows)
+    print(f"validated: {len(rows_clean)} codes with recent data")
+
+    if not rows_clean:
+        print("ERROR: No valid JPX tickers after validation", file=sys.stderr)
+        sys.exit(2)
+
+    # 3) 저장
+    write_outputs(rows_clean)
+    print(f"OK -> {TICKERS_TXT} / {NAMES_CSV}")
 
 if __name__ == "__main__":
     main()
