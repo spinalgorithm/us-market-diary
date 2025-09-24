@@ -2,7 +2,7 @@ name: daily-jpx
 
 on:
   schedule:
-    - cron: "10 7 * * 1-5"   # 16:10 JST/KST, 市場引け後
+    - cron: "10 7 * * 1-5"   # JST 16:10 平日
   workflow_dispatch:
 
 permissions:
@@ -10,47 +10,72 @@ permissions:
 
 concurrency:
   group: daily-jpx
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   jpx:
     runs-on: ubuntu-latest
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Python deps
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir "openai>=1.50.0" pandas numpy requests yfinance tzdata
+          pip install pandas yfinance openai requests
 
-      - name: Build JP universe (names)
+      - name: Build JPX universe (tickers + fallback names)
         run: |
-          # 없으면 생성, 있으면 유지
-          python scripts/bootstrap_jpx_universe.py || true
+          python scripts/bootstrap_jpx_universe.py
+          ls -al data || true
 
-      - name: Enrich names with themes
-        run: |
-          # 신규 추가한 스크립트(수동 테마 매핑 포함)
-          python scripts/make_jpx_names_with_themes.py
-
-      - name: Fetch JP toplists (Top600 by JPY)
+      - name: Build JPX names with themes (only if missing)
         env:
-          MIN_PRICE_JPY: "1000"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5-mini
+        run: |
+          if [ ! -f data/jpx_names.csv ]; then
+            echo "names csv missing -> generate with themes"
+            python scripts/make_jpx_names_with_themes.py --out data/jpx_names.csv --model "${OPENAI_MODEL}"
+          else
+            echo "names csv exists -> skip theme regeneration"
+          fi
+          head -n 5 data/jpx_names.csv || true
+
+      - name: Fetch JPX toplists
         run: |
           python fetch_jpx_toplists.py
-          echo "BUNDLE_JPX=$(ls -1 out_jpx/*/bundle.json | sort | tail -n 1)" >> $GITHUB_ENV
-          test -f "${BUNDLE_JPX}"
+          echo "BUNDLE_JPX=$(ls -d out_jpx/* | sort | tail -1)/bundle.json" >> $GITHUB_ENV
+          test -f "$(echo $BUNDLE_JPX)" && echo "bundle -> $BUNDLE_JPX"
 
-      - name: Summarize with OpenAI (gpt-5-mini, JP)
+      - name: Extract date from bundle
+        run: |
+          DATE_JPX=$(python - <<'PY'
+import json, os
+p = os.environ["BUNDLE_JPX"]
+print(json.load(open(p, encoding="utf-8"))["date"])
+PY
+          )
+          echo "DATE_JPX=$DATE_JPX" >> $GITHUB_ENV
+          echo "DATE_JPX=$DATE_JPX"
+
+      - name: Summarize JPX with OpenAI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-5-mini
@@ -61,28 +86,22 @@ jobs:
             --out note_post_llm_jp.md \
             --model "${OPENAI_MODEL}"
 
-      - name: Publish to public/daily_jpx
+      - name: Publish artifacts to public/jpx/daily
         run: |
-          DATE=$(python - <<'PY'
- 
-          import json,os,sys
-           p=os.environ["BUNDLE_JPX"]
-                print(json.load(open(p,encoding="utf-8"))["date"])
-             PY)
-             
-          mkdir -p public/daily_jpx
-          cp "${{ env.BUNDLE_JPX }}" "public/daily_jpx/${DATE}.json"
-          cp note_post_llm_jp.md "public/daily_jpx/${DATE}.md"
-          cp "${{ env.BUNDLE_JPX }}" "public/daily_jpx/latest.json"
-          cp note_post_llm_jp.md "public/daily_jpx/latest.md"
+          mkdir -p public/jpx/daily
+          cp "${{ env.BUNDLE_JPX }}" "public/jpx/daily/${{ env.DATE_JPX }}.json"
+          cp note_post_llm_jp.md "public/jpx/daily/${{ env.DATE_JPX }}.md"
+          cp "${{ env.BUNDLE_JPX }}" "public/jpx/daily/latest.json"
+          cp note_post_llm_jp.md "public/jpx/daily/latest.md"
+          ls -al public/jpx/daily
 
       - name: Commit and push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add -A
-          git commit -m "JPX daily: $(date -u +'%Y-%m-%d')" || exit 0
+          git fetch origin
+          # 안전한 리베이스 풀로 충돌 최소화
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git add public/jpx/daily out_jpx data/jpx_tickers.txt data/jpx_names.csv || true
+          git commit -m "jpx daily: ${{ env.DATE_JPX }}" || true
+          git push || true
